@@ -104,6 +104,10 @@ namespace aby3
                 mData[0] = *s.mData[0];
                 mData[1] = *s.mData[1];
             }
+            si64(Ref<si64>& s1, Ref<si64>& s2){
+                mData[0] = *s1.mData[0] + *s2.mData[0];
+                mData[1] = *s1.mData[1] + *s2.mData[1];
+            }
 
             si64& operator=(const si64& copy);
             si64 operator+(const si64& rhs) const;
@@ -163,6 +167,10 @@ namespace aby3
 
             Ref<si64> operator()(u64 x, u64 y) const;
             Ref<si64> operator()(u64 xy) const;
+            void operator()(u64 x, u64 y, si64 val){
+                mShares[0](x, y) = val.mData[0];
+                mShares[1](x, y) = val.mData[1];
+            }
             si64Matrix operator+(const si64Matrix& B) const;
             si64Matrix operator-(const si64Matrix& B) const;
 

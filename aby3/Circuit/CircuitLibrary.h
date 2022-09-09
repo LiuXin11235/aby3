@@ -34,6 +34,14 @@ namespace aby3
 
 		static void Preproc_build(BetaCircuit& cd, u64 dec);
 		static void argMax_build(BetaCircuit& cd, u64 dec, u64 numArgs);
+		BetaCircuit* gt_build_do();
+
+		BetaCircuit* int_comp_helper(u64 aSize);
+        static void int_comp_build_do(
+			BetaCircuit& cd,
+			const BetaBundle & aa,
+			const BetaBundle & b,
+			const BetaBundle & cc);
 
     };
 
