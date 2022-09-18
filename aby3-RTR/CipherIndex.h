@@ -1,13 +1,32 @@
 #pragma once
-#include <cryptoTools/Common/CLP.h>
+#include <cryptoTools/Network/IOService.h>
+#include <aby3/sh3/Sh3FixedPoint.h>
+#include <aby3/sh3/Sh3Encryptor.h>
+#include <aby3/sh3/Sh3Evaluator.h>
+#include <aby3/sh3/Sh3Runtime.h>
+#include <aby3/sh3/Sh3Types.h>
 
-// test functions
-int test_mul(oc::CLP& cmd);
-int test_gt(oc::CLP& cmd);
-int test_eq(oc::CLP& cmd);
-int test_argsort(oc::CLP& cmd);
+// using namespace aby3;
+// using namespace oc;
 
-// performance test
-int basic_performance(oc::CLP& cmd, int n, int repeats, std::map<std::string, std::vector<double>>& dict);
+template <aby3::Decimal D>
+int cipher_index(aby3::u64 pIdx, aby3::sf64Matrix<D> &sharedM, aby3::si64Matrix &cipherIndex, aby3::sf64Matrix<D> &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
-// int test_vector_gt(oc::CLP& cmd);
+
+int cipher_argsort_offset(int pIdx, aby3::si64Matrix& sharedM, aby3::si64Matrix& res, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor& enc, aby3::Sh3Task& task, int offsetLeft, int offsetRight);
+
+
+int cipher_argsort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);
+
+template <aby3::Decimal D>
+int cipher_argsort(int pIdx, aby3::sf64Matrix<D> &sharedM, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc){
+    return cipher_argsort(pIdx, sharedM.i64Cast(), res, eval, runtime, enc);
+}
+
+int rtr_cipher_argsort(int pIdx, aby3::si64Matrix& sharedM, aby3::si64Matrix& res, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor& enc);
+
+
+template <aby3::Decimal D>
+int rtr_cipher_argsort(int pIdx, aby3::sf64Matrix<D>& sharedM, aby3::si64Matrix& res, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor& enc){
+    return rtr_cipher_argsort(pIdx, sharedM.i64Cast(), res, eval, runtime, enc);
+}

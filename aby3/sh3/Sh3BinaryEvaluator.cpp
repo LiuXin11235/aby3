@@ -1408,13 +1408,14 @@ namespace aby3
 
         if (hasMoreRounds())
         {
-            auto t = task.then([this](CommPkg& comm, Sh3Task& task)
-                {
-                    roundCallback(comm, task);
-                }
-            );
+            roundCallback(comm, task);
+            // auto t = task.then([this](CommPkg& comm, Sh3Task& task)
+            //     {
+            //         roundCallback(comm, task);
+            //     }
+            // );
 
-            t.name() = "callback";
+            // t.name() = "callback";
         }
     }
 

@@ -9,7 +9,11 @@
 #include <tests_cryptoTools/UnitTests.h>
 #include <aby3-ML/main-linear.h>
 #include <aby3-ML/main-logistic.h>
-#include <aby3-RTR/CipherIndex.h>
+// #include <aby3-RTR/test.h>
+// #include "aby3-RTR/test.h"
+// #include "aby3-RTR/BuildingBlocks.h"
+// #include "aby3-RTR/CipherIndex.h"
+#include "aby3-RTR/RTRTest.h"
 
 #include "tests_cryptoTools/UnitTests.h"
 #include "cryptoTools/Crypto/PRNG.h"
@@ -18,7 +22,8 @@ using namespace oc;
 using namespace aby3;
 std::vector<std::string> unitTestTag{ "u", "unitTest" };
 
-#define BASIC_TEST
+// #define BASIC_TEST
+#define PERFORMANCE_TEST
 
 void help()
 {
@@ -183,13 +188,22 @@ int main(int argc, char** argv)
 
 	#ifdef PERFORMANCE_TEST
 	// test the vectorization for basic ops (mul) and (gt).
-	int repeats = 20;
-	int step = 50, start = 1, end = 1e3;
-	int points = (end - start) / step;
-	std::vector<int> n_list;
-	for(int i=0; i<points; i++){
-		n_list.push_back(start + i*step);
-	}
+	int repeats = int(5);
+	// int step = 50, start = 1, end = 1e3;
+	// int points = (end - start) / step;
+	// std::vector<int> n_list;
+	// for(int i=0; i<points; i++){
+	// 	n_list.push_back(start + i*step);
+	// }
+	std::vector<int> n_list = {      10,       13,       17,       23,       30,       40,
+             54,       71,       95,      126,      167,      222,
+            294,      390,      517,      686,      910,     1206,
+           1599,     2120,     2811,     3727,     4941,     6551,
+           8685,    11513,    15264,    20235,    26826,    35564,
+          47148,    62505,    82864,   109854,   145634,   193069,
+         255954,   339322,   449843,   596362,   790604,  1048113,
+        1389495,  1842069,  2442053,  3237457,  4291934,  5689866,
+        7543120, 10000000};
 
 	std::map<int, std::map<std::string, std::vector<double>>> performance_dict;
 	for(int i=0; i<n_list.size(); i++){
@@ -197,6 +211,23 @@ int main(int argc, char** argv)
 		std::map<std::string, std::vector<double>> tmp_map;
 		basic_performance(cmd, n, repeats, tmp_map);
 		performance_dict[n] = tmp_map;
+
+		// execute one evaluation and record one.
+		std::cout << "\nvector size = " << n_list[i] << std::endl;
+		std::cout << "mul" << std::endl;
+		for(int j=0; j<3; j++){
+			std::cout << performance_dict[n_list[i]]["mul"][j] << " ";
+		}
+		std::cout << "\ngt" << std::endl;
+		for(int j=0; j<3; j++){
+			std::cout << performance_dict[n_list[i]]["gt"][j] << " ";
+		}
+		// std::cout << std::endl;
+		std::cout << "\nadd" << std::endl;
+		for(int j=0; j<3; j++){
+			std::cout << performance_dict[n_list[i]]["add"][j] << " ";
+		}
+		std::cout << std::endl;
 	}
 
 	// cout the result.
@@ -210,6 +241,11 @@ int main(int argc, char** argv)
 		for(int j=0; j<3; j++){
 			std::cout << performance_dict[n_list[i]]["gt"][j] << " ";
 		}
+		// std::cout << std::endl;
+		std::cout << "\nadd" << std::endl;
+		for(int j=0; j<3; j++){
+			std::cout << performance_dict[n_list[i]]["add"][j] << " ";
+		}
 		std::cout << std::endl;
 	}
 	#endif
@@ -217,8 +253,12 @@ int main(int argc, char** argv)
 	#ifdef BASIC_TEST
 	// test gt
 	test_gt(cmd);
-	// test eq
+
+	// test eq - has problems.
 	// test_eq(cmd);
+
+	// test multiplication between bits and ints.
+	test_mul(cmd);
 
 	// test cipher_argsort
 	test_argsort(cmd);
