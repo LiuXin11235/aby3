@@ -30,10 +30,8 @@ void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &
   }
     // Establishes some shared randomness needed for the later protocols
     enc.init(partyIdx, comm, sysRandomSeed());
-
     // Establishes some shared randomness needed for the later protocols
     eval.init(partyIdx, comm, sysRandomSeed());
-
     // Copies the Channels and will use them for later protcols.
     runtime.init(partyIdx, comm);
 }
@@ -130,17 +128,6 @@ int cipher_mul_seq(int pIdx, const si64Matrix &sharedA, const sbMatrix &sharedB,
   return 0;
 }
 
-// template <Decimal D>
-// int cipher_mul(u64 pIdx, sf64<D> &a, sf64<D> &b, sf64<D> &res,
-//                Sh3Evaluator &eval, Sh3Runtime &runtime) {
-//   eval.asyncMul(runtime, a, b, res).get();
-//   return 0;
-// }
-
-// int cipher_mul(u64 pIdx, si64Matrix &sharedA, si64Matrix &sharedB, si64Matrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
-//   eval.asyncMul(runtime, sharedA, sharedB, res).get();
-//   return 0;
-// }
 
 // synchronized version of fetch_msb.
 int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime, Sh3Task& task){
@@ -201,203 +188,161 @@ int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, S
 }
 
 
-// int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
-//   // 1. set the binary circuits.
-//   Sh3BinaryEvaluator binEng;
-//   CircuitLibrary lib;
-//   sbMatrix circuitInput0;
-//   sbMatrix circuitInput1;
-//   circuitInput0.resize(diffAB.size(), 64);
-//   circuitInput1.resize(diffAB.size(), 64);
+int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
 
-//   // 2. let party0 adds up two shares x0 and x1; let party1 and party2 share x2.
-//   switch(pIdx){
-//     case 0: {
-//       for(u64 j=0; j<diffAB.size(); j++){
-//         circuitInput0.mShares[0](j) = diffAB.mShares[0](j)+ diffAB.mShares[1](j);
-//       }
-//       circuitInput1.mShares[0].setZero();
-//       circuitInput1.mShares[1].setZero();
-//       break;
-//     }
-//     case 1: {
-//       circuitInput1.mShares[0].resize(diffAB.rows(), diffAB.cols());
-//       circuitInput1.mShares[1].setZero();
-//       memcpy(circuitInput1.mShares[0].data(), diffAB.mShares[0].data(), diffAB.size() * sizeof(i64));
-//       circuitInput0.mShares[0].setZero();
-//       break;
-//     }
-//     case 2: {
-//       circuitInput1.mShares[0].setZero();
-//       circuitInput1.mShares[1].resize(diffAB.rows(), diffAB.cols());
-//       memcpy(circuitInput1.mShares[1].data(), diffAB.mShares[1].data(), diffAB.size() * sizeof(i64));
+  // 1. set the binary circuits.
+  Sh3BinaryEvaluator binEng;
+  CircuitLibrary lib;
+  sbMatrix circuitInput0;
+  sbMatrix circuitInput1;
+  circuitInput0.resize(diffAB.size(), 64);
+  circuitInput1.resize(diffAB.size(), 64);
 
-//       circuitInput0.mShares[0].setZero();
-//     }
-//   }
+  // 2. let party0 adds up two shares x0 and x1; let party1 and party2 share x2.
+  switch(pIdx){
+    case 0: {
+      for(u64 j=0; j<diffAB.size(); j++){
+        circuitInput0.mShares[0](j) = diffAB.mShares[0](j)+ diffAB.mShares[1](j);
+      }
+      circuitInput1.mShares[0].setZero();
+      circuitInput1.mShares[1].setZero();
+      break;
+    }
+    case 1: {
+      circuitInput1.mShares[0].resize(diffAB.rows(), diffAB.cols());
+      circuitInput1.mShares[1].setZero();
+      memcpy(circuitInput1.mShares[0].data(), diffAB.mShares[0].data(), diffAB.size() * sizeof(i64));
+      circuitInput0.mShares[0].setZero();
+      break;
+    }
+    case 2: {
+      circuitInput1.mShares[0].setZero();
+      circuitInput1.mShares[1].resize(diffAB.rows(), diffAB.cols());
+      memcpy(circuitInput1.mShares[1].data(), diffAB.mShares[1].data(), diffAB.size() * sizeof(i64));
 
-//   // 3. binary secrets reshare.
-//   runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
-//   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
-//   fu.get();
+      circuitInput0.mShares[0].setZero();
+    }
+  }
 
-//   // 4. extract the msb of the difference.
-//   auto cir = lib.int_comp_helper(sizeof(i64)*8);
-//   binEng.setCir(cir, diffAB.size(), eval.mShareGen);
-//   binEng.setInput(0, circuitInput0);
-//   binEng.setInput(1, circuitInput1);
+  // 3. binary secrets reshare.
+  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
+  auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
+  fu.get();
 
-//   // Sh3Task binTask = runtime.noDependencies();
-//   // binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
-//   //   res.resize(diffAB.size(), 1);
-//   //   binEng.getOutput(0, res);
-//   // }).get();
-//   auto dep = binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
-//     res.resize(diffAB.size(), 1);
-//     binEng.getOutput(0, res);
-//   });
-//   dep.get();
-//   runtime.runUntilTaskCompletes(runtime);
+  // 4. extract the msb of the difference.
+  auto cir = lib.int_comp_helper(sizeof(i64)*8);
+  binEng.setCir(cir, diffAB.size(), eval.mShareGen);
+  binEng.setInput(0, circuitInput0);
+  binEng.setInput(1, circuitInput1);
 
-//   if(runtime.mIsActive){
-//     cout << "party - " << pIdx << " INDEED EXISTS ACTIVE TASKS" << endl;
-//   }
+  auto dep = binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
+    res.resize(diffAB.size(), 1);
+    binEng.getOutput(0, res);
+  });
+  dep.get();
+  runtime.runUntilTaskCompletes(runtime);
 
-//   return 0;
-// }
+  if(runtime.mIsActive){
+    cout << "party - " << pIdx << " INDEED EXISTS ACTIVE TASKS" << endl;
+  }
+
+  return 0;
+}
 
 
-// // template <Decimal D>
-// int cipher_gt(int pIdx, sf64Matrix<D> &sharedA, sf64Matrix<D> &sharedB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
+int cipher_gt(int pIdx, si64Matrix &sharedA, si64Matrix &sharedB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
 
-//   // comparision between sharedA and sharedB, diffAB = sharedA - sharedB, sub by sint type.
-//   sf64Matrix<D> diffF = sharedB - sharedA;
-//   si64Matrix diffAB = diffF.i64Cast();
-//   Sh3Task task = runtime.noDependencies();
-//   return fetch_msb(pIdx, diffAB, res, eval, runtime, task);
-// }
+  // comparision between sharedA and sharedB, diffAB = sharedA - sharedB, sub by sint type.
+  si64Matrix diffAB = sharedB - sharedA;
+  Sh3Task task = runtime.noDependencies();
+  return fetch_msb(pIdx, diffAB, res, eval, runtime, task);
+}
 
 
-// int cipher_gt(int pIdx, si64Matrix &sharedA, si64Matrix &sharedB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
-
-//   // comparision between sharedA and sharedB, diffAB = sharedA - sharedB, sub by sint type.
-//   si64Matrix diffAB = sharedB - sharedA;
-//   return fetch_msb(pIdx, diffAB, res, eval, runtime);
-// }
-
-
-// int cipher_gt(int pIdx, si64Matrix &sharedA, vector<int> &plainB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
+int cipher_gt(int pIdx, si64Matrix &sharedA, vector<int> &plainB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
   
-//   // 1. set the binary circuits.
-//   Sh3BinaryEvaluator binEng;
-//   CircuitLibrary lib;
-//   sbMatrix circuitInput0;
-//   sbMatrix circuitInput1;
-//   circuitInput0.resize(sharedA.size(), 64);
-//   circuitInput1.resize(sharedA.size(), 64);
+  // 1. set the binary circuits.
+  Sh3BinaryEvaluator binEng;
+  CircuitLibrary lib;
+  sbMatrix circuitInput0;
+  sbMatrix circuitInput1;
+  circuitInput0.resize(sharedA.size(), 64);
+  circuitInput1.resize(sharedA.size(), 64);
 
-//   // 2. let party0 adds up two shares x0 and x1; let party1 and party2 share x2.
-//   switch(pIdx){
-//     case 0: {
-//       for(u64 j=0; j<sharedA.size(); j++){
-//         circuitInput0.mShares[0](j) = plainB[j] - (sharedA.mShares[0](j)+ sharedA.mShares[1](j));
-//       }
-//       circuitInput1.mShares[0].setZero();
-//       circuitInput1.mShares[1].setZero();
-//       break;
-//     }
-//     case 1: {
-//       circuitInput1.mShares[0].resize(sharedA.rows(), sharedA.cols());
-//       circuitInput1.mShares[1].setZero();
-//       memcpy(circuitInput1.mShares[0].data(), sharedA.mShares[0].data(), sharedA.size() * sizeof(i64));
-//       circuitInput0.mShares[0].setZero();
-//       break;
-//     }
-//     case 2: {
-//       circuitInput1.mShares[0].setZero();
-//       circuitInput1.mShares[1].resize(sharedA.rows(), sharedA.cols());
-//       memcpy(circuitInput1.mShares[1].data(), sharedA.mShares[1].data(), sharedA.size() * sizeof(i64));
+  // 2. let party0 adds up two shares x0 and x1; let party1 and party2 share x2.
+  switch(pIdx){
+    case 0: {
+      for(u64 j=0; j<sharedA.size(); j++){
+        circuitInput0.mShares[0](j) = plainB[j] - (sharedA.mShares[0](j)+ sharedA.mShares[1](j));
+      }
+      circuitInput1.mShares[0].setZero();
+      circuitInput1.mShares[1].setZero();
+      break;
+    }
+    case 1: {
+      circuitInput1.mShares[0].resize(sharedA.rows(), sharedA.cols());
+      circuitInput1.mShares[1].setZero();
+      memcpy(circuitInput1.mShares[0].data(), sharedA.mShares[0].data(), sharedA.size() * sizeof(i64));
+      circuitInput0.mShares[0].setZero();
+      break;
+    }
+    case 2: {
+      circuitInput1.mShares[0].setZero();
+      circuitInput1.mShares[1].resize(sharedA.rows(), sharedA.cols());
+      memcpy(circuitInput1.mShares[1].data(), sharedA.mShares[1].data(), sharedA.size() * sizeof(i64));
 
-//       circuitInput0.mShares[0].setZero();
-//     }
-//   }
+      circuitInput0.mShares[0].setZero();
+    }
+  }
 
-//   // 3. binary secrets reshare.
-//   runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
-//   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
-//   fu.get();
+  // 3. binary secrets reshare.
+  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
+  auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
+  fu.get();
 
-//   // 4. extract the msb of the difference.
-//   auto cir = lib.int_comp_helper(sizeof(i64)*8);
-//   binEng.setCir(cir, sharedA.size(), eval.mShareGen);
-//   binEng.setInput(0, circuitInput0);
-//   binEng.setInput(1, circuitInput1);
+  // 4. extract the msb of the difference.
+  auto cir = lib.int_comp_helper(sizeof(i64)*8);
+  binEng.setCir(cir, sharedA.size(), eval.mShareGen);
+  binEng.setInput(0, circuitInput0);
+  binEng.setInput(1, circuitInput1);
 
-//   binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
-//     res.resize(sharedA.size(), 1);
-//     binEng.getOutput(0, res);
-//   }).get();
+  // sequentially evaluate the circuit.
+  Sh3Task task = runtime.noDependencies();
+  res.resize(sharedA.size(), 1);
+  binEng.validateMemory();
+  binEng.distributeInputs();
+  binEng.roundCallback(runtime.mComm, task);
+  binEng.getOutput(0, res);
 
-//   return 0;
-// }
-
-
-// template <Decimal D>
-// int cipher_eq(u64 pIdx, sf64Matrix<D> &sharedA, sf64Matrix<D> &sharedB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
-//   si64Matrix intA = sharedA.i64Cast();
-//   si64Matrix intB = sharedB.i64Cast();
-  
-//   Sh3BinaryEvaluator binEng;
-//   CircuitLibrary lib;
-
-//   sbMatrix circuitInput0;
-//   sbMatrix circuitInput1;
-//   circuitInput0.resize(intA.size(), 64);
-//   circuitInput1.resize(intB.size(), 64);
-//   memcpy(circuitInput0.mShares[0].data(), intA.mShares[0].data(), intA.size() * sizeof(i64));
-//   memcpy(circuitInput0.mShares[1].data(), intA.mShares[1].data(), intA.size() * sizeof(i64));
-//   memcpy(circuitInput1.mShares[0].data(), intB.mShares[0].data(), intB.size() * sizeof(i64));
-//   memcpy(circuitInput1.mShares[1].data(), intB.mShares[1].data(), intB.size() * sizeof(i64));
-
-//   // 3. generate the eq circuit and evaluate.
-//   auto cir = lib.int_eq(sizeof(i64)*8);
-//   binEng.setCir(cir, intA.size(), eval.mShareGen);
-//   binEng.setInput(0, circuitInput0);
-//   binEng.setInput(1, circuitInput1);
-//   binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
-//     res.resize(intA.size(), 1);
-//     binEng.getOutput(0, res);
-//   }).get();
-
-//   return 0;
-// }
+  return 0;
+}
 
 
-// int cipher_eq(u64 pIdx, si64Matrix &intA, si64Matrix &intB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
+int cipher_eq(u64 pIdx, si64Matrix &intA, si64Matrix &intB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
 
-//   // 1. set the correspondong boolean circuit.
-//   Sh3BinaryEvaluator binEng;
-//   CircuitLibrary lib;
+  // 1. set the correspondong boolean circuit.
+  Sh3BinaryEvaluator binEng;
+  CircuitLibrary lib;
 
-//   sbMatrix circuitInput0;
-//   sbMatrix circuitInput1;
-//   circuitInput0.resize(intA.size(), 64);
-//   circuitInput1.resize(intB.size(), 64);
-//   memcpy(circuitInput0.mShares[0].data(), intA.mShares[0].data(), intA.size() * sizeof(i64));
-//   memcpy(circuitInput0.mShares[1].data(), intA.mShares[1].data(), intA.size() * sizeof(i64));
-//   memcpy(circuitInput1.mShares[0].data(), intB.mShares[0].data(), intB.size() * sizeof(i64));
-//   memcpy(circuitInput1.mShares[1].data(), intB.mShares[1].data(), intB.size() * sizeof(i64));
+  sbMatrix circuitInput0;
+  sbMatrix circuitInput1;
+  circuitInput0.resize(intA.size(), 64);
+  circuitInput1.resize(intB.size(), 64);
+  memcpy(circuitInput0.mShares[0].data(), intA.mShares[0].data(), intA.size() * sizeof(i64));
+  memcpy(circuitInput0.mShares[1].data(), intA.mShares[1].data(), intA.size() * sizeof(i64));
+  memcpy(circuitInput1.mShares[0].data(), intB.mShares[0].data(), intB.size() * sizeof(i64));
+  memcpy(circuitInput1.mShares[1].data(), intB.mShares[1].data(), intB.size() * sizeof(i64));
 
-//   // 3. generate the eq circuit and evaluate.
-//   auto cir = lib.int_eq(sizeof(i64)*8);
-//   binEng.setCir(cir, intA.size(), eval.mShareGen);
-//   binEng.setInput(0, circuitInput0);
-//   binEng.setInput(1, circuitInput1);
-//   binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
-//     res.resize(intA.size(), 1);
-//     binEng.getOutput(0, res);
-//   }).get();
+  // 3. generate the eq circuit and evaluate.
+  auto cir = lib.int_eq(sizeof(i64)*8);
+  binEng.setCir(cir, intA.size(), eval.mShareGen);
+  binEng.setInput(0, circuitInput0);
+  binEng.setInput(1, circuitInput1);
+  binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
+    res.resize(intA.size(), 1);
+    binEng.getOutput(0, res);
+  }).get();
 
-//   return 0;
-// }
+  return 0;
+}
 

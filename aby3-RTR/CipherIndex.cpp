@@ -14,6 +14,7 @@ int cipher_index(u64 pIdx, sf64Matrix<D8> &sharedM, si64Matrix &cipherIndex, sf6
 }
 
 
+// isolated argsort offset, computing between offsetLeft and offsetRight.
 int cipher_argsort_offset(int pIdx, si64Matrix& isharedM, si64Matrix& res, Sh3Evaluator& eval, Sh3Runtime& runtime, Sh3Encryptor& enc, Sh3Task& task, int offsetLeft, int offsetRight){
   
   // 1. compute the diff between target elements from offsetLeft to offsetRight.
@@ -89,7 +90,8 @@ int cipher_argsort_offset(int pIdx, si64Matrix& isharedM, si64Matrix& res, Sh3Ev
   return 0;
 }
 
-// repeat-then-reduce version
+
+// repeat-then-reduce version cipher_argsort
 int rtr_cipher_argsort(int pIdx, si64Matrix& sharedM, si64Matrix& res, Sh3Evaluator& eval, Sh3Runtime&runtime, Sh3Encryptor& enc){
 
   // 0. define the separate volumn.
@@ -133,8 +135,19 @@ int rtr_cipher_argsort(int pIdx, si64Matrix& sharedM, si64Matrix& res, Sh3Evalua
   return 0;
 }
 
+
+// pure repeat-version cipher_argsort.
 int cipher_argsort(int pIdx, si64Matrix &sharedM, si64Matrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime, Sh3Encryptor &enc){
     Sh3Task task = runtime.noDependencies();
     u64 n = sharedM.rows();
-    return cipher_argsort_offset(pIdx, sharedM, res, eval, runtime, enc, task, 0, (int)n);
+    i64Matrix zeros(n, 1);
+    for(int i=0; i<n; i++) zeros(i, 0) = 0;
+    res.resize(n, 1);
+    if(pIdx == 0){
+      enc.localIntMatrix(runtime, zeros, res).get();
+    }
+    else{
+      enc.remoteIntMatrix(runtime, res).get();
+    }
+    return cipher_argsort_offset(pIdx, sharedM, res, eval, runtime, enc, task, 0, (int)n*n);
 }

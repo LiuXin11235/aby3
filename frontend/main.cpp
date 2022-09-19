@@ -9,10 +9,6 @@
 #include <tests_cryptoTools/UnitTests.h>
 #include <aby3-ML/main-linear.h>
 #include <aby3-ML/main-logistic.h>
-// #include <aby3-RTR/test.h>
-// #include "aby3-RTR/test.h"
-// #include "aby3-RTR/BuildingBlocks.h"
-// #include "aby3-RTR/CipherIndex.h"
 #include "aby3-RTR/RTRTest.h"
 
 #include "tests_cryptoTools/UnitTests.h"
@@ -22,8 +18,8 @@ using namespace oc;
 using namespace aby3;
 std::vector<std::string> unitTestTag{ "u", "unitTest" };
 
-// #define BASIC_TEST
-#define PERFORMANCE_TEST
+#define BASIC_TEST
+// #define PERFORMANCE_TEST
 
 void help()
 {
@@ -189,12 +185,7 @@ int main(int argc, char** argv)
 	#ifdef PERFORMANCE_TEST
 	// test the vectorization for basic ops (mul) and (gt).
 	int repeats = int(5);
-	// int step = 50, start = 1, end = 1e3;
-	// int points = (end - start) / step;
-	// std::vector<int> n_list;
-	// for(int i=0; i<points; i++){
-	// 	n_list.push_back(start + i*step);
-	// }
+
 	std::vector<int> n_list = {      10,       13,       17,       23,       30,       40,
              54,       71,       95,      126,      167,      222,
             294,      390,      517,      686,      910,     1206,
@@ -261,7 +252,9 @@ int main(int argc, char** argv)
 	test_mul(cmd);
 
 	// test cipher_argsort
-	test_argsort(cmd);
+	test_argsort(cmd, 1);
+
+	test_argsort(cmd, 0);
 	#endif
 
 	return 0;

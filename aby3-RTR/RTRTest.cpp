@@ -7,7 +7,6 @@
 #include "BuildingBlocks.h"
 #include "CipherIndex.h"
 
-
 using namespace oc;
 using namespace aby3;
 using namespace std;
@@ -229,7 +228,7 @@ int test_gt(CLP &cmd){
 //   return 0;
 // }
 
-int test_argsort(CLP& cmd){
+int test_argsort(CLP& cmd, int rtrFlag){
   IOService ios;
 
   // generate the test data.
@@ -242,7 +241,7 @@ int test_argsort(CLP& cmd){
   // start the three parties computation.
   vector<thread> thrds;
   for(u64 i=0; i<3; i++){
-    thrds.emplace_back(thread([i, &ios, plainTest, rows, cols]() {
+    thrds.emplace_back(thread([i, &ios, plainTest, rows, cols, rtrFlag]() {
       Sh3Encryptor enc;
       Sh3Evaluator eval;
       Sh3Runtime runtime;
@@ -258,7 +257,15 @@ int test_argsort(CLP& cmd){
       }
       
       si64Matrix argres;
-      rtr_cipher_argsort(i, sharedM, argres, eval, runtime, enc);
+
+      // test argsort using different strategies.
+      if(rtrFlag == 1)
+        rtr_cipher_argsort(i, sharedM, argres, eval, runtime, enc);
+      else if(rtrFlag == 0)
+        cipher_argsort(i, sharedM, argres, eval, runtime, enc);
+      else
+        rtr_cipher_argsort(i, sharedM, argres, eval, runtime, enc);
+
       i64Matrix plain_argres;
       enc.revealAll(runtime, argres, plain_argres).get();
       
@@ -328,20 +335,15 @@ int basic_performance(CLP& cmd, int n, int repeats, map<string, vector<double>>&
 
       double time_gt = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
       time_gt_array[i] = time_gt;
-      // time_gt_array[i] = 0;
-      // // cout << "time_gt_array: " << time_gt_array[i] << endl;
 
       sf64Matrix<D8> mul_res(plainA.rows(), plainA.cols());
       start = clock();
       for(int k=0; k<repeats; k++)
-        // cipher_mul(i, sharedA, sharedB, mul_res, eval, runtime);
         eval.asyncMul(runtime, sharedA, sharedB, mul_res).get();
       end = clock();
 
       double time_mul = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
       time_mul_array[i] = time_mul;
-      // time_mul_array[i] = 0;
-
 
       sf64Matrix<D8> add_res(plainA.rows(), plainA.cols());
       start = clock();
