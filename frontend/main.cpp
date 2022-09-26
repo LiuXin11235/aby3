@@ -243,18 +243,25 @@ int main(int argc, char** argv)
 
 	#ifdef BASIC_TEST
 	// test gt
-	test_gt(cmd);
+	// test_gt(cmd);
 
 	// test eq - has problems.
 	// test_eq(cmd);
 
 	// test multiplication between bits and ints.
-	test_mul(cmd);
+	// test_mul(cmd);
 
 	// test cipher_argsort
 	test_argsort(cmd, 1);
-
 	test_argsort(cmd, 0);
+
+	// test cipher_index
+	test_cipher_index(cmd, 0);
+	test_cipher_index(cmd, 1);
+
+	// test binning.
+	test_cipher_binning(cmd, 0);
+	test_cipher_binning(cmd, 1);
 	#endif
 
 	return 0;

@@ -300,31 +300,18 @@ namespace aby3
 			auto* cd = new BetaCircuit;
 
 			BetaBundle aa(size);
-			// for (auto& a : aa)
-			// {
-			// 	a.mWires.resize(size);
-			// 	cd->addInputBundle(a);
-			// }
 			cd->addInputBundle(aa);
 
 			BetaBundle b(size);
 			cd->addInputBundle(b);
 
-
 			BetaBundle cc(1);
 			cd->addOutputBundle(cc);
-			// for (auto& c : cc)
-			// {
-			// 	c.mWires.resize(1);
-			// 	cd->addOutputBundle(c);
-			// }
 
 			int_comp_build_do(*cd,
 				aa,
 				b,
 				cc);
-
-			//cd->levelByAndDepth();
 
 			iter = mCirMap.insert(std::make_pair(key, cd)).first;
 		}
@@ -343,44 +330,38 @@ namespace aby3
 		cd.addTempWireBundle(temps);
 		thresholds = cc;
 		oc::BetaLibrary::int_int_add_msb_build_do(cd, aa, b, thresholds, temps);
+	}
 
-		// for (u64 t = 0; t < thresholds.size(); ++t)
-		// {
-		// 	thresholds[t].mWires.resize(1);
-		// 	temps[t].mWires.resize(b.mWires.size() * 2);
-		// 	cd.addTempWireBundle(temps[t]);
-		// }
+	oc::BetaCircuit * CircuitLibrary::bits_nor_helper(u64 size){
+		auto key = "bit_or_helper" + std::to_string(size);
+		auto iter = mCirMap.find(key);
+		if (iter == mCirMap.end()){
+			auto* cd = new BetaCircuit;
 
-		// for (u64 t = 1; t < thresholds.size() - 1; ++t)
-		// 	cd.addTempWireBundle(thresholds[t]);
+			BetaBundle a(size);
+			cd->addInputBundle(a);
+			BetaBundle b(size);
+			cd->addInputBundle(b);
+			BetaBundle c(size);
+			cd->addOutputBundle(c);
+			bits_nor_build_do(*cd,
+				a,
+				b,
+				c);
 
-		// // the first region bit is just the thrshold. 
-		// thresholds[0] = cc[0];
+			iter = mCirMap.insert(std::make_pair(key, cd)).first;
+		}
+		return iter->second;
+	}
 
-		// // compute all the signs
-		// for (u64 t = 0; t < thresholds.size(); ++t)
-		// {
-		// 	oc::BetaLibrary::int_int_add_msb_build_do(cd, aa[t], b, thresholds[t], temps[t]);
-		// 	//std::cout << t << " @ " << thresholds[t].mWires[0] << std::endl;
-		// 	//cd.addPrint(std::to_string(t) + "  ");
-		// 	//cd.addPrint(thresholds[t]);
-		// 	//cd.addPrint("\n");
-		// }
-
-
-		// // Take the and of the signs
-		// for (u64 t = 1; t < thresholds.size(); ++t)
-		// {
-		// 	cd.addGate(
-		// 		thresholds[t - 1].mWires[0],
-		// 		thresholds[t].mWires[0],
-		// 		oc::GateType::na_And,
-		// 		cc[t].mWires[0]);
-		// }
-
-		// // mark the last region as the inverse of the last threshold bit.
-		// cd.addInvert(
-		// 	thresholds.back().mWires[0],
-		// 	cc[thresholds.size()].mWires[0]);
+	void CircuitLibrary::bits_nor_build_do(
+		BetaCircuit & cd,
+		const BetaBundle & a,
+		const BetaBundle & b,
+		const BetaBundle & c)
+	{
+		for(u64 i=0; i < a.mWires.size(); i++){
+			cd.addGate(a.mWires[i], b.mWires[i], oc::GateType::Nor, c.mWires[i]);
+		}
 	}
 }

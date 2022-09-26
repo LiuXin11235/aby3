@@ -11,6 +11,8 @@ void basic_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc
 
 int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res,aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
 
+int pi_cb_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
+
 // synchronized version of fetch_msb.
 int fetch_msb(int pIdx, aby3::si64Matrix &diffAB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Task &task);
 
@@ -29,8 +31,12 @@ int cipher_gt(int pIdx, aby3::sf64Matrix<D> &sharedA, aby3::sf64Matrix<D> &share
     return cipher_gt(pIdx, sharedA.i64Cast(), sharedB.i64Cast(), res, eval, runtime);
 }
 
-// // sfixed equal (with wrong outputs).
-// template <Decimal D>
-// int cipher_eq(u64 pIdx, sf64Matrix<D> &sharedA, sf64Matrix<D> &sharedB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime);
-
+// eq implemeneted through two fetch_msb and an Nor gate.
 int cipher_eq(int pIdx, aby3::si64Matrix &intA, aby3::si64Matrix &intB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+// eq implemented through int_eq circuit.
+int circuit_cipher_eq(int pIdx, aby3::si64Matrix &intA, aby3::si64Matrix &intB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+// fetch_eq_res.
+int fetch_eq_res(int pIdx, aby3::sbMatrix& circuitA, aby3::sbMatrix& circuitB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+

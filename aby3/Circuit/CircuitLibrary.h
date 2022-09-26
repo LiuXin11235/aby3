@@ -13,14 +13,6 @@ namespace aby3
 		using BetaCircuit = oc::BetaCircuit;
 		using BetaBundle = oc::BetaBundle;
 
-		//enum class Optimized
-		//{
-		//	Size,
-		//	Depth
-		//};
-
-  //      std::unordered_map<std::string, std::unique_ptr<BetaCircuit>> mCirMap;
-
 
 		BetaCircuit* int_Sh3Piecewise_helper(u64 aSize, u64 numThesholds);
 
@@ -42,6 +34,12 @@ namespace aby3
 			const BetaBundle & aa,
 			const BetaBundle & b,
 			const BetaBundle & cc);
+
+		BetaCircuit* bits_nor_helper(u64 size);
+		static void bits_nor_build_do(BetaCircuit& cd,
+			const BetaBundle & a,
+			const BetaBundle & b,
+			const BetaBundle & c);
 
     };
 
