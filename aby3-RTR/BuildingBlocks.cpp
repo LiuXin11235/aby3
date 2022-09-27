@@ -14,6 +14,38 @@ void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &
   CommPkg comm;
   switch (partyIdx) {
     case 0:
+      comm.mNext = Session(ios, "192.168.200.130:1310", SessionMode::Server, "01")
+                       .addChannel();
+      comm.mPrev = Session(ios, "192.168.200.131:1310", SessionMode::Server, "02")
+                       .addChannel();
+      break;
+    case 1:
+      comm.mNext = Session(ios, "192.168.200.131:1310", SessionMode::Server, "12")
+                       .addChannel();
+      comm.mPrev = Session(ios, "192.168.200.133:1310", SessionMode::Client, "01")
+                       .addChannel();
+      break;
+    default:
+      comm.mNext = Session(ios, "192.168.200.133:1310", SessionMode::Client, "02")
+                       .addChannel();
+      comm.mPrev = Session(ios, "192.168.200.131:1310", SessionMode::Client, "12")
+                       .addChannel();
+      break;
+  }
+    // Establishes some shared randomness needed for the later protocols
+    enc.init(partyIdx, comm, sysRandomSeed());
+    // Establishes some shared randomness needed for the later protocols
+    eval.init(partyIdx, comm, sysRandomSeed());
+    // Copies the Channels and will use them for later protcols.
+    runtime.init(partyIdx, comm);
+}
+
+
+void local_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
+           Sh3Runtime &runtime) {
+  CommPkg comm;
+  switch (partyIdx) {
+    case 0:
       comm.mNext = Session(ios, "127.0.0.1:1313", SessionMode::Server, "01")
                        .addChannel();
       comm.mPrev = Session(ios, "127.0.0.1:1314", SessionMode::Server, "02")
