@@ -10,6 +10,7 @@
 #include <aby3-ML/main-linear.h>
 #include <aby3-ML/main-logistic.h>
 #include "aby3-RTR/RTRTest.h"
+#include "aby3-RTR/DistributeRTRTest.h"
 
 #include "tests_cryptoTools/UnitTests.h"
 #include "cryptoTools/Crypto/PRNG.h"
@@ -18,8 +19,10 @@ using namespace oc;
 using namespace aby3;
 std::vector<std::string> unitTestTag{ "u", "unitTest" };
 
-#define BASIC_TEST
+// #define BASIC_TEST
 // #define PERFORMANCE_TEST
+// #define DISTRIBUTE_TEST
+#define DISTRIBUTE_PERFORMANCE
 
 void help()
 {
@@ -184,7 +187,7 @@ int main(int argc, char** argv)
 
 	#ifdef PERFORMANCE_TEST
 	// test the vectorization for basic ops (mul) and (gt).
-	int repeats = int(5);
+	int repeats = int(100);
 
 	std::vector<int> n_list = {      10,       13,       17,       23,       30,       40,
              54,       71,       95,      126,      167,      222,
@@ -201,6 +204,7 @@ int main(int argc, char** argv)
 		int n = n_list[i];
 		std::map<std::string, std::vector<double>> tmp_map;
 		basic_performance(cmd, n, repeats, tmp_map);
+		// dis_basic_performance(cmd, n, repeats, tmp_map);
 		performance_dict[n] = tmp_map;
 
 		// execute one evaluation and record one.
@@ -262,6 +266,51 @@ int main(int argc, char** argv)
 	// test binning.
 	test_cipher_binning(cmd, 0);
 	test_cipher_binning(cmd, 1);
+	#endif
+
+	#ifdef DISTRIBUTE_TEST
+	// basic function test
+	test_mul(cmd);
+	dis_test_mul(cmd);
+	#endif
+
+	#ifdef DISTRIBUTE_PERFORMANCE
+	int repeats;
+	std::vector<int> n_list = {      10,       13,       17,       23,       30,       40,
+				54,       71,       95,      126,      167,      222,
+			294,      390,      517,      686,      910,     1206,
+			1599,     2120,     2811,     3727,     4941,     6551,
+			8685,    11513,    15264,    20235,    26826,    35564,
+			47148,    62505,    82864,   109854,   145634,   193069,
+			255954,   339322,   449843,   596362,   790604,  1048113,
+		1389495,  1842069,  2442053,  3237457,  4291934,  5689866,
+		7543120, 10000000};
+	// std::vector<int> n_list = {3237457,  4291934,  5689866, 7543120, 10000000};
+
+	std::map<int, std::map<std::string, double>> performance_dict;
+	for(int i=0; i<n_list.size(); i++){
+
+		int n = n_list[i];
+		
+		// set the repeat times.
+		if(i < 20) repeats = int(1e4);
+		else if(i < 40) repeats = int(1e3);
+		else repeats = int(100);
+
+		std::map<std::string, double> tmp_map;
+		dis_basic_performance(cmd, n, repeats, tmp_map);
+		performance_dict[n] = tmp_map;
+
+		// execute one evaluation and record one.
+		std::cout << "\nvector size = " << n_list[i] << std::endl;
+		std::map<std::string, double>::iterator iter;
+		iter = tmp_map.begin();
+		while(iter != tmp_map.end()){
+			std::cout << iter->first << std::endl;
+			std::cout << iter->second << std::endl;
+			iter ++;
+		}
+	}
 	#endif
 
 	return 0;

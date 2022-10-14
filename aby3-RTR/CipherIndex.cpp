@@ -12,6 +12,61 @@ using namespace aby3;
 static const int BLOCK_SIZE = 1000;
 static const int THREAD_NUM = 10;
 
+// normal version cipher_index.
+int normal_cipher_index(int pIdx, si64Matrix &sharedM, si64Matrix &indexMatrix, si64Matrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime, Sh3Encryptor &enc){
+  u64 m = indexMatrix.rows(), n = sharedM.rows();
+
+  // initialize res to all zero si64Matrix.
+  i64Matrix zeros(m, 1);
+  for(int i=0; i<m; i++) zeros(i, 0) = 0;
+  res.resize(m, 1);
+
+  // fetch elements one by one.
+  for(int i = 0; i < m; i++){
+    for(int j = 0; j < n; j++){
+      // construct the `is-i-element` mask
+      sbMatrix maskA(1, sizeof(i64)*8), maskB(1, sizeof(i64)*8);
+      sbMatrix mask;
+
+      switch(pIdx) {
+        case 0: {
+          maskA.mShares[0](0) = j - indexMatrix.mShares[0](i, 0) - indexMatrix.mShares[1](i, 0);
+          maskB.mShares[0].setZero();
+          maskB.mShares[1].setZero();
+          break;
+        }
+        case 1: {
+          maskB.mShares[0](0) = indexMatrix.mShares[0](i, 0);
+          maskB.mShares[1].setZero();
+          maskA.mShares[0].setZero();
+          break;
+        }
+        case 2: {
+          maskB.mShares[1](0) = indexMatrix.mShares[1](i, 0);
+          maskB.mShares[0].setZero();
+          maskA.mShares[0].setZero();
+          break;
+        }
+      }
+      runtime.mComm.mNext.asyncSend(maskA.mShares[0].data(), maskA.mShares[0].size());
+      auto fu = runtime.mComm.mPrev.asyncRecv(maskA.mShares[1].data(), maskA.mShares[1].size());
+      fu.get();
+      fetch_eq_res(pIdx, maskA, maskB, mask, eval, runtime);
+
+      // multiply the element with mask.
+      si64Matrix element(1, 1);
+      element(0, 0) = sharedM(j, 0);
+      cipher_mul_seq(pIdx, element, mask, element, eval, enc, runtime);
+
+      // compute the res[i]
+      res.mShares[0](i, 0) += element.mShares[0](0, 0);
+      res.mShares[1](i, 0) += element.mShares[1](0, 0);
+    }
+  }
+  return 0;
+}
+
+
 // pure repeat-version cipher_index.
 int cipher_index(int pIdx, si64Matrix &sharedM, si64Matrix &indexMatrix, si64Matrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime, Sh3Encryptor &enc){
   Sh3Task task = runtime.noDependencies();

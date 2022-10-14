@@ -9,26 +9,26 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
+void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
            Sh3Runtime &runtime) {
   CommPkg comm;
   switch (partyIdx) {
     case 0:
-      comm.mNext = Session(ios, "192.168.200.130:1310", SessionMode::Server, "01")
+      comm.mNext = Session(ios, "172.17.0.2:1313", SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "192.168.200.131:1310", SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "172.17.0.2:1314", SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
-      comm.mNext = Session(ios, "192.168.200.131:1310", SessionMode::Server, "12")
+      comm.mNext = Session(ios, "172.17.0.3:1313", SessionMode::Server, "12")
                        .addChannel();
       comm.mPrev = Session(ios, "192.168.200.133:1310", SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
-      comm.mNext = Session(ios, "192.168.200.133:1310", SessionMode::Client, "02")
+      comm.mNext = Session(ios, "192.168.200.133:1311", SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "192.168.200.131:1310", SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "192.168.200.130:1310", SessionMode::Client, "12")
                        .addChannel();
       break;
   }
@@ -41,7 +41,7 @@ void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &
 }
 
 
-void local_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
+void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
            Sh3Runtime &runtime) {
   CommPkg comm;
   switch (partyIdx) {
