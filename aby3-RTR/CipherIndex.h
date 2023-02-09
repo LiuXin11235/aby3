@@ -7,6 +7,8 @@
 #include <aby3/sh3/Sh3Types.h>
 
 
+int normal_cipher_index(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &indexMatrix, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);
+
 int cipher_argsort_offset(int pIdx, aby3::si64Matrix& sharedM, aby3::si64Matrix& res, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor& enc, aby3::Sh3Task& task, int offsetLeft, int offsetRight);
 
 int cipher_argsort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);

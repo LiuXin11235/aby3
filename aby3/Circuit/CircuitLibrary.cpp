@@ -301,7 +301,6 @@ namespace aby3
 
 			BetaBundle aa(size);
 			cd->addInputBundle(aa);
-
 			BetaBundle b(size);
 			cd->addInputBundle(b);
 

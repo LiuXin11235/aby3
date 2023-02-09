@@ -271,6 +271,7 @@ namespace aby3
             sbMatrix() = default;
             sbMatrix(u64 xSize, u64 ySize)
             {
+                // cout << "in construction" << endl;
                 resize(xSize, ySize);
             }
 

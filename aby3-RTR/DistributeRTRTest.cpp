@@ -6,6 +6,7 @@
 #include <aby3/sh3/Sh3Runtime.h>
 
 #include "BuildingBlocks.h"
+#include "CipherIndex.h"
 
 using namespace oc;
 using namespace aby3;
@@ -181,3 +182,78 @@ int dis_basic_performance(CLP& cmd, int n, int repeats, map<std::string, double>
     return 0;
 }
 
+// n: data volumn; m: index volumn.
+int dis_cipher_index_performance(CLP& cmd, int n, int m, int repeats, map<std::string, double>& dict, int testFlag){
+    int role = -1;
+    if(cmd.isSet("role")){
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if(role == -1){
+        throw std::runtime_error(LOCATION);
+    }
+    
+    // setup the corresponding communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    distribute_setup((u64)role, ios, enc, eval, runtime);
+
+    // generate the test data.
+    u64 rows = n, cols = 1;
+    u64 ilen = m;
+    i64Matrix plainTest(rows, cols);
+    i64Matrix plainIndex(ilen, cols);
+    for(int i=0; i<rows; i++){
+        plainTest(i, 0) = i;
+    }
+    for(int i=0; i<ilen; i++){
+        // plainIndex(i, 0) = max(rows - 1 - i, 0);
+        plainIndex(i, 0) = (rows - 1 - i > 0) ? rows - 1 - i : 0;
+    }
+
+    clock_t start, end;
+    // generate the cipher test data.
+    si64Matrix sharedM(rows, cols);
+    si64Matrix sharedIndex(plainIndex.rows(), plainIndex.cols());
+    if(role == 0){
+        enc.localIntMatrix(runtime, plainTest, sharedM).get();
+        enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+    }
+    else{
+        enc.remoteIntMatrix(runtime, sharedM).get();
+        enc.remoteIntMatrix(runtime, sharedIndex).get();
+    }
+    
+    si64Matrix res;
+    // test cipher_index using different strategies.
+    start = clock();
+    for(int k=0; k<repeats; k++){
+        if(testFlag == 0 || testFlag == -1) normal_cipher_index(role, sharedM, sharedIndex, res, eval, runtime, enc);
+        // normal_cipher_index(role, sharedM, sharedIndex, res, eval, runtime, enc);
+    }
+    end = clock();
+    double time_normal = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
+    start = clock();
+    for(int k=0; k<repeats; k++){
+        if (testFlag == 1 || testFlag == -1) cipher_index(role, sharedM, sharedIndex, res, eval, runtime, enc);
+    }
+    end = clock();
+    double time_plain = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
+    start = clock();
+    for(int k=0; k<repeats; k++){
+        if(testFlag == 2 || testFlag == -1) rtr_cipher_index(role, sharedM, sharedIndex, res, eval, runtime, enc);
+    }
+    end = clock();
+    double time_rtr = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
+
+    dict["normal"] = time_normal;
+    dict["plain"] = time_plain;
+    dict["rtr"] = time_rtr;
+
+  return 0;
+}

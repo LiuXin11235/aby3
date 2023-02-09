@@ -14,21 +14,21 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
   CommPkg comm;
   switch (partyIdx) {
     case 0:
-      comm.mNext = Session(ios, "172.17.0.2:1313", SessionMode::Server, "01")
+      comm.mNext = Session(ios, "172.17.0.2:1319", SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "172.17.0.2:1314", SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "172.17.0.2:1320", SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
-      comm.mNext = Session(ios, "172.17.0.3:1313", SessionMode::Server, "12")
+      comm.mNext = Session(ios, "172.17.0.3:1321", SessionMode::Server, "12")
                        .addChannel();
-      comm.mPrev = Session(ios, "192.168.200.133:1310", SessionMode::Client, "01")
+      comm.mPrev = Session(ios, "192.168.202.18:1313", SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
-      comm.mNext = Session(ios, "192.168.200.133:1311", SessionMode::Client, "02")
+      comm.mNext = Session(ios, "192.168.202.18:1314", SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "192.168.200.130:1310", SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "192.168.202.18:1315", SessionMode::Client, "12")
                        .addChannel();
       break;
   }
@@ -40,27 +40,26 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
     runtime.init(partyIdx, comm);
 }
 
-
 void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
            Sh3Runtime &runtime) {
   CommPkg comm;
   switch (partyIdx) {
     case 0:
-      comm.mNext = Session(ios, "127.0.0.1:1313", SessionMode::Server, "01")
+      comm.mNext = Session(ios, "127.0.0.1:1213", SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "127.0.0.1:1314", SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "127.0.0.1:1214", SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
-      comm.mNext = Session(ios, "127.0.0.1:1315", SessionMode::Server, "12")
+      comm.mNext = Session(ios, "127.0.0.1:1215", SessionMode::Server, "12")
                        .addChannel();
-      comm.mPrev = Session(ios, "127.0.0.1:1313", SessionMode::Client, "01")
+      comm.mPrev = Session(ios, "127.0.0.1:1213", SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
-      comm.mNext = Session(ios, "127.0.0.1:1314", SessionMode::Client, "02")
+      comm.mNext = Session(ios, "127.0.0.1:1214", SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "127.0.0.1:1315", SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "127.0.0.1:1215", SessionMode::Client, "12")
                        .addChannel();
       break;
   }
@@ -516,5 +515,6 @@ int fetch_eq_res(int pIdx, sbMatrix& circuitA, sbMatrix& circuitB, sbMatrix& res
   binEng.roundCallback(runtime.mComm, task);
   binEng.getOutput(0, res);
 
+  return 0;
 }
 

@@ -9,8 +9,10 @@ using namespace oc;
 using namespace aby3;
 
 #define SEPARATE_BY_BLOCK_SIZE = true;
-static const int BLOCK_SIZE = 1000;
-static const int THREAD_NUM = 10;
+#define COUT_LOG = false;
+
+static const int BLOCK_SIZE = 50000;
+static const int THREADS_SIZE = 10000000;
 
 // normal version cipher_index.
 int normal_cipher_index(int pIdx, si64Matrix &sharedM, si64Matrix &indexMatrix, si64Matrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime, Sh3Encryptor &enc){
@@ -89,13 +91,15 @@ int cipher_index_offset(int pIdx, si64Matrix &sharedM, si64Matrix &indexMatrix, 
 
   // 0. initialize the config values.
   u64 block_length = offsetRight - offsetLeft;
+  ifdef(COUT_LOG) cout << "block size: " << block_length << endl;
+  endif
   u64 n = sharedM.rows(), m = indexMatrix.rows();
   u64 start_i = offsetLeft / n, start_j = offsetLeft % n;
   u64 end_i = offsetRight / n, end_j = offsetRight % n;
+  if(COUT_LOG) cout << "before computation" << endl;
 
   // 1. construct the required one-hot encoding between offsetLeft and offsetRight.
   sbMatrix expandCircuitA(block_length, sizeof(i64)*8), expandCircuitB(block_length, sizeof(i64)*8);
-
   u64 p = 0, i = start_i, j = start_j;
   while (i < end_i) {
     for (j; j < n; j++) {
@@ -152,12 +156,15 @@ int cipher_index_offset(int pIdx, si64Matrix &sharedM, si64Matrix &indexMatrix, 
     }
   }
 
+  if(COUT_LOG) cout << "start to communicate" << endl;
   runtime.mComm.mNext.asyncSend(expandCircuitA.mShares[0].data(), expandCircuitA.mShares[0].size());
   auto fu = runtime.mComm.mPrev.asyncRecv(expandCircuitA.mShares[1].data(), expandCircuitA.mShares[1].size());
   fu.get();
+  if(COUT_LOG) cout << "success communication" << endl; 
 
   sbMatrix pairwise_eq_res;
   fetch_eq_res(pIdx, expandCircuitA, expandCircuitB, pairwise_eq_res, eval, runtime);
+  if(COUT_LOG) cout << "success eq" << endl;
 
   // 2. construct the required elements.
   si64Matrix expandSharedM(block_length, sharedM.cols());
@@ -179,6 +186,8 @@ int cipher_index_offset(int pIdx, si64Matrix &sharedM, si64Matrix &indexMatrix, 
   // 3. Multiply the required elements with the required one-hot encodings.
   cipher_mul_seq(pIdx, expandSharedM, pairwise_eq_res, expandSharedM, eval, enc, runtime);
 
+  // cout << "success mul" << endl;
+
   // 4. reduce to the final result.
   i = start_i, j = start_j;
   p = 0;
@@ -196,6 +205,7 @@ int cipher_index_offset(int pIdx, si64Matrix &sharedM, si64Matrix &indexMatrix, 
     res.mShares[1](i, 0) += expandSharedM.mShares[1](p, 0);
     p++;
   }
+  // cout << "about to success" << endl;
 
   return 0;
 }
@@ -221,32 +231,119 @@ int rtr_cipher_index(int pIdx, si64Matrix& sharedM, si64Matrix& indexMatrix, si6
 
   // 2. separate the task by expand_length.
   int numBlocks = (expand_length + BLOCK_SIZE - 1) / BLOCK_SIZE;
-  vector<Sh3Task> vecTasks; 
+  int parallelTimes = (numBlocks /  THREADS_SIZE > 1) ? (numBlocks /  THREADS_SIZE) : 1;
+  int curBlock = 0;
+  
+  // for(int curParallel = 0; curParallel < parallelTimes; curParallel++){
+  //   vector<Sh3Task> vecTasks;
+  //   for(int i=0; i<THREADS_SIZE; i++){
+  //     int offsetLeft = curBlock * BLOCK_SIZE;
+  //     int offsetRight = (curBlock + 1) * BLOCK_SIZE;
+  //     if (curBlock == numBlocks - 1) { 
+  //       offsetRight = (int) expand_length;
+  //     }
+  //     // execute computation of each block in parallel.
+  //     Sh3Task taskCur = runtime.noDependencies();
+  //     string task_id = "task-"+to_string(curBlock)+"-"+to_string(pIdx);
+  //     Sh3Task dep = taskCur.then([offsetLeft, offsetRight, curBlock, pIdx, task_id, &sharedM, &indexMatrix, &res, &eval, &runtime, &enc](Sh3Task& self){
+  //       cipher_index_offset(pIdx, sharedM, indexMatrix, res, eval, runtime, enc, self, offsetLeft, offsetRight);
+  //     }, task_id);
+  //     vecTasks.push_back(dep);
 
-  for(int curBlock=0; curBlock<numBlocks; curBlock++){
-    // compute the offsets.
+  //     // compute the next block.
+  //     curBlock ++;
+  //     if(curBlock == numBlocks){
+  //       break;
+  //     }
+  //   }
+  //   // only after all the tasks in the current parallel finished, start the next group.
+  //   for(auto &dep : vecTasks)
+  //     dep.get();
+  //   vecTasks.clear();
+  // }
+
+  vector<Sh3Task> vecTasks;
+  for(int i=0; i<numBlocks; i++){
     int offsetLeft = curBlock * BLOCK_SIZE;
     int offsetRight = (curBlock + 1) * BLOCK_SIZE;
-    if (curBlock == numBlocks - 1) {
+    if (curBlock == numBlocks - 1) { 
       offsetRight = (int) expand_length;
     }
     // execute computation of each block in parallel.
     Sh3Task taskCur = runtime.noDependencies();
     string task_id = "task-"+to_string(curBlock)+"-"+to_string(pIdx);
-    Sh3Task dep = taskCur.then([&, offsetLeft, offsetRight](Sh3Task& self){
+    Sh3Task dep = taskCur.then([offsetLeft, offsetRight, curBlock, pIdx, task_id, &sharedM, &indexMatrix, &res, &eval, &runtime, &enc](Sh3Task& self){
       cipher_index_offset(pIdx, sharedM, indexMatrix, res, eval, runtime, enc, self, offsetLeft, offsetRight);
-    }, task_id).getClosure();
+    }, task_id);
     vecTasks.push_back(dep);
+    // compute the next block.
+    curBlock ++;
   }
-
+  // only after all the tasks in the current parallel finished, start the next group.
   for(auto &dep : vecTasks)
     dep.get();
 
   if(runtime.mIsActive){
     cout << "party - " << pIdx << " INDEED EXISTS ACTIVE TASKS" << endl;
-  }
+  } 
   return 0;
 }
+
+// // repeat-then-reduce version cipher_index.
+// int rtr_cipher_index(int pIdx, si64Matrix& sharedM, si64Matrix& indexMatrix, si64Matrix& res, Sh3Evaluator& eval, Sh3Runtime&runtime, Sh3Encryptor& enc){
+
+//   // 0. define the config value.
+//   u64 n = sharedM.rows(), m = indexMatrix.rows();
+//   u64 expand_length = n * m;
+
+//   // 1. initialize the res to zeros.
+//   i64Matrix zeros(m, 1);
+//   for(int i=0; i<m; i++) zeros(i, 0) = 0;
+//   res.resize(m, 1);
+//   if(pIdx == 0){
+//     enc.localIntMatrix(runtime, zeros, res).get();
+//   }
+//   else{
+//     enc.remoteIntMatrix(runtime, res).get();
+//   }
+
+//   // 2. separate the task by expand_length.
+//   int numBlocks = (expand_length + BLOCK_SIZE - 1) / BLOCK_SIZE;
+//   int parallelTimes = (numBlocks /  THREADS_SIZE > 1) ? (numBlocks /  THREADS_SIZE) : 1;
+
+//   cout << "numBlocks: " << numBlocks << " | parallel times: " << parallelTimes << endl;
+
+//   int curBlock = 0;
+//   for(int curParallel = 0; curParallel < parallelTimes; curParallel++){
+//     vector<thread> vecTasks;
+//     for(int i=0; i<THREADS_SIZE; i++){
+//       int offsetLeft = curBlock * BLOCK_SIZE;
+//       int offsetRight = (curBlock + 1) * BLOCK_SIZE;
+//       if (curBlock == numBlocks - 1) { 
+//         offsetRight = (int) expand_length;
+//       }
+//       // execute computation of each block in parallel.
+//       vecTasks.emplace_back(thread([curBlock, pIdx, &sharedM, &indexMatrix, &res, &eval, &runtime, &enc, offsetLeft, offsetRight]() {
+//         Sh3Task task = runtime.noDependencies();
+//         cout << "in thread: block = " << curBlock << endl;
+//         cipher_index_offset(pIdx, sharedM, indexMatrix, res, eval, runtime, enc, task, offsetLeft, offsetRight);
+//       }));
+
+//       curBlock ++;
+//       if(curBlock == numBlocks){
+//         break;
+//       }
+//     }
+//     for (auto &t : vecTasks)
+//       t.join();
+//   }
+
+//   if(runtime.mIsActive){
+//     cout << "party - " << pIdx << " INDEED EXISTS ACTIVE TASKS" << endl;
+//   }
+//   return 0;
+// }
+
 
 
 // isolated argsort offset, computing between offsetLeft and offsetRight.
