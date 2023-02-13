@@ -16,9 +16,13 @@ void distribute_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor
 void basic_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
            aby3::Sh3Runtime &runtime);
 
+int pi_cb_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
+
 int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res,aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
 
-int pi_cb_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
+inline int cipher_mul_seq(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime){
+    return pi_cb_mul(pIdx, plainA, sharedB, res, eval, enc, runtime);
+}
 
 // synchronized version of fetch_msb.
 int fetch_msb(int pIdx, aby3::si64Matrix &diffAB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Task &task);

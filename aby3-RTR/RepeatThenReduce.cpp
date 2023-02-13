@@ -49,3 +49,16 @@ int secret_index(int pIdx, si64Matrix &sharedM, si64Matrix &secretIndex,
   }
   return 0;
 }
+
+int get_binning_value(int pIdx, si64Matrix &sharedM, i64Matrix &bins, i64Matrix &targetVals, si64Matrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime, Sh3Encryptor &enc){
+  int n = sharedM.size();
+  int m = bins.size();
+
+  if(FLAG == 0){
+    repeat_then_reduce_pure<si64Matrix, i64Matrix, si64Matrix, i64Matrix>(pIdx, eval, runtime, enc, sharedM, n, bins, m, 1, relation_gt, reduce_lb_select, res, targetVals);
+  }
+  else if (FLAG ==1){
+    repeat_then_reduce<si64Matrix, i64Matrix, si64Matrix, i64Matrix>(pIdx, eval, runtime, enc, sharedM, n, bins, m, 1, relation_gt_offset, reduce_lb_select_offset, res, targetVals);
+  }
+  return 0;
+}

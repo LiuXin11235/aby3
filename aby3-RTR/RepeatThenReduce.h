@@ -100,11 +100,18 @@ inline int relation_gt_offset(int pIdx, aby3::si64Matrix &sharedX, int n,
                               aby3::Sh3Runtime &runtime, aby3::sbMatrix &res,
                               int offsetLeft, int offsetRight) {
   aby3::u64 block_length = offsetRight - offsetLeft;
-  aby3::si64Matrix diff(block_length, 1);
 
   aby3::u64 start_i = offsetLeft / m, start_j = offsetLeft % m;
   aby3::u64 end_i = offsetRight / m, end_j = offsetRight % m;
   aby3::u64 p = 0, i = start_i, j = start_j;
+  aby3::u64 extend_end_j = end_j;
+
+  if (end_j != 0) {
+    block_length += 1;
+    extend_end_j += 1;
+  }
+
+  aby3::si64Matrix diff(block_length, 1);
 
   while (i < end_i) {
     for (j; j < m; j++) {
@@ -117,13 +124,115 @@ inline int relation_gt_offset(int pIdx, aby3::si64Matrix &sharedX, int n,
     j = 0;
     i++;
   }
-  for (j = 0; j < end_j; j++) {
+  for (j = 0; j < extend_end_j; j++) {
     diff.mShares[0](p, 0) =
         sharedX.mShares[0](j, 0) - sharedY.mShares[0](end_i, 0);
     diff.mShares[1](p, 0) =
         sharedX.mShares[1](j, 0) - sharedY.mShares[1](end_i, 0);
     p++;
   }
+  fetch_msb(pIdx, diff, res, eval, runtime);
+  return 0;
+}
+
+inline int relation_gt(int pIdx, aby3::si64Matrix &sharedX, int n,
+                       aby3::i64Matrix &sharedY, int m,
+                       aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
+                       aby3::sbMatrix &res) {
+  aby3::u64 pairwise_length = n * m;
+  aby3::si64Matrix diff(pairwise_length, 1);
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < m; j++) {
+      switch (pIdx) {
+        case 0: {
+          diff.mShares[0](i * m + j) =
+              -sharedX.mShares[0](i, 0) + sharedY(j, 0);
+          diff.mShares[1](i * m + j) = -sharedX.mShares[1](i, 0);
+          break;
+        }
+        case 1: {
+          diff.mShares[0](i * m + j) = -sharedX.mShares[0](i, 0);
+          diff.mShares[1](i * m + j) =
+              -sharedX.mShares[1](i, 0) + sharedY(j, 0);
+          break;
+        }
+        case 2: {
+          diff.mShares[0](i * m + j) = -sharedX.mShares[0](i, 0);
+          diff.mShares[1](i * m + j) = -sharedX.mShares[1](i, 0);
+          break;
+        }
+      }
+    }
+  }
+  fetch_msb(pIdx, diff, res, eval, runtime);
+  return 0;
+}
+
+inline int relation_gt_offset(int pIdx, aby3::si64Matrix &sharedX, int n,
+                              aby3::i64Matrix &sharedY, int m,
+                              aby3::Sh3Evaluator &eval,
+                              aby3::Sh3Runtime &runtime, aby3::sbMatrix &res,
+                              int offsetLeft, int offsetRight) {
+  aby3::u64 block_length = offsetRight - offsetLeft;
+
+  aby3::u64 start_i = offsetLeft / m, start_j = offsetLeft % m;
+  aby3::u64 end_i = offsetRight / m, end_j = offsetRight % m;
+  aby3::u64 p = 0, i = start_i, j = start_j;
+  aby3::u64 extend_end_j = end_j;
+
+  if (end_j != 0) {
+    block_length += 1;
+    extend_end_j += 1;
+  }
+
+  aby3::si64Matrix diff(block_length, 1);
+
+  while (i < end_i) {
+    for (j; j < m; j++) {
+      switch (pIdx) {
+        case 0: {
+          diff.mShares[0](i * m + j) =
+              -sharedX.mShares[0](i, 0) + sharedY(j, 0);
+          diff.mShares[1](i * m + j) = -sharedX.mShares[1](i, 0);
+          break;
+        }
+        case 1: {
+          diff.mShares[0](i * m + j) = -sharedX.mShares[0](i, 0);
+          diff.mShares[1](i * m + j) =
+              -sharedX.mShares[1](i, 0) + sharedY(j, 0);
+          break;
+        }
+        case 2: {
+          diff.mShares[0](i * m + j) = -sharedX.mShares[0](i, 0);
+          diff.mShares[1](i * m + j) = -sharedX.mShares[1](i, 0);
+          break;
+        }
+      }
+    }
+    j = 0;
+    i++;
+  }
+  for (j = 0; j < extend_end_j; j++) {
+    switch (pIdx) {
+      case 0: {
+        diff.mShares[0](i * m + j) = -sharedX.mShares[0](i, 0) + sharedY(j, 0);
+        diff.mShares[1](i * m + j) = -sharedX.mShares[1](i, 0);
+        break;
+      }
+      case 1: {
+        diff.mShares[0](i * m + j) = -sharedX.mShares[0](i, 0);
+        diff.mShares[1](i * m + j) = -sharedX.mShares[1](i, 0) + sharedY(j, 0);
+        break;
+      }
+      case 2: {
+        diff.mShares[0](i * m + j) = -sharedX.mShares[0](i, 0);
+        diff.mShares[1](i * m + j) = -sharedX.mShares[1](i, 0);
+        break;
+      }
+    }
+  }
+
   fetch_msb(pIdx, diff, res, eval, runtime);
   return 0;
 }
@@ -366,6 +475,38 @@ inline int reduce_select(int pIdx, int axis, int n, int m,
   return 0;
 }
 
+inline int reduce_select(int pIdx, int axis, int n, int m,
+                         aby3::sbMatrix &pairwise_relationship,
+                         aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
+                         aby3::Sh3Encryptor &enc, aby3::si64Matrix &res,
+                         aby3::i64Matrix &selectValue) {
+  // for select, repeat the selectValue to the pairwise relation length, in
+  // order to vectorized multiply.
+  aby3::i64Matrix expandValue(n * m, 1);
+  int i, j;
+  int &index = (axis == 0) ? j : i;
+
+  for (i = 0; i < n; i++) {
+    for (j = 0; j < m; j++) {
+      expandValue(i * m + j, 0) = selectValue(j, 0);
+    }
+  }
+  aby3::si64Matrix si_expandValue(n * m, 1);
+  // multiply to select the corresponding elements.
+  cipher_mul_seq(pIdx, expandValue, pairwise_relationship, si_expandValue, eval,
+                 enc, runtime);
+
+  // reduce to the final result.
+  for (i = 0; i < n; i++) {
+    for (j = 0; j < m; j++) {
+      res.mShares[0](index, 0) += si_expandValue.mShares[0](i * m + j, 0);
+      res.mShares[1](index, 0) += si_expandValue.mShares[1](i * m + j, 0);
+    }
+  }
+
+  return 0;
+}
+
 inline int reduce_select_offset(int pIdx, int axis, int n, int m,
                                 aby3::sbMatrix &pairwise_relationship,
                                 aby3::Sh3Evaluator &eval,
@@ -377,7 +518,7 @@ inline int reduce_select_offset(int pIdx, int axis, int n, int m,
   // order to vectorized multiply.
   aby3::u64 block_length = offsetRight - offsetLeft;
   aby3::si64Matrix expandValue(block_length, 1);
-  
+
   aby3::u64 start_i = offsetLeft / m, start_j = offsetLeft % m;
   aby3::u64 end_i = offsetRight / m, end_j = offsetRight % m;
   aby3::u64 p = 0, i = start_i, j = start_j;
@@ -385,8 +526,8 @@ inline int reduce_select_offset(int pIdx, int axis, int n, int m,
   i = start_i, j = start_j;
   p = 0;
 
-  while(i < end_i){
-    for (j; j<m; j++){
+  while (i < end_i) {
+    for (j; j < m; j++) {
       expandValue.mShares[0](p, 0) = selectValue.mShares[0](j, 0);
       expandValue.mShares[1](p, 0) = selectValue.mShares[1](j, 0);
       p++;
@@ -394,10 +535,10 @@ inline int reduce_select_offset(int pIdx, int axis, int n, int m,
     j = 0;
     i++;
   }
-  for(j = 0; j<end_j; j++){
-      expandValue.mShares[0](p, 0) = selectValue.mShares[0](j, 0);
-      expandValue.mShares[1](p, 0) = selectValue.mShares[1](j, 0);
-      p++;
+  for (j = 0; j < end_j; j++) {
+    expandValue.mShares[0](p, 0) = selectValue.mShares[0](j, 0);
+    expandValue.mShares[1](p, 0) = selectValue.mShares[1](j, 0);
+    p++;
   }
 
   // multiply to select the corresponding elements.
@@ -407,8 +548,8 @@ inline int reduce_select_offset(int pIdx, int axis, int n, int m,
   i = start_i, j = start_j;
   aby3::u64 &index = (axis == 0) ? j : i;
   p = 0;
-  while(i < end_i){
-    for (j; j<m; j++){
+  while (i < end_i) {
+    for (j; j < m; j++) {
       res.mShares[0](index, 0) += expandValue.mShares[0](p, 0);
       res.mShares[1](index, 0) += expandValue.mShares[1](p, 0);
       p++;
@@ -416,15 +557,129 @@ inline int reduce_select_offset(int pIdx, int axis, int n, int m,
     j = 0;
     i++;
   }
-  for(j = 0; j<end_j; j++){
-      res.mShares[0](index, 0) += expandValue.mShares[0](p, 0);
-      res.mShares[1](index, 0) += expandValue.mShares[1](p, 0);
-      p++;
+  for (j = 0; j < end_j; j++) {
+    res.mShares[0](index, 0) += expandValue.mShares[0](p, 0);
+    res.mShares[1](index, 0) += expandValue.mShares[1](p, 0);
+    p++;
   }
 
   return 0;
 }
 
+inline int reduce_select_offset(int pIdx, int axis, int n, int m,
+                                aby3::sbMatrix &pairwise_relationship,
+                                aby3::Sh3Evaluator &eval,
+                                aby3::Sh3Runtime &runtime,
+                                aby3::Sh3Encryptor &enc, aby3::si64Matrix &res,
+                                int offsetLeft, int offsetRight,
+                                aby3::i64Matrix &selectValue) {
+  // for select, repeat the selectValue to the pairwise relation length, in
+  // order to vectorized multiply.
+  aby3::u64 block_length = offsetRight - offsetLeft;
+  aby3::i64Matrix expandValue(block_length, 1);
+
+  aby3::u64 start_i = offsetLeft / m, start_j = offsetLeft % m;
+  aby3::u64 end_i = offsetRight / m, end_j = offsetRight % m;
+  aby3::u64 p = 0, i = start_i, j = start_j;
+
+  i = start_i, j = start_j;
+  p = 0;
+
+  while (i < end_i) {
+    for (j; j < m; j++) {
+      expandValue(p, 0) = selectValue(j, 0);
+      p++;
+    }
+    j = 0;
+    i++;
+  }
+  for (j = 0; j < end_j; j++) {
+    expandValue(p, 0) = selectValue(j, 0);
+    p++;
+  }
+
+  aby3::si64Matrix si_expandValue(block_length, 1);
+  // multiply to select the corresponding elements.
+  cipher_mul_seq(pIdx, expandValue, pairwise_relationship, si_expandValue, eval,
+                 enc, runtime);
+
+  i = start_i, j = start_j;
+  aby3::u64 &index = (axis == 0) ? j : i;
+  p = 0;
+  while (i < end_i) {
+    for (j; j < m; j++) {
+      res.mShares[0](index, 0) += si_expandValue.mShares[0](p, 0);
+      res.mShares[1](index, 0) += si_expandValue.mShares[1](p, 0);
+      p++;
+    }
+    j = 0;
+    i++;
+  }
+  for (j = 0; j < end_j; j++) {
+    res.mShares[0](index, 0) += si_expandValue.mShares[0](p, 0);
+    res.mShares[1](index, 0) += si_expandValue.mShares[1](p, 0);
+    p++;
+  }
+
+  return 0;
+}
+
+inline int reduce_lb_select(int pIdx, int axis, int n, int m,
+                            aby3::sbMatrix &pairwise_relationship,
+                            aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
+                            aby3::Sh3Encryptor &enc, aby3::si64Matrix &res,
+                            aby3::i64Matrix &selectValue) {
+  // firstly construct the one-hot vector.
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < m - 1; j++) {
+      pairwise_relationship.mShares[0](i * m + j) ^=
+          pairwise_relationship.mShares[0](i * m + j + 1);
+      pairwise_relationship.mShares[1](i * m + j) ^=
+          pairwise_relationship.mShares[1](i * m + j + 1);
+    }
+  }
+
+  return reduce_select(pIdx, axis, n, m, pairwise_relationship, eval, runtime,
+                       enc, res, selectValue);
+}
+
+inline int reduce_lb_select_offset(
+    int pIdx, int axis, int n, int m, aby3::sbMatrix &pairwise_relationship,
+    aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
+    aby3::Sh3Encryptor &enc, aby3::si64Matrix &res, int offsetLeft,
+    int offsetRight, aby3::i64Matrix &selectValue) {
+  aby3::u64 block_length = offsetRight - offsetLeft;
+  aby3::u64 start_i = offsetLeft / m, start_j = offsetLeft % m;
+  aby3::u64 end_i = offsetRight / m, end_j = offsetRight % m;
+  aby3::u64 extend_end_j = end_j;
+
+  if (end_j != 0) {
+    block_length += 1;
+    extend_end_j += 1;
+  }
+
+  aby3::u64 i = start_i, j = start_j;
+  while (i < end_i) {
+    for (j; j < m - 1; j++) {
+      pairwise_relationship.mShares[0](i * m + j - offsetLeft) ^=
+          pairwise_relationship.mShares[0](i * m + j + 1 - offsetLeft);
+      pairwise_relationship.mShares[1](i * m + j - offsetLeft) ^=
+          pairwise_relationship.mShares[1](i * m + j + 1 - offsetLeft);
+    }
+    j = 0;
+    i++;
+  }
+  for (j = 0; j < end_j; j++) {
+    pairwise_relationship.mShares[0](end_i * m + j - offsetLeft) ^=
+        pairwise_relationship.mShares[0](end_i * m + j + 1 - offsetLeft);
+    pairwise_relationship.mShares[1](end_i * m + j - offsetLeft) ^=
+        pairwise_relationship.mShares[1](end_i * m + j + 1 - offsetLeft);
+  }
+
+  return reduce_select_offset(pIdx, axis, n, m, pairwise_relationship, eval,
+                              runtime, enc, res, offsetLeft, offsetRight,
+                              selectValue);
+}
 
 int argsort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res,
             aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
@@ -441,5 +696,10 @@ int secret_index(int pIdx, aby3::si64Matrix &sharedM,
                  aby3::si64Matrix &secretIndex, aby3::si64Matrix &res,
                  aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
                  aby3::Sh3Encryptor &enc);
+
+int get_binning_value(int pIdx, aby3::si64Matrix &sharedM,
+                      aby3::i64Matrix &bins, aby3::i64Matrix &targetVals,
+                      aby3::si64Matrix &res, aby3::Sh3Evaluator &eval,
+                      aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);
 
 #endif

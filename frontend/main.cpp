@@ -200,6 +200,7 @@ int main(int argc, char** argv)
 	if(prog == 4){ // test the functions in the new API.
 		test_argsort(cmd, 2);
 		test_cipher_index(cmd, 2);
+		test_cipher_binning(cmd, 2);
 	}
 
 	// if(prog == 5){

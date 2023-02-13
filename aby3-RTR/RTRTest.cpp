@@ -366,6 +366,8 @@ int test_cipher_binning(CLP &cmd, int rtrFlag) {
         rtr_cipher_binning(i, sharedM, bins, tarVals, res, eval, runtime, enc);
       } else if (rtrFlag == 0) {
         cipher_binning(i, sharedM, bins, tarVals, res, eval, runtime, enc);
+      } else if (rtrFlag == 2) {
+        get_binning_value(i, sharedM, bins, tarVals, res, eval, runtime, enc);
       } else {
         rtr_cipher_binning(i, sharedM, bins, tarVals, res, eval, runtime, enc);
       }
