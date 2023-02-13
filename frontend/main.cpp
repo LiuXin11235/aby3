@@ -156,12 +156,9 @@ int main(int argc, char** argv)
 		// dis_test_mul(cmd);
 		int repeats = int(10);
 
-		// std::vector<int> n_list = {5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240, 20480, 40960, 81920, 163840, 327680, 655360, 1310720, 2621440, 5242880, 10485760, 20971520};
 		std::vector<int> n_list = {5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240, 20480, 40960, 81920, 163840, 327680, 655360, 1310720, 2621440, 5242880, 10485760, 20971520};
-		// std::vector<int> n_list = {1000, 10000, 100000};
 		std::vector<int> m_list;
 
-		// double m_ratio = 0.01;
 		if(cmd.isSet("mRatio")){
 			auto m_ratios = cmd.getMany<double>("mRatio");
 			double m_ratio = m_ratios[0];
@@ -199,6 +196,20 @@ int main(int argc, char** argv)
 		}
 		return 0;
 	}
+	
+	if(prog == 4){ // test the functions in the new API.
+		test_argsort(cmd, 2);
+		test_cipher_index(cmd, 2);
+	}
+
+	// if(prog == 5){
+	// 	test_cipher_index(cmd, 2);
+	// }
+
+	// if(prog == 6){
+	// 	test_cipher_binning(cmd, 2);
+	// }
+
 
 	std::cout << "prog only support 0 - 4" << std::endl;
 	return 0;

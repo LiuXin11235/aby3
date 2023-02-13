@@ -13,6 +13,8 @@ elif [ ${prog} == 2 ]; then
     keywords="test";
 elif [ ${prog} == 3 ]; then
     keywords="cipher-index";
+elif [ ${prog} == 4 ]; then
+    keywords="new-api";
 else
     keywords="invalid";
     echo "invalid prog";

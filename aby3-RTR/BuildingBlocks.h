@@ -5,6 +5,9 @@
 #include <aby3/sh3/Sh3Runtime.h>
 #include <aby3/sh3/Sh3Types.h>
 
+#ifndef _A_H_
+#define _A_H_
+
 // setup function.
 void distribute_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
            aby3::Sh3Runtime &runtime);
@@ -44,3 +47,9 @@ int circuit_cipher_eq(int pIdx, aby3::si64Matrix &intA, aby3::si64Matrix &intB, 
 // fetch_eq_res.
 int fetch_eq_res(int pIdx, aby3::sbMatrix& circuitA, aby3::sbMatrix& circuitB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
+// initiate functions.
+int init_ones(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix &res, int n);
+
+int init_zeros(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix &res, int n);
+
+#endif

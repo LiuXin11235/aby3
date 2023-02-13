@@ -14,9 +14,9 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
   CommPkg comm;
   switch (partyIdx) {
     case 0:
-      comm.mNext = Session(ios, "172.17.0.2:1319", SessionMode::Server, "01")
+      comm.mNext = Session(ios, "172.17.0.4:1319", SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "172.17.0.2:1320", SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "172.17.0.4:1320", SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
@@ -518,3 +518,29 @@ int fetch_eq_res(int pIdx, sbMatrix& circuitA, sbMatrix& circuitB, sbMatrix& res
   return 0;
 }
 
+
+int init_zeros(int pIdx, Sh3Encryptor &enc, Sh3Runtime &runtime, si64Matrix &res, int n){
+    i64Matrix zeros(n, 1);
+    for(int i=0; i<n; i++) zeros(i, 0) = 0;
+    res.resize(n, 1);
+    if(pIdx == 0) {
+        enc.localIntMatrix(runtime, zeros, res).get();
+    }
+    else{
+        enc.remoteIntMatrix(runtime, res).get();
+    }
+    return 0;
+}
+
+int init_ones(int pIdx, Sh3Encryptor &enc, Sh3Runtime &runtime, si64Matrix &res, int n){
+    i64Matrix ones(n, 1);
+    for(int i=0; i<n; i++) ones(i, 0) = 1;
+    res.resize(n, 1);
+    if(pIdx == 0) {
+        enc.localIntMatrix(runtime, ones, res).get();
+    }
+    else{
+        enc.remoteIntMatrix(runtime, res).get();
+    }
+    return 0;
+}
