@@ -10,7 +10,7 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-static const int FLAG = 1;
+static const int FLAG = 0;
 
 int argsort(int pIdx, si64Matrix &sharedM, si64Matrix &res, Sh3Evaluator &eval,
             Sh3Runtime &runtime, Sh3Encryptor &enc) {
@@ -59,6 +59,23 @@ int get_binning_value(int pIdx, si64Matrix &sharedM, i64Matrix &bins, i64Matrix 
   }
   else if (FLAG ==1){
     repeat_then_reduce<si64Matrix, i64Matrix, si64Matrix, i64Matrix>(pIdx, eval, runtime, enc, sharedM, n, bins, m, 1, relation_gt_offset, reduce_lb_select_offset, res, targetVals);
+  }
+  return 0;
+}
+
+int sort(int pIdx, si64Matrix &sharedM, si64Matrix &res, Sh3Evaluator &eval,
+                      Sh3Runtime &runtime, Sh3Encryptor &enc){
+  int n = sharedM.size();
+  si64Matrix argIndex;
+  vector<int> plainIndex(n);
+  for(int i=0; i<n; i++) plainIndex[i] = i;
+  if(FLAG == 0){
+    repeat_then_reduce_pure<si64Matrix, si64Matrix, si64Matrix>(pIdx, eval, runtime, enc, sharedM, n, sharedM, n, 1, relation_gt, reduce_count, argIndex);
+    repeat_then_reduce_pure<si64Matrix, vector<int>, si64Matrix, si64Matrix>(pIdx, eval, runtime, enc, argIndex, n, plainIndex, n, 1, relation_eq, reduce_select, res, sharedM);
+  }
+  else if(FLAG == 1){
+    repeat_then_reduce<si64Matrix, si64Matrix, si64Matrix>(pIdx, eval, runtime, enc, sharedM, n, sharedM, n, 1, relation_gt_offset, reduce_count_offset, argIndex);
+    repeat_then_reduce<si64Matrix, vector<int>, si64Matrix, si64Matrix>(pIdx, eval, runtime, enc, argIndex, n, plainIndex, n, 1, relation_eq_offset, reduce_select_offset, res, sharedM);
   }
   return 0;
 }

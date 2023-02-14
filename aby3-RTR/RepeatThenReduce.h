@@ -623,12 +623,12 @@ inline int reduce_select_offset(int pIdx, int axis, int n, int m,
 
   return 0;
 }
-
+template <typename T>
 inline int reduce_lb_select(int pIdx, int axis, int n, int m,
                             aby3::sbMatrix &pairwise_relationship,
                             aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
                             aby3::Sh3Encryptor &enc, aby3::si64Matrix &res,
-                            aby3::i64Matrix &selectValue) {
+                            T &selectValue) {
   // firstly construct the one-hot vector.
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < m - 1; j++) {
@@ -643,11 +643,12 @@ inline int reduce_lb_select(int pIdx, int axis, int n, int m,
                        enc, res, selectValue);
 }
 
+template <typename T>
 inline int reduce_lb_select_offset(
     int pIdx, int axis, int n, int m, aby3::sbMatrix &pairwise_relationship,
     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
     aby3::Sh3Encryptor &enc, aby3::si64Matrix &res, int offsetLeft,
-    int offsetRight, aby3::i64Matrix &selectValue) {
+    int offsetRight, T &selectValue) {
   aby3::u64 block_length = offsetRight - offsetLeft;
   aby3::u64 start_i = offsetLeft / m, start_j = offsetLeft % m;
   aby3::u64 end_i = offsetRight / m, end_j = offsetRight % m;
@@ -702,4 +703,6 @@ int get_binning_value(int pIdx, aby3::si64Matrix &sharedM,
                       aby3::si64Matrix &res, aby3::Sh3Evaluator &eval,
                       aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);
 
+int sort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval,
+                      aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);
 #endif

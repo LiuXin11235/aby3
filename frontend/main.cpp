@@ -201,6 +201,7 @@ int main(int argc, char** argv)
 		test_argsort(cmd, 2);
 		test_cipher_index(cmd, 2);
 		test_cipher_binning(cmd, 2);
+		test_sort(cmd, 2);
 	}
 
 	// if(prog == 5){

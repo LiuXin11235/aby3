@@ -390,6 +390,64 @@ int test_cipher_binning(CLP &cmd, int rtrFlag) {
   return 0;
 }
 
+int test_sort(CLP &cmd, int rtrFlag) {
+  IOService ios;
+
+  // generate the test data.
+  u64 rows = 100, cols = 1;
+  f64Matrix<D8> plainTest(rows, cols);
+  for (u64 i = 0; i < rows; i++) {
+    plainTest(i, 0) = rows - i;
+  }
+
+  // start the three parties computation.
+  vector<thread> thrds;
+  for (u64 i = 0; i < 3; i++) {
+    thrds.emplace_back(thread([i, &ios, plainTest, rows, cols, rtrFlag]() {
+      Sh3Encryptor enc;
+      Sh3Evaluator eval;
+      Sh3Runtime runtime;
+      basic_setup(i, ios, enc, eval, runtime);
+
+      // generate the cipher test data.
+      sf64Matrix<D8> sharedM(rows, cols);
+      if (i == 0) {
+        enc.localFixedMatrix(runtime, plainTest, sharedM).get();
+      } else {
+        enc.remoteFixedMatrix(runtime, sharedM).get();
+      }
+
+      sf64Matrix<D8> res;
+      // test argsort using different strategies.
+      sort(i, sharedM.i64Cast(), res.i64Cast(), eval, runtime, enc);
+
+      // if (rtrFlag == 1)
+      //   rtr_cipher_argsort(i, sharedM, argres, eval, runtime, enc);
+      // else if (rtrFlag == 0)
+      //   cipher_argsort(i, sharedM, argres, eval, runtime, enc);
+      // else if (rtrFlag == 2)
+      //   argsort(i, sharedM, argres, eval, runtime, enc);
+      // else
+      //   rtr_cipher_argsort(i, sharedM, argres, eval, runtime, enc);
+
+      f64Matrix<D8> plain_res;
+      enc.revealAll(runtime, res, plain_res).get();
+
+      if (i == 0) {
+        cout << "Expected res = [0 1 2 3 4 ...]" << endl;
+        // cout << plain_argres << endl;
+        cout << "Real compute = ";
+        for (int j = 0; j < 7; j++) {
+          cout << plain_res(j, 0) << " ";
+        }
+        cout << "\n" << endl;
+      }
+    }));
+  }
+  for (auto &t : thrds) t.join();
+  return 0;
+}
+
 int basic_performance(CLP &cmd, int n, int repeats,
                       map<string, vector<double>> &dict) {
   IOService ios;
