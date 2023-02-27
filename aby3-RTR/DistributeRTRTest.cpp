@@ -111,7 +111,6 @@ int dis_basic_performance(CLP& cmd, int n, int repeats, map<std::string, double>
     }
 
     clock_t start, end;
-    double time_mul, time_gt, time_add, time_imul, time_ibmul; // record the total time for each ops in ms.
 
     sf64Matrix<D8> sharedA(plainA.rows(), plainA.cols());
     sf64Matrix<D8> sharedB(plainB.rows(), plainB.cols());
@@ -138,7 +137,7 @@ int dis_basic_performance(CLP& cmd, int n, int repeats, map<std::string, double>
     for(int k=0; k<repeats; k++)
         eval.asyncMul(runtime, sharedA, sharedB, mul_res).get();
     end = clock();
-    time_mul = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    dict["fxp-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
 
     // 2. sfixed addition
     sf64Matrix<D8> add_res(plainA.rows(), plainA.cols());
@@ -146,7 +145,7 @@ int dis_basic_performance(CLP& cmd, int n, int repeats, map<std::string, double>
     for(int k=0; k<repeats; k++)
         add_res = sharedA + sharedB;
     end = clock();
-    time_add = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    dict["fxp-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
 
     // 3. sfixed greater-then
     sbMatrix lt_res;
@@ -154,7 +153,14 @@ int dis_basic_performance(CLP& cmd, int n, int repeats, map<std::string, double>
     for(int k=0; k<repeats; k++)
         cipher_gt(role, sharedB, sharedA, lt_res, eval, runtime);
     end = clock();
-    time_gt = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    dict["fxp-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
+    sbMatrix eq_res;
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        cipher_eq(role, sharedB, sharedA, eq_res, eval, runtime);
+    end = clock();
+    dict["fxp-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
 
     // 4. sint multiplication.
     si64Matrix imul_res(iplainA.rows(), iplainB.cols());
@@ -162,22 +168,46 @@ int dis_basic_performance(CLP& cmd, int n, int repeats, map<std::string, double>
     for(int k=0; k<repeats; k++)
         eval.asyncMul(runtime, isharedA, isharedB, imul_res).get();
     end = clock();
-    time_imul = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    dict["int-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
 
+    // 5. sint addition
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        imul_res = isharedA + isharedB;
+    end = clock();
+    dict["int-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
+    // sint gt
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        cipher_gt(role, isharedB, isharedA, lt_res, eval, runtime);
+    end = clock();
+    dict["int-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
+    // sint eq
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        cipher_eq(role, isharedB, isharedA, eq_res, eval, runtime);
+    end = clock();
+    dict["int-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
+    // multiplications
     // 5. sb & si multiplication.
     si64Matrix ibmul_res(iplainA.rows(), iplainA.cols());
     start = clock();
     for(int k=0; k<repeats; k++)
-        // cipher_mul_seq(role, isharedA, lt_res, ibmul_res, eval, enc, runtime);
         eval.asyncMul(runtime, isharedA, lt_res, ibmul_res).get();
     end = clock();
-    time_ibmul = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    dict["mul-ib"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
 
-    dict["mul"] = time_mul;
-    dict["gt"] = time_gt;
-    dict["add"] = time_add;
-    dict["imul"] = time_imul;
-    dict["ibmul"] = time_ibmul;
+    sf64Matrix<D8> fbmul_res(plainA.rows(), plainA.cols());
+    start = clock();
+    for(int k=0; k<repeats; k++){
+        cipher_mul_seq(role, sharedA, lt_res, fbmul_res, eval, enc, runtime);
+    }
+    end = clock();
+    dict["mul-fb"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+
 
     return 0;
 }

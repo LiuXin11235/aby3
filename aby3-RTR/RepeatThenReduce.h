@@ -682,6 +682,12 @@ inline int reduce_lb_select_offset(
                               selectValue);
 }
 
+template <typename T>
+inline int reduce_all_zero_select_offset(){
+  
+}
+
+
 int argsort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res,
             aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
             aby3::Sh3Encryptor &enc);
