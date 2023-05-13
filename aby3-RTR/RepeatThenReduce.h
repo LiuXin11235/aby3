@@ -4,13 +4,33 @@
 #include <aby3/sh3/Sh3Runtime.h>
 #include <aby3/sh3/Sh3Types.h>
 #include <cryptoTools/Network/IOService.h>
+#include <mpi.h>
 
 #include "BuildingBlocks.h"
 
 static const int BLOCK_SIZE = 50000;
+  
+extern MPI_Comm COMM_WORLD;  
 
 #ifndef _RTR_H_
 #define _RTR_H_
+
+template <typename T>
+struct tensor {
+  T &data;
+  int dim = 1;
+  int size = 1;
+  std::vector<int> shape;
+
+  tensor(T &val, std::vector<int> &val_shape) {
+    data = val;
+    dim = shape.size();
+    shape = val_shape;
+    for (int i = 0; i < dim; i++) {
+      size *= shape[i];
+    }
+  }
+};
 
 template <typename T, typename U, typename Y = T, typename V = void *>
 int repeat_then_reduce_pure(
@@ -644,11 +664,13 @@ inline int reduce_lb_select(int pIdx, int axis, int n, int m,
 }
 
 template <typename T>
-inline int reduce_lb_select_offset(
-    int pIdx, int axis, int n, int m, aby3::sbMatrix &pairwise_relationship,
-    aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
-    aby3::Sh3Encryptor &enc, aby3::si64Matrix &res, int offsetLeft,
-    int offsetRight, T &selectValue) {
+inline int reduce_lb_select_offset(int pIdx, int axis, int n, int m,
+                                   aby3::sbMatrix &pairwise_relationship,
+                                   aby3::Sh3Evaluator &eval,
+                                   aby3::Sh3Runtime &runtime,
+                                   aby3::Sh3Encryptor &enc,
+                                   aby3::si64Matrix &res, int offsetLeft,
+                                   int offsetRight, T &selectValue) {
   aby3::u64 block_length = offsetRight - offsetLeft;
   aby3::u64 start_i = offsetLeft / m, start_j = offsetLeft % m;
   aby3::u64 end_i = offsetRight / m, end_j = offsetRight % m;
@@ -682,12 +704,6 @@ inline int reduce_lb_select_offset(
                               selectValue);
 }
 
-template <typename T>
-inline int reduce_all_zero_select_offset(){
-  
-}
-
-
 int argsort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res,
             aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
             aby3::Sh3Encryptor &enc);
@@ -709,6 +725,11 @@ int get_binning_value(int pIdx, aby3::si64Matrix &sharedM,
                       aby3::si64Matrix &res, aby3::Sh3Evaluator &eval,
                       aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);
 
-int sort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval,
-                      aby3::Sh3Runtime &runtime, aby3::Sh3Encryptor &enc);
+int sort(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res,
+         aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
+         aby3::Sh3Encryptor &enc);
+
+int max_rtr(int pIdx, aby3::si64Matrix &sharedM, aby3::si64Matrix &res,
+        aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
+        aby3::Sh3Encryptor &enc);
 #endif

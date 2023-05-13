@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 		prog = progs[0];
 	}
 	if(prog == -1){
-		std::cout << "Set prog to 0(basic performance test) by default " << std::endl;
+		std::cout << "Set prog to 0 (basic performance test) by default " << std::endl;
 	}
 
 	if(prog == 0){ // test the vectorization for basic ops (mul) and (gt).
@@ -202,6 +202,7 @@ int main(int argc, char** argv)
 		test_cipher_index(cmd, 2);
 		test_cipher_binning(cmd, 2);
 		test_sort(cmd, 2);
+		test_max(cmd, 2);
 	}
 
 	// if(prog == 5){

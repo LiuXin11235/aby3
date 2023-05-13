@@ -448,6 +448,62 @@ int test_sort(CLP &cmd, int rtrFlag) {
   return 0;
 }
 
+
+int test_max(CLP &cmd, int rtrFlag){
+  IOService ios;
+
+  // generate the test data
+  u64 n = 10, cols = 1;
+  i64Matrix testM(n, cols);
+
+  // inverse sequence
+  for (int i = 0; i < n; i++) {
+    testM(i, 0) = n - i;
+  }
+
+  // start the three parties computation.
+  vector<thread> thrds;
+  for (int i = 0; i < 3; i++) {
+    thrds.emplace_back(thread([i, &ios, testM, cols,
+                               rtrFlag]() {
+      Sh3Encryptor enc;
+      Sh3Evaluator eval;
+      Sh3Runtime runtime;
+      basic_setup((u64)i, ios, enc, eval, runtime);
+
+      u64 n = testM.rows();
+
+      // generate the cipher test data.
+      si64Matrix sharedM(n, cols);
+      if (i == 0) {
+        enc.localIntMatrix(runtime, testM, sharedM).get();
+      } else {
+        enc.remoteIntMatrix(runtime, sharedM).get();
+      }
+      si64Matrix res;
+      
+      // test max
+      max_rtr(i, sharedM, res, eval, runtime, enc);
+      
+      i64Matrix plain_res;
+      enc.revealAll(runtime, res, plain_res).get();
+
+      if (i == 0) {
+        cout << "Expected res = " << n << endl;
+        // cout << plain_argres << endl;
+        cout << "Real compute = ";
+        for (int j = 0; j < res.rows(); j++) {
+          cout << plain_res(j, 0) << " ";
+        }
+        cout << "\n" << endl;
+      }
+    }));
+  }
+  for (auto &t : thrds) t.join();
+  return 0;
+}
+
+
 int basic_performance(CLP &cmd, int n, int repeats,
                       map<string, vector<double>> &dict) {
   IOService ios;
