@@ -10,7 +10,7 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-static const int FLAG = 0;
+static const int FLAG = 2;
 
 int argsort(int pIdx, si64Matrix &sharedM, si64Matrix &res, Sh3Evaluator &eval,
             Sh3Runtime &runtime, Sh3Encryptor &enc) {

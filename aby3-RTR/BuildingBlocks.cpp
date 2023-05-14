@@ -493,6 +493,50 @@ int circuit_cipher_eq(int pIdx, si64Matrix &intA, si64Matrix &intB, sbMatrix &re
   return 0;
 }
 
+int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& intB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
+
+  // set the correspondong boolean circuit.
+  sbMatrix circuitInput0;
+  sbMatrix circuitInput1;
+  circuitInput0.resize(intA.size(), sizeof(aby3::i64) * 8);
+  circuitInput1.resize(intB.size(), sizeof(aby3::i64) * 8);
+
+  // 3. let party0 adds up two shares x0 + x1 and share with p1; let party1 and party2 share x2.
+  switch(pIdx){
+    case 0: {
+      for(u64 j=0; j<intA.size(); j++){
+        circuitInput0.mShares[0](j) = intB[j] - intA[j].mData[0] - intA[j].mData[1];
+      }
+      circuitInput1.mShares[0].setZero();
+      circuitInput1.mShares[1].setZero();
+      break;
+    }
+    case 1: {
+      for(u64 j=0; j<intA.size(); j++){
+        circuitInput1.mShares[0](j) = intA[j].mData[0];
+      }
+      circuitInput1.mShares[1].setZero();
+      circuitInput0.mShares[0].setZero();
+      break;
+    }
+    case 2: {
+      for(u64 j=0; j<intA.size(); j++){
+        circuitInput1.mShares[1](j) = intA[j].mData[1];
+      }
+      circuitInput1.mShares[0].setZero();
+      circuitInput0.mShares[0].setZero();
+    }
+  }
+
+  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(),
+                                circuitInput0.mShares[0].size());
+  auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(),
+                                          circuitInput0.mShares[1].size());
+  fu.get();
+
+  fetch_eq_res(pIdx, circuitInput0, circuitInput1, res, eval, runtime);
+}
+
 
 int fetch_eq_res(int pIdx, sbMatrix& circuitA, sbMatrix& circuitB, sbMatrix& res, Sh3Evaluator &eval, Sh3Runtime &runtime){
 

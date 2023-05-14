@@ -15,6 +15,8 @@ elif [ ${prog} == 3 ]; then
     keywords="cipher-index";
 elif [ ${prog} == 4 ]; then
     keywords="new-api";
+elif [ ${prog} == 5 ]; then
+    keywords="ptr";
 else
     keywords="invalid";
     echo "invalid prog";
@@ -48,3 +50,5 @@ fi
 ssh aby3-1 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 1 -testFlag "${testFlag}" >> ./log" &
 ssh aby3-2 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 2 -testFlag "${testFlag}" >> ./log" &
 wait;
+
+cat $logFile

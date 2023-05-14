@@ -7,6 +7,7 @@
 #include <aby3-ML/main-logistic.h>
 #include "aby3-RTR/RTRTest.h"
 #include "aby3-RTR/DistributeRTRTest.h"
+#include "aby3-RTR/PTRTest.h"
 
 
 using namespace oc;
@@ -205,14 +206,9 @@ int main(int argc, char** argv)
 		test_max(cmd, 2);
 	}
 
-	// if(prog == 5){
-	// 	test_cipher_index(cmd, 2);
-	// }
-
-	// if(prog == 6){
-	// 	test_cipher_binning(cmd, 2);
-	// }
-
+	if(prog == 5){
+		test_cipher_index_ptr(cmd, 1000, 30);
+	}
 
 	std::cout << "prog only support 0 - 4" << std::endl;
 	return 0;

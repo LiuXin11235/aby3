@@ -60,6 +60,8 @@ int cipher_eq(int pIdx, aby3::sf64Matrix<D> &sharedA, aby3::sf64Matrix<D> &share
 // eq implemented through int_eq circuit.
 int circuit_cipher_eq(int pIdx, aby3::si64Matrix &intA, aby3::si64Matrix &intB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
+int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& intB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
 // fetch_eq_res.
 int fetch_eq_res(int pIdx, aby3::sbMatrix& circuitA, aby3::sbMatrix& circuitB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 

@@ -56,6 +56,5 @@ if(NOT TARGET function2)
 endif()
 
 target_include_directories(aby3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../) 
-
 target_link_libraries(aby3 oc::libOTe eigen json function2)
 
