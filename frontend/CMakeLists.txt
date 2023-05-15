@@ -20,3 +20,6 @@ target_link_libraries(frontend aby3_Tests)
 target_link_libraries(frontend oc::tests_cryptoTools)
 target_link_libraries(frontend aby3-RTR)
 
+find_package(MPI REQUIRED)  
+target_link_libraries(frontend MPI::MPI_CXX)
+

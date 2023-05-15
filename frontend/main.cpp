@@ -8,12 +8,51 @@
 #include "aby3-RTR/RTRTest.h"
 #include "aby3-RTR/DistributeRTRTest.h"
 #include "aby3-RTR/PTRTest.h"
+#include <mpi.h>
 
+#define MPI
+// #define MPIDEBUG
 
 using namespace oc;
 using namespace aby3;
-// std::vector<std::string> unitTestTag{ "u", "unitTest" };
 
+
+#ifdef MPI
+int main(int argc, char** argv){
+	oc::CLP cmd(argc, argv);
+	MPI_Init(&argc, &argv);
+
+	test_cipher_index_ptr_mpi(cmd, 100000, 500);
+
+	MPI_Finalize();
+#ifdef MPIDEBUG
+	int role = -1;
+	if(cmd.isSet("role")){
+			auto keys = cmd.getMany<int>("role");
+			role = keys[0];
+	}
+	if(role == -1){
+			throw std::runtime_error(LOCATION);
+	}
+
+	// Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+	IOService ios;
+	Sh3Encryptor enc;
+	Sh3Evaluator eval;
+	Sh3Runtime runtime;
+
+	multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+#endif
+
+	return 0;
+}
+#endif
+
+#ifndef MPI
 int main(int argc, char** argv)
 {
 	oc::CLP cmd(argc, argv);
@@ -207,9 +246,11 @@ int main(int argc, char** argv)
 	}
 
 	if(prog == 5){
-		test_cipher_index_ptr(cmd, 1000, 30);
+		test_cipher_index_ptr(cmd, 50, 10);
 	}
 
 	std::cout << "prog only support 0 - 4" << std::endl;
 	return 0;
 }
+
+#endif

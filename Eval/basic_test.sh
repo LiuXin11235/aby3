@@ -23,18 +23,19 @@ else
 fi
 
 day=$(date +%m-%d);
-timeStamp=$(date +"%H%M");
+timeStamp=$(date +"%H%M%s");
 
 echo ${day}
 echo ${timeStamp}
 
+rm /root/aby3/debug.txt
 
 # compile
 python build.py;
 
 # synchronize with others
-scp ./bin/frontend aby3-1:~/aby3/bin/ &
-scp ./bin/frontend aby3-2:~/aby3/bin/ &
+scp ./bin/frontend aby31:~/aby3/bin/ &
+scp ./bin/frontend aby32:~/aby3/bin/ &
 wait;
 
 # set the log file
@@ -47,8 +48,8 @@ fi
 
 # run functions
 ./bin/frontend -prog ${prog} -role 0 -testFlag ${testFlag} >> ${logFile} &
-ssh aby3-1 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 1 -testFlag "${testFlag}" >> ./log" &
-ssh aby3-2 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 2 -testFlag "${testFlag}" >> ./log" &
+ssh aby31 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 1 -testFlag "${testFlag}" >> ./log" &
+ssh aby32 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 2 -testFlag "${testFlag}" >> ./log" &
 wait;
 
 cat $logFile

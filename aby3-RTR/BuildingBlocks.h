@@ -16,6 +16,8 @@ void distribute_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor
 void basic_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
            aby3::Sh3Runtime &runtime);
 
+void multi_processor_setup(aby3::u64 partyIdx, int rank, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
 int pi_cb_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
 
 
