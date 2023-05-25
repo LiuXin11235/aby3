@@ -22,9 +22,46 @@ int main(int argc, char** argv){
 	oc::CLP cmd(argc, argv);
 	MPI_Init(&argc, &argv);
 
-	test_cipher_index_ptr_mpi(cmd, 100000, 500);
+	int N, M, TASK_NUM, OPT_BLOCK;
+	if(cmd.isSet("N")){
+		auto keys = cmd.getMany<int>("N");
+		N = keys[0];
+	}
+	else{
+		throw std::runtime_error("No N defined");
+	}
+	if(cmd.isSet("M")){
+		auto keys = cmd.getMany<int>("M");
+		M = keys[0];
+	}else{
+		throw std::runtime_error("No M defined");
+	}
+	if(cmd.isSet("TASK_NUM")){
+		auto keys = cmd.getMany<int>("TASK_NUM");
+		TASK_NUM = keys[0];
+	}else{
+		throw std::runtime_error("No TASK_NUM defined");
+	}
+	if(cmd.isSet("OPT_BLOCK")){
+		auto keys = cmd.getMany<int>("OPT_BLOCK");
+		OPT_BLOCK = keys[0];
+	}else{
+		throw std::runtime_error("No OPT_BLOCK defined");
+	}
+	
+	// check the config task_num is the same as the MPI task num
+	int task_size;
+  MPI_Comm_size(MPI_COMM_WORLD, &task_size);
+	if(TASK_NUM != task_size){
+		throw std::runtime_error("MPI task number: " + std::to_string(task_size) + " != config task size: " + std::to_string(TASK_NUM));
+	}
+
+	cout << "task_size: " << task_size << endl;
+
+	test_cipher_index_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
 
 	MPI_Finalize();
+	
 #ifdef MPIDEBUG
 	int role = -1;
 	if(cmd.isSet("role")){
@@ -246,7 +283,7 @@ int main(int argc, char** argv)
 	}
 
 	if(prog == 5){
-		test_cipher_index_ptr(cmd, 50, 10);
+		test_cipher_index_ptr(cmd, 100, 50);
 	}
 
 	std::cout << "prog only support 0 - 4" << std::endl;

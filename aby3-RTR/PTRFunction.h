@@ -6,14 +6,15 @@
 #include <aby3/sh3/Sh3Types.h>
 #include <cryptoTools/Network/IOService.h>
 #include <mpi.h>
+#include <iomanip>
 
 #include "BuildingBlocks.h"
 #include "debug.h"
 #include "./Pair_then_Reduce/include/datatype.h"
 #include "./Pair_then_Reduce/include/tasks.h"
 
-#define OPTIMAL_BLOCK 10000
-#define TASKS 20
+#define OPTIMAL_BLOCK 100
+#define TASKS 5
 // #define DEBUG
 
 
@@ -32,10 +33,153 @@ public:
   SubIndex(const size_t optimal_block, const int task_id, const int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime& runtime, aby3::Sh3Evaluator& eval):
     pIdx(pIdx), enc(&enc), runtime(&runtime), eval(&eval),
     SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id){
-        this->free_combine = true;
-        this->look_ahead = 0;
         this->have_selective = true;
     }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft, std::vector<NUMR>& resRight, std::vector<NUMR>& local_res,  BlockInfo* binfo) override {
+    #ifdef DEBUG
+    // debug -> aby3 eq has sometimes errorness
+    if(std::is_same<NUMR, aby3::si64>::value){
+      std::ofstream ofs(debugFile, std::ios_base::app);
+      ofs << "resLeft: " << std::endl;
+      ofs.close();
+      debug_output_vector(resLeft, *(this->runtime), *(this->enc));
+
+      ofs.open(debugFile, std::ios_base::app);
+      ofs << "resRight: " << std::endl;
+      ofs.close();
+      debug_output_vector(resRight, *(this->runtime), *(this->enc));
+    }
+    #endif 
+    for(int i=0; i<resLeft.size(); i++) local_res[i] = resLeft[i] + resRight[i];
+
+    #ifdef DEBUG
+    // debug -> aby3 eq has sometimes errorness
+    if(std::is_same<NUMR, aby3::si64>::value){
+      std::ofstream ofs(debugFile, std::ios_base::app);
+      ofs << "local_res: " << std::endl;
+      ofs.close();
+      debug_output_vector(local_res, *(this->runtime), *(this->enc));
+    }
+    #endif 
+    return;
+  }
+
+//   void circuit_evaluate(const FakeArray<NUMX>& dataX, const FakeArray<NUMY>& dataY, const FakeArray<NUMR>& selectV){
+//     if(this->have_selective) this->selectV = selectV;
+
+//     // using vectorization to construct the pairwise vector expandX and expandY.
+//     for(int i=0; i<this->block_num; i++){
+//         // std::cout << ">>>>" << block_num << std::endl;
+//         auto binfo = this->block_info_list[i];
+//         std::vector<NUMX> expandX(binfo->block_len);
+//         std::vector<NUMY> expandY(binfo->block_len);
+//         std::vector<NUMR> local_table(binfo->block_len);
+
+//         for(int p=0; p<binfo->block_len; p++){
+//             if(p + binfo->t_start < this->n*this->m){
+//                 expandX[p] = dataX[p+binfo->t_start];
+//                 expandY[p] = dataY[p+binfo->t_start];
+//             }
+//         }
+
+//         compute_local_table(expandX, expandY, local_table, binfo);
+
+//         // log l rounds partical reduction
+//         size_t padding_lens = binfo->block_len % this->n != 0 ? this->n - (binfo->block_len % this->n) : 0;
+//         std::vector<NUMR> current_table = local_table;
+//         // current_table.resize(current_table.size()+padding_lens);
+//         // for(int j=0; j<padding_lens; j++) current_table[j] = this->initial_value;
+//         current_table.insert(current_table.end(), padding_lens, NUMR(this->initial_value));
+
+//         #ifdef DEBUG
+//         // debug -> aby3 eq has sometimes errorness
+//         if(std::is_same<NUMR, aby3::si64>::value){
+//           std::ofstream ofs(debugFile, std::ios_base::app);
+//           ofs << "current table in round" << i << std::endl;
+//           ofs.close();
+//           debug_output_vector(current_table, *(this->runtime), *(this->enc));
+//         }
+//         #endif            
+
+//         size_t current_len = binfo->block_len + padding_lens;
+//         size_t current_rows = current_len / this->n;
+//         int res_flag = 1;
+//         int start_point = this->which_column(binfo->t_start);
+
+//         while(current_rows + res_flag > 1){
+
+//             #ifdef DEBUG
+//             debug_info("row- " + std::to_string(current_rows));
+//             #endif  
+
+//             std::vector<NUMR> resLeft;
+//             std::vector<NUMR> resRight;
+//             size_t mid_point;
+//             if(current_rows % 2 == 0){
+//                 mid_point = current_len / 2;
+//             }
+//             else{
+//                 if(res_flag == 1) std::rotate(this->res.begin(), this->res.begin() + start_point, this->res.end());  
+//                 current_table.insert(current_table.end(), this->res.begin(), this->res.end());
+//                 mid_point = (current_len + this->n) / 2;
+//                 if(res_flag == 1){
+//                     #ifdef DEBUG
+//                     if(std::is_same<NUMR, aby3::si64>::value){
+//                       std::ofstream ofs(debugFile, std::ios_base::app);
+//                       ofs << "before reset res" << std::endl;
+//                       ofs.close();
+//                       debug_output_vector(this->res, *(this->runtime), *(this->enc));
+//                     }
+//                     #endif
+//                     this->res = std::vector<NUMR>(this->n, NUMR(this->initial_value));
+//                     // for(int j=0; j<this->n; j++) this->res[j] = this->initial_value;
+//                     #ifdef DEBUG
+//                     if(std::is_same<NUMR, aby3::si64>::value){
+//                       std::ofstream ofs(debugFile, std::ios_base::app);
+//                       ofs << "after reset res" << std::endl;
+//                       ofs.close();
+//                       debug_output_vector(this->res, *(this->runtime), *(this->enc));
+//                     }
+//                     #endif
+//                     res_flag = 0;
+//                 }
+//             }
+//             resLeft = std::vector<NUMR>(current_table.begin(), current_table.begin()+mid_point);
+//             resRight = std::vector<NUMR>(current_table.begin() + mid_point, current_table.end());
+//             current_table.resize(mid_point);
+//             partical_reduction(resLeft, resRight, current_table, binfo);
+//             #ifdef DEBUG
+//             // debug -> aby3 eq has sometimes errorness
+//             if(std::is_same<NUMR, aby3::si64>::value){
+//               std::ofstream ofs(debugFile, std::ios_base::app);
+//               ofs << "current table in while" << std::endl;
+//               ofs.close();
+//               debug_output_vector(current_table, *(this->runtime), *(this->enc));
+//             }
+//             #endif  
+
+//             current_len = mid_point;
+//             current_rows = current_len / this->n;
+//         }
+
+//         if(start_point == 0) this->res = current_table;
+//         else{
+//             this->res = std::vector<NUMR>(current_table.end() - start_point, current_table.end());
+//             this->res.insert(this->res.end(), current_table.begin(), current_table.begin() + this->n - start_point);
+//         }
+//         #ifdef DEBUG
+//         // debug -> aby3 eq has sometimes errorness
+//         if(std::is_same<NUMR, aby3::si64>::value){
+//           std::ofstream ofs(debugFile, std::ios_base::app);
+//           ofs << "result in function" << std::endl;
+//           ofs.close();
+//           debug_output_vector(this->res, *(this->runtime), *(this->enc));
+//         }
+//         #endif  
+//     }
+//     return;
+// }
 
 protected:
 
@@ -57,10 +201,10 @@ protected:
       for(int i=0; i<expandY.size(); i++) ofs << expandY[i] << " ";
       ofs << std::endl;
       ofs.close();
-      debug_output_vector(expandY, *(this->runtime), *(this->enc));
+      // debug_output_vector(expandY, *(this->runtime), *(this->enc));
 
-      aby3::si64Matrix expandXM(block_length);
-      for(int i=0; i<block_length; i++) expandXM(i, 0, expandX[i]);
+      // aby3::si64Matrix expandXM(block_length);
+      // for(int i=0; i<block_length; i++) expandXM(i, 0, expandX[i]);
     }
     #endif    
 
@@ -97,56 +241,6 @@ protected:
     }
   }
 
-  virtual void partical_reduction(std::vector<NUMT>& local_table, std::vector<NUMR>& local_res, BlockInfo* binfo) override {
-    for(int i=0; i<binfo->res_len; i++){
-        size_t row_start = binfo->table_rows[i], row_end = binfo->table_rows[i+1];
-        local_res[i] = local_table[row_start];
-        for(int j=row_start+1; j<row_end; j++){
-            local_res[i] = local_res[i] + local_table[j];
-        }
-    }
-    return;
-  }
-
-  virtual void direct_combine(std::vector<NUMR>& local_res, BlockInfo* binfo) override {
-
-    #ifdef DEBUG
-    // debug
-    if(std::is_same<NUMR, aby3::si64>::value){
-      std::vector<aby3::si64> prob_vec(binfo->res_len);
-      for(int i=0; i<binfo->res_len; i++) prob_vec[i] = this->partical_res[i+binfo->r_start];
-
-      std::ofstream ofs(debugFile, std::ios_base::app);
-      ofs << "before add local_res = " << binfo->r_start << " len: " << binfo->res_len << std::endl;
-      ofs.close();
-
-      debug_output_vector(prob_vec, *(this->runtime), *(this->enc));
-    }
-    #endif
-
-    for(int i=0; i<binfo->res_len; i++){
-        this->partical_res[i+binfo->r_start] = this->partical_res[i+binfo->r_start] + local_res[i];
-    }
-
-    #ifdef DEBUG
-    // debug
-    if(std::is_same<NUMR, aby3::si64>::value){
-      std::vector<aby3::si64> prob_vec(binfo->res_len);
-      for(int i=0; i<binfo->res_len; i++) prob_vec[i] = this->partical_res[i+binfo->r_start];
-
-      std::ofstream ofs(debugFile, std::ios_base::app);
-      ofs << "res_start = " << binfo->r_start << " len: " << binfo->res_len << std::endl;
-      ofs.close();
-
-      debug_output_vector(prob_vec, *(this->runtime), *(this->enc));
-    }
-    #endif
-
-    return;
-  }
-
-  virtual void final_combine() override {}
-
 };
 
 
@@ -171,49 +265,68 @@ public:
     PTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(deployment_profile_name){}
 
     using PTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::task_split;  
-    // void task_split(size_t table_size, size_t task_length) override {
-    //   for(int i=0; i<this->total_tasks; i++){
-    //       size_t table_start = i*task_length;
-    //       size_t table_end = (i == this->total_tasks-1) ? this->n*this->m : (i+1)*task_length;
-    //       size_t row_start = table_start / this->m;
-    //       size_t row_end = (table_end - 1) / this->m;
-    //       this->partical_end_points.emplace_back(std::make_pair(row_start, row_end));
-    //       auto subTask(new TASK<NUMX, NUMY, NUMT, NUMR>(this->optimal_block, i, this->pIdx, this->enc, this->runtime, this->eval));
-    //       subTask->circuit_construct(this->shapeX, this->shapeY, table_start, table_end);
-    //       for(int j=0; j<subTask->res_length; j++) subTask->partical_res[j] = this->default_value;
-
-    //       if(std::is_same<NUMR, aby3::si64>::value){
-
-    //         std::ofstream ofs(debugFile, std::ios_base::app);
-    //         ofs << "test init" << " task_id: " << i << std::endl;
-    //         ofs.close();
-
-    //         debug_output_vector(subTask->partical_res, this->runtime, this->enc);
-    //       }
-
-    //       this->subTasks.emplace_back(subTask);
-    //   }
-    // }
-
     void create_sub_task(size_t optimal_block, int task_id, size_t table_start, size_t table_end) override {
       auto subTask(new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx, this->enc, this->runtime, this->eval));
       subTask->circuit_construct(this->shapeX, this->shapeY, table_start, table_end);
-      for(int j=0; j<subTask->res_length; j++) subTask->partical_res[j] = this->default_value;
+      subTask->initial_value = this->default_value;
+      for(int j=0; j<this->n; j++) subTask->res[j] = this->default_value;
       this->subTasks.emplace_back(subTask);
     }
 
-protected:
+    // void circuit_evaluate(NUMX* dataX, NUMY* dataY, NUMR* selectV, NUMR* res){
+        
+    //     // prepare data structures.
+    //     this->inputX = fake_repeat(dataX, this->shapeX, this->m, 0);
+    //     this->inputY = fake_repeat(dataY, this->shapeY, this->n, 1);
+    //     this->res = res;
 
-    virtual void final_combine(std::vector<std::vector<NUMR>>& partical_result_list, std::vector<std::vector<bool>>& partical_flag_list) override {
-        for(int i=0; i<this->total_tasks; i++){
-            size_t res_start = this->partical_end_points[i].first, res_end = this->partical_end_points[i].second;
-            for(int j=0; j<(res_end - res_start + 1); j++){
-                if(partical_flag_list[i][j]) this->res[res_start+j] = partical_result_list[i][j];
-                else this->res[res_start+j] = this->res[res_start+j] + partical_result_list[i][j];
-            }
-        }
-        return;
-    }
+    //     // compute functions => currently, using sequential.
+    //     for(int i=0; i<this->total_tasks; i++){
+    //         // call the corresponding functions on different machines.
+    //         this->subTasks[i]->circuit_evaluate(this->inputX, this->inputY, this->selectV);
+    //     }
+
+    //     #ifdef DEBUG
+    //     // debug -> aby3 eq has sometimes errorness
+    //     for(int i=0; i<this->total_tasks; i++){
+    //       if(std::is_same<NUMR, aby3::si64>::value){
+    //         std::ofstream ofs(debugFile, std::ios_base::app);
+    //         ofs << "subTask-" << i << "res: " << std::endl;
+    //         ofs.close();
+    //         debug_output_vector(this->subTasks[i]->res, this->runtime, this->enc);
+
+    //         // ofs.open(debugFile, std::ios_base::app);
+    //         // ofs << "expandY: " << binfo->t_start << std::endl;
+    //         // for(int i=0; i<expandY.size(); i++) ofs << expandY[i] << " ";
+    //         // ofs << std::endl;
+    //         // ofs.close();
+    //         // debug_output_vector(expandY, *(this->runtime), *(this->enc));
+
+    //         // aby3::si64Matrix expandXM(block_length);
+    //         // for(int i=0; i<block_length; i++) expandXM(i, 0, expandX[i]);
+    //       }
+    //     }
+    //     #endif  
+
+    //     // simulate
+    //     for(int i=this->total_tasks-1; i>=0; i--){
+    //         size_t left_tasks = this->total_tasks;
+    //         size_t send_start = (left_tasks + 1) / 2;
+    //         while(i < send_start && left_tasks > 1){
+    //             size_t receive_target = i + send_start;
+    //             if(receive_target < left_tasks){
+    //                 std::vector<NUMR> receive_res = this->subTasks[receive_target]->res;
+    //                 this->subTasks[i]->partical_reduction(receive_res, this->subTasks[i]->res, this->subTasks[i]->res, nullptr);
+    //             }
+
+    //             left_tasks = send_start;
+    //             send_start = (left_tasks + 1) / 2;
+    //         }
+    //         if(i >= send_start) size_t end_target = i - send_start;
+    //     }
+    //     std::copy(this->subTasks[0]->res.begin(), this->subTasks[0]->res.end(), res);
+    // }
+
 };
 
 
@@ -233,28 +346,16 @@ public:
     MPISecretIndex(int tasks, size_t optimal_block, const int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime& runtime, aby3::Sh3Evaluator& eval):
     pIdx(pIdx), enc(enc), runtime(runtime), eval(eval),
     MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block){
-      // std::cout << "in init, i am " << this->rank << std::endl;
     }
 
     // override sub_task create.
     void create_sub_task(size_t optimal_block, int task_id, size_t table_start, size_t table_end) override {
       auto subTaskPtr(new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx, this->enc, this->runtime, this->eval));
       this->subTask.reset(subTaskPtr);
+      this->subTask->initial_value = this->default_value;
       this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start, table_end);
-      for(int j=0; j<this->subTask->res_length; j++) this->subTask->partical_res[j] = this->default_value;
+      for(int j=0; j<this->n; j++) this->subTask->res[j] = this->default_value;
     }
-
-protected:
-
-  virtual void final_combine(std::vector<std::vector<NUMR>>& partical_result_list, std::vector<std::vector<bool>>& partical_flag_list) override {
-    for(int i=0; i<this->total_tasks; i++){
-        size_t res_start = this->partical_end_points[i].first, res_end = this->partical_end_points[i].second;
-        for(int j=0; j<(res_end - res_start + 1); j++){
-            if(partical_flag_list[i][j]) this->res[res_start+j] = partical_result_list[i][j];
-            else this->res[res_start+j] = this->res[res_start+j] + partical_result_list[i][j];
-        }
-    }
-  }
 };
 
 
@@ -266,4 +367,4 @@ int ptr_secret_index(int pIdx, std::vector<aby3::si64>& sharedM,
 int mpi_ptr_secret_index(int pIdx, std::vector<aby3::si64>& sharedM,
                  std::vector<aby3::si64>& secretIndex, std::vector<aby3::si64>& res,
                  aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime,
-                 aby3::Sh3Encryptor &enc);
+                 aby3::Sh3Encryptor &enc, int task_num, int opt_B);

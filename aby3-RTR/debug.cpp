@@ -53,3 +53,9 @@ void debug_mpi(int rank, int pIdx, std::string info){
   ofs << info << std::endl;
   ofs.close();
 }
+
+void debug_info(std::string info){
+  std::ofstream ofs(debugFile, std::ios_base::app);
+  ofs << info << std::endl;
+  ofs.close();
+}

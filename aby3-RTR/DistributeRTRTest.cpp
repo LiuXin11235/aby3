@@ -212,6 +212,7 @@ int dis_basic_performance(CLP& cmd, int n, int repeats, map<std::string, double>
     return 0;
 }
 
+
 // n: data volumn; m: index volumn.
 int dis_cipher_index_performance(CLP& cmd, int n, int m, int repeats, map<std::string, double>& dict, int testFlag){
     int role = -1;

@@ -18,4 +18,6 @@ extern void debug_output_matrix(aby3::sbMatrix& problem_mat, aby3::Sh3Runtime& r
 
 extern void debug_mpi(int rank, int pIdx, std::string info);
 
+extern void debug_info(std::string info);
+
 #endif
