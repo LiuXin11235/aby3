@@ -714,22 +714,19 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt
 }
 
 
-int test_vectorization(oc::CLP& cmd, int n, int task_num){
+int test_vectorization(oc::CLP& cmd, int n_, int task_num){
   // Get current process rank and size  
 	int rank, size;  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  cout << rank << endl;
-
   clock_t start, end;
 
   // set the log file.
   static std::string LOG_FOLDER="/root/aby3/Record/Record_vector/";
-  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) + "-TASKS=" + std::to_string(task_num) + "-" + std::to_string(rank);
 
   int role = -1;
-  int repeats = 1000;
+  int repeats_ = 1000;
   if(cmd.isSet("role")){
       auto keys = cmd.getMany<int>("role");
       role = keys[0];
@@ -739,7 +736,7 @@ int test_vectorization(oc::CLP& cmd, int n, int task_num){
   }
   if(cmd.isSet("repeats")){
     auto keys = cmd.getMany<int>("repeats");
-    repeats = keys[0];
+    repeats_ = keys[0];
   }
 
   // multi-processor deployment setup.
@@ -752,135 +749,174 @@ int test_vectorization(oc::CLP& cmd, int n, int task_num){
   end = clock();
   double time_task_setup = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
-  map<string, double> dict;
+  vector<int> n_list = {10,       20,       42,       88,      183,      379,
+            784,     1623,     3359,     6951,    14384,    29763,
+          61584,   127427,   263665,   545559,  1128837,  2335721,
+        4832930, 10000000};
+  vector<int> repeats_list = {500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 100, 100, 100, 50, 50, 50, 50, 50, 10, 10};
 
-  // data preparation.
-  start = clock();
-  u64 rows = n, cols = 1;
-  f64Matrix<D8> plainA(rows, cols);
-  f64Matrix<D8> plainB(rows, cols);
-  i64Matrix iplainA(rows, cols);
-  i64Matrix iplainB(rows, cols);
+  // vector<int> n_list = {
+  //           784,     1623,     3359,     6951,    14384,    29763,
+  //         61584,   127427,   263665,   545559,  1128837,  2335721,
+  //       4832930, 10000000};
+  // vector<int> repeats_list = {500, 500, 500, 500, 100, 100, 100, 50, 50, 50, 50, 50, 10, 10};
 
-  for(u64 j=0; j<rows; j++){
-      for (u64 i = 0; i<cols; i++){
-          plainA(j, i) = (double) j;
-          plainB(j, i) = (double) j + 1;
-          iplainA(j, i) = j;
-          iplainB(j, i) = j + 1;
-      }
-  }
+  // vector<int> n_list = {3359,     6951,    14384,    29763,
+  //         61584,   127427,   263665,   545559,  1128837,  2335721,
+  //       4832930, 10000000};
+  // vector<int> repeats_list = {500, 500, 100, 100, 100, 50, 50, 50, 50, 50, 10, 10};
 
-  sf64Matrix<D8> sharedA(plainA.rows(), plainA.cols());
-  sf64Matrix<D8> sharedB(plainB.rows(), plainB.cols());
-  si64Matrix isharedA(iplainA.rows(), iplainA.cols());
-  si64Matrix isharedB(iplainB.rows(), iplainB.cols());
+  for(int p = 0; p<n_list.size(); p++){
 
-  if(role == 0){
-      enc.localFixedMatrix(runtime, plainA, sharedA).get();
-      enc.localFixedMatrix(runtime, plainB, sharedB).get();
-      enc.localIntMatrix(runtime, iplainA, isharedA).get();
-      enc.localIntMatrix(runtime, iplainB, isharedB).get();
-  }
-  else{
-      enc.remoteFixedMatrix(runtime, sharedA).get();
-      enc.remoteFixedMatrix(runtime, sharedB).get();
-      enc.remoteIntMatrix(runtime, isharedA).get();
-      enc.remoteIntMatrix(runtime, isharedB).get();
-  }
-  end = clock();
-  double time_data_prepare = double((end - start)*1000) / CLOCKS_PER_SEC;
+    int n = n_list[p];
+    int repeats = repeats_list[p];
 
-  // begin test functions.
-  // 1. sfixed multiplication.
-  sf64Matrix<D8> mul_res(plainA.rows(), plainA.cols());
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      eval.asyncMul(runtime, sharedA, sharedB, mul_res).get();
-  end = clock();
-  dict["fxp-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) + "-TASKS=" + std::to_string(task_num) + "-" + std::to_string(rank);
 
-  // 2. sfixed addition
-  sf64Matrix<D8> add_res(plainA.rows(), plainA.cols());
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      add_res = sharedA + sharedB;
-  end = clock();
-  dict["fxp-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    map<string, double> dict;
 
-  // 3. sfixed greater-then
-  sbMatrix lt_res;
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      cipher_gt(role, sharedB, sharedA, lt_res, eval, runtime);
-  end = clock();
-  dict["fxp-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    // data preparation.
+    start = clock();
+    u64 rows = n, cols = 1;
+    f64Matrix<D8> plainA(rows, cols);
+    f64Matrix<D8> plainB(rows, cols);
+    i64Matrix iplainA(rows, cols);
+    i64Matrix iplainB(rows, cols);
 
-  sbMatrix eq_res;
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      cipher_eq(role, sharedB, sharedA, eq_res, eval, runtime);
-  end = clock();
-  dict["fxp-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    for(u64 j=0; j<rows; j++){
+        for (u64 i = 0; i<cols; i++){
+            plainA(j, i) = (double) j;
+            plainB(j, i) = (double) j + 1;
+            iplainA(j, i) = j;
+            iplainB(j, i) = j + 1;
+        }
+    }
 
-  sf64Matrix<D8> fbmul_res(plainA.rows(), plainA.cols());
-  start = clock();
-  for(int k=0; k<repeats; k++){
-      cipher_mul_seq(role, sharedA, lt_res, fbmul_res, eval, enc, runtime);
-  }
-  end = clock();
-  dict["fxp-abmul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    sf64Matrix<D8> sharedA(plainA.rows(), plainA.cols());
+    sf64Matrix<D8> sharedB(plainB.rows(), plainB.cols());
+    si64Matrix isharedA(iplainA.rows(), iplainA.cols());
+    si64Matrix isharedB(iplainB.rows(), iplainB.cols());
 
-  // 4. sint multiplication.
-  si64Matrix imul_res(iplainA.rows(), iplainB.cols());
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      eval.asyncMul(runtime, isharedA, isharedB, imul_res).get();
-  end = clock();
-  dict["int-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    if(role == 0){
+        enc.localFixedMatrix(runtime, plainA, sharedA).get();
+        enc.localFixedMatrix(runtime, plainB, sharedB).get();
+        enc.localIntMatrix(runtime, iplainA, isharedA).get();
+        enc.localIntMatrix(runtime, iplainB, isharedB).get();
+    }
+    else{
+        enc.remoteFixedMatrix(runtime, sharedA).get();
+        enc.remoteFixedMatrix(runtime, sharedB).get();
+        enc.remoteIntMatrix(runtime, isharedA).get();
+        enc.remoteIntMatrix(runtime, isharedB).get();
+    }
+    end = clock();
+    double time_data_prepare = double((end - start)*1000) / CLOCKS_PER_SEC;
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  // 5. sint addition
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      imul_res = isharedA + isharedB;
-  end = clock();
-  dict["int-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    // begin test functions.
+    // 1. sfixed multiplication.
+    sf64Matrix<D8> mul_res(plainA.rows(), plainA.cols());
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        eval.asyncMul(runtime, sharedA, sharedB, mul_res).get();
+    end = clock();
+    dict["fxp-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  // sint gt
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      cipher_gt(role, isharedB, isharedA, lt_res, eval, runtime);
-  end = clock();
-  dict["int-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    // 2. sfixed addition
+    sf64Matrix<D8> add_res(plainA.rows(), plainA.cols());
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        add_res = sharedA + sharedB;
+    end = clock();
+    dict["fxp-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  // sint eq
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      cipher_eq(role, isharedB, isharedA, eq_res, eval, runtime);
-  end = clock();
-  dict["int-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    // 3. sfixed greater-then
+    sbMatrix lt_res;
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        cipher_gt(role, sharedB, sharedA, lt_res, eval, runtime);
+    end = clock();
+    dict["fxp-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  // multiplications
-  // 5. sb & si multiplication.
-  si64Matrix ibmul_res(iplainA.rows(), iplainA.cols());
-  start = clock();
-  for(int k=0; k<repeats; k++)
-      eval.asyncMul(runtime, isharedA, lt_res, ibmul_res).get();
-  end = clock();
-  dict["mul-ib"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    sbMatrix eq_res;
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        cipher_eq(role, sharedB, sharedA, eq_res, eval, runtime);
+    end = clock();
+    dict["fxp-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  if(rank == 0){
-    // cout << logging_file << endl;
-    std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime data prep" << std::setprecision(5) << time_data_prepare << std::endl;
+    sf64Matrix<D8> fbmul_res(plainA.rows(), plainA.cols());
+    start = clock();
+    for(int k=0; k<repeats; k++){
+        cipher_mul_seq(role, sharedA, lt_res, fbmul_res, eval, enc, runtime);
+    }
+    end = clock();
+    dict["fxp-abmul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
 
-    std::map<std::string, double>::iterator iter;
-    iter = dict.begin();
-    while(iter != dict.end()){
-      ofs << iter->first << " " << iter->second << std::endl;
-      iter ++;
-    }    
-    ofs.close();
+    // 4. sint multiplication.
+    si64Matrix imul_res(iplainA.rows(), iplainB.cols());
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        eval.asyncMul(runtime, isharedA, isharedB, imul_res).get();
+    end = clock();
+    dict["int-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // 5. sint addition
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        imul_res = isharedA + isharedB;
+    end = clock();
+    dict["int-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // sint gt
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        cipher_gt(role, isharedB, isharedA, lt_res, eval, runtime);
+    end = clock();
+    dict["int-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // sint eq
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        cipher_eq(role, isharedB, isharedA, eq_res, eval, runtime);
+    end = clock();
+    dict["int-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // multiplications
+    // 5. sb & si multiplication.
+    si64Matrix ibmul_res(iplainA.rows(), iplainA.cols());
+    start = clock();
+    for(int k=0; k<repeats; k++)
+        eval.asyncMul(runtime, isharedA, lt_res, ibmul_res).get();
+    end = clock();
+    dict["int-abmul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(rank == 0){
+      // cout << logging_file << endl;
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime data prep: " << std::setprecision(5) << time_data_prepare << std::endl;
+
+      std::map<std::string, double>::iterator iter;
+      iter = dict.begin();
+      while(iter != dict.end()){
+        ofs << iter->first << " " << iter->second << std::endl;
+        iter ++;
+      }    
+      ofs.close();
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
   }
 
   return 0;

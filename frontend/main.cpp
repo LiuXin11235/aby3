@@ -19,6 +19,8 @@ using namespace aby3;
 #ifdef MPI
 int main(int argc, char** argv) {
   oc::CLP cmd(argc, argv);
+  
+  // reinit the environment and then finalize the environment.
   MPI_Init(&argc, &argv);
 
   int N, M, TASK_NUM, OPT_BLOCK;
