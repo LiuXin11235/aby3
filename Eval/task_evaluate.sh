@@ -1,5 +1,5 @@
-task_list=("index" "rank" "search")
-log_folder_list=(./Record/Record_index ./Record/Record_rank ./Record/Record_search)
+task_list=("index" "search")
+log_folder_list=(./Record/Record_index ./Record/Record_search)
 
 day=$(date +%m-%d);
 timeStamp=$(date +"%H%M%s");
@@ -24,20 +24,44 @@ scp ./bin/frontend aby32:~/aby3/bin/ &
 wait;
 
 #test
-N=1000
+N=1000000000
 M=1
-TASKS=64
-OPT_B=500
+optB=80000
+repeat=1
 
-for task in ${task_list[@]}; do
+task_num_list=(256 180)
 
-  echo ${task}
-  mpirun -n ${TASKS} ./bin/frontend -prog -1 -role 0 -testFlag ${testFlag} -N ${N} -M ${M} -TASK_NUM ${TASKS} -OPT_BLOCK ${OPT_B} -FUNC ${task} >> ./log &
+for (( i=0; i<${#task_list[@]}; i++ )); do
+  for taskN in ${task_num_list[@]}; do
 
-  ssh aby31 "cd ./aby3/; mpirun -n "${TASKS}" ./bin/frontend -prog -1 -role 1 -testFlag "${testFlag}" -N "${N}" -M "${M}" -TASK_NUM "${TASKS}" -OPT_BLOCK "${OPT_B}" -FUNC ${task} >> ./log" &
+    task=${task_list[i]};
+    log_folder=${log_folder_list[i]};
 
-  ssh aby32 "cd ./aby3/; mpirun -n "${TASKS}" ./bin/frontend -prog -1 -role 2 -testFlag "${testFlag}" -N "${N}" -M "${M}" -TASK_NUM "${TASKS}" -OPT_BLOCK "${OPT_B}" -FUNC ${task} >> ./log" &
+    j=0;
+    while [ $j -lt 5 ]; do
+      timeout 50m ./Eval/general_mpi.sh ${taskN} ${N} ${M} ${repeat} ${task} ${optB} ${log_folder}/
+      if [ $? -eq 0 ];then
+        break;
+      fi
+      echo ">>>>>>>> in retry!"${taskN}-${optB};
+      ./Eval/kill_all.sh frontend;
+      sleep 1m;
+      echo ">>>>>>>> after sleep!"${taskN}-${optB};
+      ipcs -m shmid;
+      echo "retry: "${j}" for "${optB}-${taskN} >> ${log_folder}/error.log;
 
-  wait;
+      rm ${log_folder}/log-config-N=${n}-TASKS=${taskN}-Vec=${optB}-0;
 
+      j=$(expr $j + 1);
+      if [ $j -eq 5 ];then
+        echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
+      fi
+    done;
+    # mpirun -n ${TASKS} ./bin/frontend -prog -1 -role 0 -testFlag ${testFlag} -N ${N} -M ${M} -TASK_NUM ${TASKS} -OPT_BLOCK ${OPT_B} -FUNC ${task} >> ./log &
+
+    # ssh aby31 "cd ./aby3/; mpirun -n "${TASKS}" ./bin/frontend -prog -1 -role 1 -testFlag "${testFlag}" -N "${N}" -M "${M}" -TASK_NUM "${TASKS}" -OPT_BLOCK "${OPT_B}" -FUNC ${task} >> ./log" &
+
+    # ssh aby32 "cd ./aby3/; mpirun -n "${TASKS}" ./bin/frontend -prog -1 -role 2 -testFlag "${testFlag}" -N "${N}" -M "${M}" -TASK_NUM "${TASKS}" -OPT_BLOCK "${OPT_B}" -FUNC ${task} >> ./log" &
+    wait;
+  done;
 done;

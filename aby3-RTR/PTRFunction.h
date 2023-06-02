@@ -16,6 +16,7 @@
 #define OPTIMAL_BLOCK 100
 #define TASKS 5
 // #define DEBUG
+#define TEST
 
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
 class SubIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> {
@@ -101,8 +102,12 @@ class SubIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     }
 #endif
 
+    // clock_t start, end;
+    // start = clock();
     vector_cipher_eq(this->pIdx, expandX, expandY, partTable, *(this->eval),
                      *(this->runtime));
+    // end = clock();
+    // cout << "eq time: " << ((end-start)*1000) / CLOCKS_PER_SEC;
 
 #ifdef DEBUG
     std::ofstream ofs(debugFile, std::ios_base::app);
@@ -305,6 +310,7 @@ class SubSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     }
 #endif
 
+    clock_t start, end;
     vector_cipher_ge(this->pIdx, expandX, expandY, partTable, *(this->eval),
                      *(this->enc), *(this->runtime));
     

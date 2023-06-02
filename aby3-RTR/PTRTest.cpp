@@ -1,6 +1,7 @@
 #include "PTRTest.h"
 #include "PTRFunction.h"
 #include "BuildingBlocks.h"
+#include "./Pair_then_Reduce/include/datatype.h"
 
 using namespace oc;
 using namespace aby3;
@@ -86,7 +87,7 @@ int test_cipher_index_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  cout << rank << endl;
+  // cout << "in this function" << endl;
 
   clock_t start, end;
 
@@ -173,6 +174,9 @@ int test_cipher_index_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   double time_task_prep = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
   start = clock();
+  if(rank == 0){
+    cout << "binning circuit evaluate..." << endl;
+  }
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecIndex.data(), range_index, vecM.data(), res.data());
   end = clock();
@@ -181,7 +185,7 @@ int test_cipher_index_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "time_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
     ofs.close();
   }
 
@@ -225,7 +229,7 @@ int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   clock_t start, end;
 
   // set the log file.
-  static std::string LOG_FOLDER="/root/aby3/Record/Record_index/";
+  static std::string LOG_FOLDER="/root/aby3/Record/Record_select/";
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) + "-M=" + std::to_string(n) + "-TASKS=" + std::to_string(task_num) + "-OPT_B=" + std::to_string(opt_B) + "-" + std::to_string(rank);
 
   int role = -1;
@@ -315,7 +319,7 @@ int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "time_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
     ofs.close();
   }
 
@@ -438,7 +442,7 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "time_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
     ofs.close();
   }
 
@@ -563,7 +567,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "time_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
     ofs.close();
   }
 
@@ -706,11 +710,133 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "time_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
     ofs.close();
   }
 
   return 0;
+}
+
+
+int profile_index(oc::CLP& cmd, int n, int m, int vector_size, int task_num){
+    // Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  // cout << rank << endl;
+
+  clock_t start, end;
+
+  // set the log file.
+  std::string LOG_FOLDER="/root/aby3/Record/Record_profile/";
+  if(cmd.isSet("logFolder")){
+      auto keys = cmd.getMany<std::string>("logFolder");
+      LOG_FOLDER = keys[0];
+  }
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) + "-TASKS=" + std::to_string(task_num) + "-Vec=" + std::to_string(vector_size) + "-" + std::to_string(rank);
+
+  int role = -1;
+  int repeats_ = 1000;
+  if(cmd.isSet("role")){
+      auto keys = cmd.getMany<int>("role");
+      role = keys[0];
+  }
+  if(role == -1){
+      throw std::runtime_error(LOCATION);
+  }
+  if(cmd.isSet("repeats")){
+    auto keys = cmd.getMany<int>("repeats");
+    repeats_ = keys[0];
+  }
+
+  start = clock();
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start)*1000)/(CLOCKS_PER_SEC);
+
+
+  start = clock();
+  // construct task
+  auto mpiPtrTask = new MPISecretIndex<aby3::si64, int, aby3::si64, aby3::si64, SubIndex>(task_num, vector_size, role, enc, runtime, eval);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrTask->set_default_value(dval);
+  mpiPtrTask->circuit_construct({m}, {n});
+
+  end = clock(); // time for task init.
+  double time_task_init = double((end - start)*1000)/(CLOCKS_PER_SEC);
+
+  start = clock();
+  size_t m_start = mpiPtrTask->m_start;
+  size_t m_end = mpiPtrTask->m_end;
+
+  // directly generate the partial data
+  size_t partial_len = m_end - m_start + 1;
+  i64Matrix plainTest(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) {
+    plainTest(i, 0) = i + m_start;
+  }
+  int* range_index = new int[partial_len];
+  for(int i=m_start; i<m_end + 1; i++) range_index[i-m_start] = i;
+
+
+  i64Matrix plainIndex(m, 1);
+  // inverse sequence.
+  for (int i = 0; i < m; i++) {
+    plainIndex(i, 0) = n - 1 - i;
+  }
+
+  // generate the cipher test data.
+  si64Matrix sharedM(partial_len, 1);
+  si64Matrix sharedIndex(m, 1);
+  if(role == 0){
+      enc.localIntMatrix(runtime, plainTest, sharedM).get();
+      enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+  }
+  else{
+      enc.remoteIntMatrix(runtime, sharedM).get();
+      enc.remoteIntMatrix(runtime, sharedIndex).get();
+  }
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  
+  vector<si64> res(m);
+  vector<si64> vecM(partial_len);
+  vector<si64> vecIndex(m);
+  for(int i=0; i<m; i++) vecIndex[i] = sharedIndex(i, 0);
+  for(int i=0; i<m; i++) res[i] = init_res(i, 0);
+  for(int i=0; i<partial_len; i++) vecM[i] = sharedM(i, 0);
+
+  // set the data related part.
+  mpiPtrTask->set_selective_value(vecM.data(), 0);
+  end = clock();
+  double time_task_prep = double((end - start)*1000)/(CLOCKS_PER_SEC);
+
+  // construct the fake data
+  FakeArray<aby3::si64> dataX = fake_repeat(vecIndex.data(), mpiPtrTask->shapeX, mpiPtrTask->m, 0);
+  FakeArray<int> dataY = fake_repeat(range_index, mpiPtrTask->shapeY, mpiPtrTask->n, 1, mpiPtrTask->m_start, mpiPtrTask->m_end - mpiPtrTask->m_start + 1);
+
+  start = clock();
+  // evaluate the task.
+  for(int i=0; i<repeats_; i++){
+    mpiPtrTask->subTask->circuit_profile(dataX, dataY, mpiPtrTask->selectV);
+  }
+  end = clock();
+  double time_task_eval = double((end - start)*1000)/(CLOCKS_PER_SEC*repeats_);
+
+  if(rank == 0){
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_profile: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs.close();
+  }
 }
 
 
@@ -749,175 +875,319 @@ int test_vectorization(oc::CLP& cmd, int n_, int task_num){
   end = clock();
   double time_task_setup = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
-  vector<int> n_list = {10,       20,       42,       88,      183,      379,
-            784,     1623,     3359,     6951,    14384,    29763,
-          61584,   127427,   263665,   545559,  1128837,  2335721,
-        4832930, 10000000};
-  vector<int> repeats_list = {500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 100, 100, 100, 50, 50, 50, 50, 50, 10, 10};
+  int n = n_;
+  int repeats = repeats_;
 
-  // vector<int> n_list = {
-  //           784,     1623,     3359,     6951,    14384,    29763,
-  //         61584,   127427,   263665,   545559,  1128837,  2335721,
-  //       4832930, 10000000};
-  // vector<int> repeats_list = {500, 500, 500, 500, 100, 100, 100, 50, 50, 50, 50, 50, 10, 10};
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) + "-TASKS=" + std::to_string(task_num) + "-" + std::to_string(rank);
+  if(rank == 0){
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "begin" << std::endl;  
+    ofs.close();
+  }
 
-  // vector<int> n_list = {3359,     6951,    14384,    29763,
-  //         61584,   127427,   263665,   545559,  1128837,  2335721,
-  //       4832930, 10000000};
-  // vector<int> repeats_list = {500, 500, 100, 100, 100, 50, 50, 50, 50, 50, 10, 10};
+  map<string, double> dict;
 
-  for(int p = 0; p<n_list.size(); p++){
+  // data preparation.
+  start = clock();
+  u64 rows = n, cols = 1;
+  f64Matrix<D8> plainA(rows, cols);
+  f64Matrix<D8> plainB(rows, cols);
+  i64Matrix iplainA(rows, cols);
+  i64Matrix iplainB(rows, cols);
 
-    int n = n_list[p];
-    int repeats = repeats_list[p];
+  for(u64 j=0; j<rows; j++){
+      for (u64 i = 0; i<cols; i++){
+          plainA(j, i) = (double) j;
+          plainB(j, i) = (double) j + 1;
+          iplainA(j, i) = j;
+          iplainB(j, i) = j + 1;
+      }
+  }
 
-    std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) + "-TASKS=" + std::to_string(task_num) + "-" + std::to_string(rank);
+  sf64Matrix<D8> sharedA(plainA.rows(), plainA.cols());
+  sf64Matrix<D8> sharedB(plainB.rows(), plainB.cols());
+  si64Matrix isharedA(iplainA.rows(), iplainA.cols());
+  si64Matrix isharedB(iplainB.rows(), iplainB.cols());
 
-    map<string, double> dict;
-
-    // data preparation.
-    start = clock();
-    u64 rows = n, cols = 1;
-    f64Matrix<D8> plainA(rows, cols);
-    f64Matrix<D8> plainB(rows, cols);
-    i64Matrix iplainA(rows, cols);
-    i64Matrix iplainB(rows, cols);
-
-    for(u64 j=0; j<rows; j++){
-        for (u64 i = 0; i<cols; i++){
-            plainA(j, i) = (double) j;
-            plainB(j, i) = (double) j + 1;
-            iplainA(j, i) = j;
-            iplainB(j, i) = j + 1;
-        }
+  if(role == 0){
+      enc.localFixedMatrix(runtime, plainA, sharedA).get();
+      enc.localFixedMatrix(runtime, plainB, sharedB).get();
+      enc.localIntMatrix(runtime, iplainA, isharedA).get();
+      enc.localIntMatrix(runtime, iplainB, isharedB).get();
+  }
+  else{
+      enc.remoteFixedMatrix(runtime, sharedA).get();
+      enc.remoteFixedMatrix(runtime, sharedB).get();
+      enc.remoteIntMatrix(runtime, isharedA).get();
+      enc.remoteIntMatrix(runtime, isharedB).get();
+  }
+  end = clock();
+  double time_data_prepare = double((end - start)*1000) / CLOCKS_PER_SEC;
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+        std::ofstream ofs(logging_file, std::ios_base::app);
+        ofs << "data_prepare: " << time_data_prepare << std::endl;  
+        ofs << "time_task_setup: " << time_task_setup << std::endl;  
+        ofs.close();
     }
-
-    sf64Matrix<D8> sharedA(plainA.rows(), plainA.cols());
-    sf64Matrix<D8> sharedB(plainB.rows(), plainB.cols());
-    si64Matrix isharedA(iplainA.rows(), iplainA.cols());
-    si64Matrix isharedB(iplainB.rows(), iplainB.cols());
-
-    if(role == 0){
-        enc.localFixedMatrix(runtime, plainA, sharedA).get();
-        enc.localFixedMatrix(runtime, plainB, sharedB).get();
-        enc.localIntMatrix(runtime, iplainA, isharedA).get();
-        enc.localIntMatrix(runtime, iplainB, isharedB).get();
-    }
-    else{
-        enc.remoteFixedMatrix(runtime, sharedA).get();
-        enc.remoteFixedMatrix(runtime, sharedB).get();
-        enc.remoteIntMatrix(runtime, isharedA).get();
-        enc.remoteIntMatrix(runtime, isharedB).get();
-    }
-    end = clock();
-    double time_data_prepare = double((end - start)*1000) / CLOCKS_PER_SEC;
     MPI_Barrier(MPI_COMM_WORLD);
+  }
 
-    // begin test functions.
-    // 1. sfixed multiplication.
-    sf64Matrix<D8> mul_res(plainA.rows(), plainA.cols());
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        eval.asyncMul(runtime, sharedA, sharedB, mul_res).get();
-    end = clock();
-    dict["fxp-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // 2. sfixed addition
-    sf64Matrix<D8> add_res(plainA.rows(), plainA.cols());
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        add_res = sharedA + sharedB;
-    end = clock();
-    dict["fxp-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // 3. sfixed greater-then
-    sbMatrix lt_res;
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        cipher_gt(role, sharedB, sharedA, lt_res, eval, runtime);
-    end = clock();
-    dict["fxp-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    sbMatrix eq_res;
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        cipher_eq(role, sharedB, sharedA, eq_res, eval, runtime);
-    end = clock();
-    dict["fxp-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    sf64Matrix<D8> fbmul_res(plainA.rows(), plainA.cols());
-    start = clock();
-    for(int k=0; k<repeats; k++){
-        cipher_mul_seq(role, sharedA, lt_res, fbmul_res, eval, enc, runtime);
-    }
-    end = clock();
-    dict["fxp-abmul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // 4. sint multiplication.
-    si64Matrix imul_res(iplainA.rows(), iplainB.cols());
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        eval.asyncMul(runtime, isharedA, isharedB, imul_res).get();
-    end = clock();
-    dict["int-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // 5. sint addition
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        imul_res = isharedA + isharedB;
-    end = clock();
-    dict["int-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // sint gt
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        cipher_gt(role, isharedB, isharedA, lt_res, eval, runtime);
-    end = clock();
-    dict["int-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // sint eq
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        cipher_eq(role, isharedB, isharedA, eq_res, eval, runtime);
-    end = clock();
-    dict["int-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // multiplications
-    // 5. sb & si multiplication.
-    si64Matrix ibmul_res(iplainA.rows(), iplainA.cols());
-    start = clock();
-    for(int k=0; k<repeats; k++)
-        eval.asyncMul(runtime, isharedA, lt_res, ibmul_res).get();
-    end = clock();
-    dict["int-abmul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    if(rank == 0){
-      // cout << logging_file << endl;
+  // begin test functions.
+  // 1. sfixed multiplication.
+  sf64Matrix<D8> mul_res(plainA.rows(), plainA.cols());
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      eval.asyncMul(runtime, sharedA, sharedB, mul_res).get();
+  end = clock();
+  dict["fxp-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
       std::ofstream ofs(logging_file, std::ios_base::app);
-      ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime data prep: " << std::setprecision(5) << time_data_prepare << std::endl;
-
-      std::map<std::string, double>::iterator iter;
-      iter = dict.begin();
-      while(iter != dict.end()){
-        ofs << iter->first << " " << iter->second << std::endl;
-        iter ++;
-      }    
+      ofs << "fxp-mul: " << dict["fxp-mul"] << std::endl;  
       ofs.close();
     }
-
     MPI_Barrier(MPI_COMM_WORLD);
-
   }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "fxp-mul: " << dict["fxp-mul"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  // 2. sfixed addition
+  sf64Matrix<D8> add_res(plainA.rows(), plainA.cols());
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      add_res = sharedA + sharedB;
+  end = clock();
+  dict["fxp-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "fxp-add: " << dict["fxp-add"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "fxp-add: " << dict["fxp-add"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  // 3. sfixed greater-then
+  sbMatrix lt_res;
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      cipher_gt(role, sharedB, sharedA, lt_res, eval, runtime);
+  end = clock();
+  dict["fxp-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "fxp-gt: " << dict["fxp-gt"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "fxp-gt: " << dict["fxp-gt"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  sbMatrix eq_res;
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      cipher_eq(role, sharedB, sharedA, eq_res, eval, runtime);
+  end = clock();
+  dict["fxp-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "fxp-eq: " << dict["fxp-eq"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "fxp-eq: " << dict["fxp-eq"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  sf64Matrix<D8> fbmul_res(plainA.rows(), plainA.cols());
+  start = clock();
+  for(int k=0; k<repeats; k++){
+      cipher_mul_seq(role, sharedA, lt_res, fbmul_res, eval, enc, runtime);
+  }
+  end = clock();
+  dict["fxp-abmul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "fxp-abmul: " << dict["fxp-abmul"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "fxp-abmul: " << dict["fxp-abmul"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  // 4. sint multiplication.
+  si64Matrix imul_res(iplainA.rows(), iplainB.cols());
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      eval.asyncMul(runtime, isharedA, isharedB, imul_res).get();
+  end = clock();
+  dict["int-mul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "int-mul: " << dict["int-mul"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "int-mul: " << dict["int-mul"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  // 5. sint addition
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      imul_res = isharedA + isharedB;
+  end = clock();
+  dict["int-add"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "int-add: " << dict["int-add"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "int-add: " << dict["int-add"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  // sint gt
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      cipher_gt(role, isharedB, isharedA, lt_res, eval, runtime);
+  end = clock();
+  dict["int-gt"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "int-gt: " << dict["int-gt"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "int-gt: " << dict["int-gt"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  // sint eq
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      cipher_eq(role, isharedB, isharedA, eq_res, eval, runtime);
+  end = clock();
+  dict["int-eq"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "int-eq: " << dict["int-eq"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "int-eq: " << dict["int-eq"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+  // multiplications
+  // 5. sb & si multiplication.
+  si64Matrix ibmul_res(iplainA.rows(), iplainA.cols());
+  start = clock();
+  for(int k=0; k<repeats; k++)
+      eval.asyncMul(runtime, isharedA, lt_res, ibmul_res).get();
+  end = clock();
+  dict["int-abmul"] = double((end - start)*1000)/(CLOCKS_PER_SEC * repeats);
+  for(int r=0; r<task_num; r++){
+    if(rank == r){
+      std::ofstream ofs(logging_file, std::ios_base::app);
+      ofs << "rank: " << rank << std::endl;
+      ofs << "int-abmul: " << dict["int-abmul"] << std::endl;  
+      ofs.close();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // if(rank == 0){
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "int-abmul: " << dict["int-abmul"] << std::endl;  
+  //   ofs.close();
+  // }
+  // MPI_Barrier(MPI_COMM_WORLD);
+
+    // if(rank == 0){
+    //   // cout << logging_file << endl;
+    //   std::ofstream ofs(logging_file, std::ios_base::app);
+    //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime data prep: " << std::setprecision(5) << time_data_prepare << std::endl;
+
+    //   std::map<std::string, double>::iterator iter;
+    //   iter = dict.begin();
+    //   while(iter != dict.end()){
+    //     ofs << iter->first << " " << iter->second << std::endl;
+    //     iter ++;
+    //   }    
+    //   ofs.close();
+    // }
+
+    // MPI_Barrier(MPI_COMM_WORLD);
+
+  // }
 
   return 0;
 }

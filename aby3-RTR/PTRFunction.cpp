@@ -63,7 +63,7 @@ int mpi_ptr_secret_index(int pIdx, std::vector<aby3::si64>& sharedM,
   end = clock();
   double time_evaluate = double((end - start)*1000/(CLOCKS_PER_SEC));
 
-  cout << logging_file << endl;
+  // cout << logging_file << endl;
   std::ofstream ofs(logging_file, std::ios_base::app);
   ofs << "time_data_prepare: " << std::setprecision(5) << time_data_prepare << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_init << "\n" << std::endl;
   ofs.close();

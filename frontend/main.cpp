@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
   } else {
     throw std::runtime_error("No OPT_BLOCK defined");
   }
-  if (cmd.isSet("FUNC")) {
+  if(cmd.isSet("FUNC")) {
     auto keys = cmd.getMany<std::string>("FUNC");
     FUNC = keys[0];
   } else {
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
                              std::to_string(TASK_NUM));
   }
 
-  cout << "task_size: " << task_size << endl;
+  // cout << "task_size: " << task_size << endl;
 
   if (FUNC == "index")
     test_cipher_index_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
@@ -78,6 +78,9 @@ int main(int argc, char** argv) {
 
 	if(FUNC == "vector")
     test_vectorization(cmd, N, TASK_NUM);
+  
+  if(FUNC == "profile_index")
+    profile_index(cmd, N, M, OPT_BLOCK, TASK_NUM);
 		
 
   MPI_Finalize();
