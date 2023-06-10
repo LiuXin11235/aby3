@@ -166,32 +166,9 @@ class SubRank : public SubTask<NUMX, NUMY, NUMT, NUMR> {
                                   std::vector<NUMR>& resRight,
                                   std::vector<NUMR>& local_res,
                                   BlockInfo* binfo) override {
-#ifdef DEBUG
-    // debug -> aby3 eq has sometimes errorness
-    if (std::is_same<NUMR, aby3::si64>::value) {
-      std::ofstream ofs(debugFile, std::ios_base::app);
-      ofs << "resLeft: " << std::endl;
-      ofs.close();
-      debug_output_vector(resLeft, *(this->runtime), *(this->enc));
 
-      ofs.open(debugFile, std::ios_base::app);
-      ofs << "resRight: " << std::endl;
-      ofs.close();
-      debug_output_vector(resRight, *(this->runtime), *(this->enc));
-    }
-#endif
     for (int i = 0; i < resLeft.size(); i++)
       local_res[i] = resLeft[i] + resRight[i];
-
-#ifdef DEBUG
-    // debug -> aby3 eq has sometimes errorness
-    if (std::is_same<NUMR, aby3::si64>::value) {
-      std::ofstream ofs(debugFile, std::ios_base::app);
-      ofs << "local_res: " << std::endl;
-      ofs.close();
-      debug_output_vector(local_res, *(this->runtime), *(this->enc));
-    }
-#endif
     return;
   }
 
@@ -201,30 +178,8 @@ class SubRank : public SubTask<NUMX, NUMY, NUMT, NUMR> {
                                    std::vector<NUMT>& local_table,
                                    BlockInfo* binfo) {
     aby3::u64 block_length = binfo->block_len;
-
-#ifdef DEBUG
-    // debug -> aby3 eq has sometimes errorness
-    if (std::is_same<NUMR, aby3::si64>::value) {
-      std::ofstream ofs(debugFile, std::ios_base::app);
-      ofs << "expandX: " << binfo->t_start << std::endl;
-      ofs.close();
-      debug_output_vector(expandX, *(this->runtime), *(this->enc));
-
-      ofs.open(debugFile, std::ios_base::app);
-      ofs << "expandY: " << binfo->t_start << std::endl;
-      for (int i = 0; i < expandY.size(); i++) ofs << expandY[i] << " ";
-      ofs << std::endl;
-      ofs.close();
-      // debug_output_vector(expandY, *(this->runtime), *(this->enc));
-
-      // aby3::si64Matrix expandXM(block_length);
-      // for(int i=0; i<block_length; i++) expandXM(i, 0, expandX[i]);
-    }
-#endif
-
     vector_cipher_gt(this->pIdx, expandX, expandY, local_table, *(this->eval),
                      *(this->enc), *(this->runtime));
-
   }
 };
 
@@ -539,9 +494,82 @@ class MPISearch : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
 
 
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
-class SubIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> {
-  
-}
+class SubAvg : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor* enc;
+  aby3::Sh3Runtime* runtime;
+  aby3::Sh3Evaluator* eval;
+
+  using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+  SubAvg(const size_t optimal_block, const int task_id, const int pIdx,
+          aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+          aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+    this->have_selective = false;
+  }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+
+    for (int i = 0; i < resLeft.size(); i++)
+      local_res[i] = resLeft[i] + resRight[i];
+    return;
+  }
+
+ protected:
+  virtual void compute_local_table(std::vector<NUMX>& expandX,
+                                   std::vector<NUMY>& expandY,
+                                   std::vector<NUMT>& local_table,
+                                   BlockInfo* binfo) {
+    aby3::u64 block_length = binfo->block_len;
+    local_table = expandY;
+  }
+};
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
+          template <typename, typename, typename, typename> class TASK>
+class MPIAverage : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor& enc;
+  aby3::Sh3Runtime& runtime;
+  aby3::Sh3Evaluator& eval;
+
+  // setup all the aby3 environment variables, pIdx and rank.
+  using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
+  MPIAverage(int tasks, size_t optimal_block, const int pIdx,
+                 aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+                 aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(enc),
+        runtime(runtime),
+        eval(eval),
+        MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {}
+
+  // override sub_task create.
+  void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
+                       size_t table_end) override {
+    auto subTaskPtr(
+        new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
+                                         this->enc, this->runtime, this->eval));
+    this->subTask.reset(subTaskPtr);
+    this->subTask->initial_value = this->default_value;
+    this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
+                                     table_end);
+    for (int j = 0; j < this->n; j++)
+      this->subTask->res[j] = this->default_value;
+  }
+};
 
 int ptr_secret_index(int pIdx, std::vector<aby3::si64>& sharedM,
                      std::vector<aby3::si64>& secretIndex,
@@ -553,3 +581,4 @@ int mpi_ptr_secret_index(int pIdx, std::vector<aby3::si64>& sharedM,
                          std::vector<aby3::si64>& res, aby3::Sh3Evaluator& eval,
                          aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor& enc,
                          int task_num, int opt_B);
+  

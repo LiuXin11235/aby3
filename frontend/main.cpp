@@ -69,6 +69,9 @@ int main(int argc, char** argv) {
 
   if (FUNC == "index")
     test_cipher_index_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
+  
+  if (FUNC == "average")
+    test_cipher_average_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
 
   if (FUNC == "rank") 
 		test_cipher_rank_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);

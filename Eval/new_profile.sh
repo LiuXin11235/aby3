@@ -30,16 +30,10 @@ else
 fi
 
 # # cleanup the settings on the eth
-tc qdisc del dev eth0 root; tc qdisc del dev eth0 ingress;
-ssh aby31 "tc qdisc del dev eth0 root; tc qdisc del dev eth0 ingress";
-ssh aby32 "tc qdisc del dev eth0 root; tc qdisc del dev eth0 ingress";
+./Eval/network_clean.sh
 
 # setup the network
-tc qdisc add dev eth0 handle 1: ingress;
-tc filter add dev eth0 parent 1: protocol ip prio 50 u32 match ip src 0.0.0.0/0 flowid :1;
-tc qdisc add dev eth0 root tbf rate ${test_bw}mbit latency ${latency}ms burst ${test_bw}mbit;
-ssh aby31 "tc qdisc add dev eth0 handle 1: ingress; tc filter add dev eth0 parent 1: protocol ip prio 50 u32 match ip src 0.0.0.0/0 flowid :1; tc qdisc add dev eth0 root tbf rate "${test_bw}"mbit latency "${latency}"ms burst "${test_bw}"Mb";
-ssh aby32 "tc qdisc add dev eth0 handle 1: ingress; tc filter add dev eth0 parent 1: protocol ip prio 50 u32 match ip src 0.0.0.0/0 flowid :1; tc qdisc add dev eth0 root tbf rate "${test_bw}"mbit latency "${latency}"ms burst "${test_bw}"Mb";
+./Eval/network_set.sh
 
 # evaluate on aby3
 n=1; optB=32; m=1000000000; repeat=1000; epsilon=1000; gap=100

@@ -3,7 +3,6 @@
 #include "PTRTest.h"
 #include "PTRFunction.h"
 #include "BuildingBlocks.h"
-// #include "debug.h"
 #include "./Pair_then_Reduce/include/datatype.h"
 
 using namespace oc;
@@ -623,6 +622,82 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt
   }
 
   return 0;
+}
+
+
+int test_cipher_average_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt_B){
+  
+  //1.  task setup.
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // 1) set the log file.
+  static std::string LOG_FOLDER="/root/aby3/Record/Record_average/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) + "-M=" + std::to_string(n) + "-TASKS=" + std::to_string(task_num) + "-OPT_B=" + std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if(cmd.isSet("role")){
+      auto keys = cmd.getMany<int>("role");
+      role = keys[0];
+  }
+  if(role == -1){
+      throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // 2) setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start)*1000)/(CLOCKS_PER_SEC);
+
+  // 3) initial task.
+  start = clock();
+  auto mpiPtrTask = new MPIAverage<int, aby3::si64, aby3::si64, aby3::si64, SubAvg>(task_num, opt_B, role, enc, runtime, eval);
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrTask->set_default_value(dval);
+  mpiPtrTask->circuit_construct({1}, {n});
+  end = clock(); // time for task init.
+  double time_task_init = double((end - start)*1000)/(CLOCKS_PER_SEC);
+
+  // 2. data generation.
+  start = clock();
+  size_t m_start = mpiPtrTask->m_start;
+  size_t m_end = mpiPtrTask->m_end;
+  size_t partial_len = m_end - m_start + 1;
+  si64Matrix data(partial_len, 1);
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  init_ones(role, enc, runtime, data, partial_len);  
+
+  vector<si64> vecM(partial_len);
+  vector<int> x(1);
+  vector<si64> res(m);
+  x[0] = 0;
+  for(int i=0; i<partial_len; i++) vecM[i] = data(i, 0);
+  for(int i=0; i<m; i++) res[i] = init_res(i, 0);
+  end = clock();
+  double time_task_prep = double((end - start)*1000)/(CLOCKS_PER_SEC);
+
+  // 3. task evaluate.
+  start = clock();
+  mpiPtrTask->circuit_evaluate(x.data(), vecM.data(), nullptr, res.data());
+  end = clock();
+  double time_task_eval = double((end - start)*1000)/(CLOCKS_PER_SEC);
+
+  if(rank == 0){
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask << "\ntime_combine: " << std::setprecision(5) << mpiPtrTask->time_combine << "\n" << std::endl;
+    ofs.close();
+  }
 }
 
 
