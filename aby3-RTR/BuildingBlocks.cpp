@@ -23,7 +23,7 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
                        .addChannel();
       break;
     case 1:
-      comm.mNext = Session(ios, "10.0.3.4:1421", SessionMode::Server, "12")
+      comm.mNext = Session(ios, "10.0.3.8:1421", SessionMode::Server, "12")
                        .addChannel();
       comm.mPrev = Session(ios, "10.0.3.2:1419", SessionMode::Client, "01")
                        .addChannel();
@@ -31,7 +31,7 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
     default:
       comm.mNext = Session(ios, "10.0.3.2:1420", SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.3.4:1421", SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "10.0.3.8:1421", SessionMode::Client, "12")
                        .addChannel();
       break;
   }
@@ -58,7 +58,7 @@ void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor 
     case 1:
       fport = std::to_string(BASEPORT + 3*rank);
       tport = std::to_string(BASEPORT + 3*rank + 2);
-      comm.mNext = Session(ios, "10.0.3.4:"+tport, SessionMode::Server, "12")
+      comm.mNext = Session(ios, "10.0.3.8:"+tport, SessionMode::Server, "12")
                        .addChannel();
       comm.mPrev = Session(ios, "10.0.3.2:"+fport, SessionMode::Client, "01")
                        .addChannel();
@@ -68,7 +68,7 @@ void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor 
       tport = std::to_string(BASEPORT + 3*rank + 2);
       comm.mNext = Session(ios, "10.0.3.2:"+sport, SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.3.4:"+tport, SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "10.0.3.8:"+tport, SessionMode::Client, "12")
                        .addChannel();
       break;
   }

@@ -20,4 +20,6 @@ extern void debug_mpi(int rank, int pIdx, std::string info);
 
 extern void debug_info(std::string info);
 
+extern void write_log(std::string log_file, std::string info);
+
 #endif

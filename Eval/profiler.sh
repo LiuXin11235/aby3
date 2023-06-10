@@ -76,8 +76,8 @@ ssh aby32 "tc qdisc del dev eth0 root";
 
 # bandwidth_list=(1 5 100 1000)
 # bandwidth_list=(1)
-bandwidth_list=(5 100 1000 10000)
-# latency=0.03
+bandwidth_list=(20)
+latency=0.03
 
 # bw=100000
 # latency_list=(5 50 100)
@@ -111,9 +111,9 @@ for bw in ${bandwidth_list[@]}; do
 
   ./Eval/kill_all.sh frontend;
 
-  tasks_list=(2 4 8 16 32 64)
+  # tasks_list=(2 4 8 16 32 64)
+  tasks_list=(1)
   n_list=(10 46 215 1000 4641 21544 100000 464158 2154434 10000000)
-  # n_list=(10000000)
   repeats_list=(1 1 1 1 1 1 1 1 1 1)
   m=1
 
@@ -125,7 +125,7 @@ for bw in ${bandwidth_list[@]}; do
   # setup bandwidth
   tc qdisc add dev eth0 handle 1: ingress;
   tc filter add dev eth0 parent 1: protocol ip prio 50 u32 match ip src 0.0.0.0/0 flowid :1;
-  tc qdisc add dev eth0 root tbf rate ${bw}mbit latency ${latency}ms burst ${bw}Mb;
+  tc qdisc add dev eth0 root tbf rate ${bw}mbit latency ${latency}ms burst ${bw}mbit;
   ssh aby31 "tc qdisc add dev eth0 handle 1: ingress; tc filter add dev eth0 parent 1: protocol ip prio 50 u32 match ip src 0.0.0.0/0 flowid :1; tc qdisc add dev eth0 root tbf rate "${bw}"mbit latency "${latency}"ms burst "${bw}"Mb";
   ssh aby32 "tc qdisc add dev eth0 handle 1: ingress; tc filter add dev eth0 parent 1: protocol ip prio 50 u32 match ip src 0.0.0.0/0 flowid :1; tc qdisc add dev eth0 root tbf rate "${bw}"mbit latency "${latency}"ms burst "${bw}"Mb";
 

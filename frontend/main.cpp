@@ -72,15 +72,41 @@ int main(int argc, char** argv) {
 
   if (FUNC == "rank") 
 		test_cipher_rank_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  
+  if (FUNC == "sort")
+    test_cipher_sort_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
 
 	if (FUNC == "search") 
 		test_cipher_search_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
+  
+  if (FUNC == "select")
+    test_cipher_select_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
 
 	if(FUNC == "vector")
     test_vectorization(cmd, N, TASK_NUM);
   
-  if(FUNC == "profile_index")
-    profile_index(cmd, N, M, OPT_BLOCK, TASK_NUM);
+  if(FUNC == "profile_index"){
+    if(task_size != 1){
+      std::runtime_error("For profiling, the task_size can only be 1, instead of : " + to_string(task_size));
+    }
+    double epsilon = 5;
+    size_t gap = 100;
+    size_t vec_start = 1 << 5;
+    if(cmd.isSet("EPSILON")) {
+      auto keys = cmd.getMany<double>("EPSILON");
+      epsilon = keys[0];
+    }
+    if(cmd.isSet("GAP")) {
+      auto keys = cmd.getMany<size_t>("GAP");
+      gap = keys[0];
+    }
+    if(cmd.isSet("VEC_START")){
+      auto keys = cmd.getMany<size_t>("VEC_START");
+      vec_start = keys[0];
+    }
+    probe_profile_index(cmd, N, M, vec_start, epsilon, gap);
+  }
+    // profile_index(cmd, N, M, OPT_BLOCK, TASK_NUM);
 		
 
   MPI_Finalize();

@@ -538,6 +538,11 @@ class MPISearch : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
 };
 
 
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class SubIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+  
+}
+
 int ptr_secret_index(int pIdx, std::vector<aby3::si64>& sharedM,
                      std::vector<aby3::si64>& secretIndex,
                      std::vector<aby3::si64>& res, aby3::Sh3Evaluator& eval,

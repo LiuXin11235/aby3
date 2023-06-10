@@ -59,3 +59,9 @@ void debug_info(std::string info){
   ofs << info << std::endl;
   ofs.close();
 }
+
+void write_log(std::string log_file, std::string info){
+  std::ofstream ofs(log_file, std::ios_base::app);
+  ofs << info << std::endl;
+  ofs.close();
+}

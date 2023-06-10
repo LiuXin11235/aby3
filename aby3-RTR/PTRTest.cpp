@@ -1,6 +1,9 @@
+#include <chrono>  
+#include <thread> 
 #include "PTRTest.h"
 #include "PTRFunction.h"
 #include "BuildingBlocks.h"
+// #include "debug.h"
 #include "./Pair_then_Reduce/include/datatype.h"
 
 using namespace oc;
@@ -8,6 +11,7 @@ using namespace aby3;
 using namespace std;
 
 // #define DEBUG
+#define LOGING
 
 int test_cipher_index_ptr(CLP& cmd, int n, int m){
 
@@ -179,41 +183,16 @@ int test_cipher_index_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   }
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecIndex.data(), range_index, vecM.data(), res.data());
+
   end = clock();
   double time_task_eval = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask << "\ntime_combine: " << std::setprecision(5) << mpiPtrTask->time_combine << "\n" << std::endl;
     ofs.close();
   }
-
-  // // // #ifdef DEBUG
-  // if(rank == 0){
-  //   cout << "my rank = " << rank << " | I AM IN HERE!!!" << endl;
-  //   // test for correctness:
-  //   si64Matrix aby3res(m, 1);
-  //   for(int i=0; i<m; i++){
-  //     aby3res(i, 0, res[i]);
-  //   }
-
-  //   i64Matrix plainTest(n, 1);
-  //   for (int i = 0; i < n; i++) plainTest(i, 0) = i;
-
-  //   i64Matrix plain_res;
-  //   enc.revealAll(runtime, aby3res, plain_res).get();
-  //   if (role == 0) {
-  //     for(int i=0; i<m; i++){
-  //       if(plain_res(i, 0) != plainTest(n - 1 - i)){
-  //         cout << "res != test in index " << i << "\nres[i] = " <<  plain_res(i, 0) << " plainTest = " << plainTest(n - 1 - i) << endl;
-  //       }
-  //     }
-  //     cout << "FINISH!" << endl;
-  //   }
-  // }
-// #endif
-
 }
 
 
@@ -224,7 +203,7 @@ int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  cout << rank << endl;
+  // cout << rank << endl;
 
   clock_t start, end;
 
@@ -274,19 +253,19 @@ int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   for (int i = 0; i < partial_len; i++) {
     plainTest(i, 0) = i + m_start;
   }
-  int* range_index = new int[partial_len];
-  for(int i=m_start; i<m_end + 1; i++) range_index[i-m_start] = i;
+  int* range_index = new int[m];
+  for(int i=0; i<m; i++) range_index[i] = i;
 
 
-  i64Matrix plainIndex(m, 1);
+  i64Matrix plainIndex(partial_len, 1);
   // inverse sequence.
-  for (int i = 0; i < m; i++) {
-    plainIndex(i, 0) = n - 1 - i;
+  for (int i = 0; i < partial_len; i++) {
+    plainIndex(i, 0) = n - 1 - (i + m_start);
   }
 
   // generate the cipher test data.
   si64Matrix sharedM(partial_len, 1);
-  si64Matrix sharedIndex(m, 1);
+  si64Matrix sharedIndex(partial_len, 1);
   if(role == 0){
       enc.localIntMatrix(runtime, plainTest, sharedM).get();
       enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
@@ -300,8 +279,8 @@ int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   
   vector<si64> res(m);
   vector<si64> vecM(partial_len);
-  vector<si64> vecIndex(m);
-  for(int i=0; i<m; i++) vecIndex[i] = sharedIndex(i, 0);
+  vector<si64> vecIndex(partial_len);
+  for(int i=0; i<partial_len; i++) vecIndex[i] = sharedIndex(i, 0);
   for(int i=0; i<m; i++) res[i] = init_res(i, 0);
   for(int i=0; i<partial_len; i++) vecM[i] = sharedM(i, 0);
 
@@ -319,35 +298,9 @@ int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask << "\ntime_combine: " << std::setprecision(5) << mpiPtrTask->time_combine << "\n" << std::endl;
     ofs.close();
   }
-
-  // // // #ifdef DEBUG
-  // if(rank == 0){
-  //   cout << "my rank = " << rank << " | I AM IN HERE!!!" << endl;
-  //   // test for correctness:
-  //   si64Matrix aby3res(m, 1);
-  //   for(int i=0; i<m; i++){
-  //     aby3res(i, 0, res[i]);
-  //   }
-
-  //   i64Matrix plainTest(n, 1);
-  //   for (int i = 0; i < n; i++) plainTest(i, 0) = i;
-
-  //   i64Matrix plain_res;
-  //   enc.revealAll(runtime, aby3res, plain_res).get();
-  //   if (role == 0) {
-  //     for(int i=0; i<m; i++){
-  //       if(plain_res(i, 0) != plainTest(n - 1 - i)){
-  //         cout << "res != test in index " << i << "\nres[i] = " <<  plain_res(i, 0) << " plainTest = " << plainTest(n - 1 - i) << endl;
-  //       }
-  //     }
-  //     cout << "FINISH!" << endl;
-  //   }
-  // }
-// #endif
-
 }
 
 
@@ -357,7 +310,7 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  cout << rank << endl;
+  // cout << rank << endl;
 
   clock_t start, end;
 
@@ -439,37 +392,13 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
   end = clock();
   double time_task_eval = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
+
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask << "\ntime_combine: " << std::setprecision(5) << mpiPtrTask->time_combine << "\n" << std::endl;
     ofs.close();
   }
-
-  // // // #ifdef DEBUG
-  // if(rank == 0){
-  //   cout << "my rank = " << rank << " | I AM IN HERE!!!" << endl;
-  //   // test for correctness:
-  //   si64Matrix aby3res(m, 1);
-  //   for(int i=0; i<m; i++){
-  //     aby3res(i, 0, res[i]);
-  //   }
-
-  //   i64Matrix plainTest(n, 1);
-  //   for (int i = 0; i < n; i++) plainTest(i, 0) = i;
-
-  //   i64Matrix plain_res;
-  //   enc.revealAll(runtime, aby3res, plain_res).get();
-  //   if (role == 0) {
-  //     for(int i=0; i<m; i++){
-  //       if(plain_res(i, 0) != plainTest(n - 1 - i)){
-  //         cout << "res != test in index " << i << "\nres[i] = " <<  plain_res(i, 0) << " plainTest = " << plainTest(n - 1 - i) << endl;
-  //       }
-  //     }
-  //     cout << "FINISH!" << endl;
-  //   }
-  // }
-// #endif
 }
 
 
@@ -479,7 +408,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  cout << rank << endl;
+  // cout << rank << endl;
 
   clock_t start, end;
 
@@ -505,7 +434,6 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
   multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
   end = clock();
   double time_task_setup = double((end - start)*1000)/(CLOCKS_PER_SEC);
-
 
   start = clock();
   // construct task
@@ -561,40 +489,20 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
   start = clock();
   // evaluate the task.
   mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr, res.data());
+
+  // TODO:
+  // mpiPtrIndex->data();
+
+
   end = clock();
   double time_task_eval = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << "subTask: " << std::setprecision(5) << mpiPtrRank->time_subTask << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine << "\n" << std::endl;
     ofs.close();
   }
-
-  // // // #ifdef DEBUG
-  // if(rank == 0){
-  //   cout << "my rank = " << rank << " | I AM IN HERE!!!" << endl;
-  //   // test for correctness:
-  //   si64Matrix aby3res(m, 1);
-  //   for(int i=0; i<m; i++){
-  //     aby3res(i, 0, res[i]);
-  //   }
-
-  //   i64Matrix plainTest(n, 1);
-  //   for (int i = 0; i < n; i++) plainTest(i, 0) = i;
-
-  //   i64Matrix plain_res;
-  //   enc.revealAll(runtime, aby3res, plain_res).get();
-  //   if (role == 0) {
-  //     for(int i=0; i<m; i++){
-  //       if(plain_res(i, 0) != plainTest(n - 1 - i)){
-  //         cout << "res != test in index " << i << "\nres[i] = " <<  plain_res(i, 0) << " plainTest = " << plainTest(n - 1 - i) << endl;
-  //       }
-  //     }
-  //     cout << "FINISH!" << endl;
-  //   }
-  // }
-// #endif
 }
 
 
@@ -604,7 +512,7 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  cout << rank << endl;
+  // cout << rank << endl;
 
   clock_t start, end;
 
@@ -710,7 +618,7 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt
   if(rank == 0){
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
-    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval << "\n" << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask << "\ntime_combine: " << std::setprecision(5) << mpiPtrTask->time_combine << "\n" << std::endl;
     ofs.close();
   }
 
@@ -723,8 +631,6 @@ int profile_index(oc::CLP& cmd, int n, int m, int vector_size, int task_num){
 	int rank, size;  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  // cout << rank << endl;
 
   clock_t start, end;
 
@@ -837,6 +743,273 @@ int profile_index(oc::CLP& cmd, int n, int m, int vector_size, int task_num){
     ofs << "time_setup: " << std::setprecision(5) << time_task_setup << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep << "\ntime_task_init: " << std::setprecision(5) << time_task_init << "\ntime_task_profile: " << std::setprecision(5) << time_task_eval << "\n" << std::endl;
     ofs.close();
   }
+}
+
+
+int probe_profile_index(oc::CLP& cmd, int n, int m, int vector_size_start, double epsilon, size_t gap){
+
+  // used to profile single task with limited bandwidth and see its performence.
+  clock_t start, end;
+  // cout << "in prob profile index " << endl;
+  // set the log file.
+  std::string LOG_FOLDER="/root/aby3/Record/Record_probe/";
+  if(cmd.isSet("logFolder")){
+      auto keys = cmd.getMany<std::string>("logFolder");
+      LOG_FOLDER = keys[0];
+  }
+  // cout << "LOG_FOLDER: " << LOG_FOLDER << endl;
+  std::string logging_file = LOG_FOLDER + "probe.log";
+  std::string profiler_file = LOG_FOLDER + "probe.res";
+
+  int role = -1;
+  int repeats_ = 100;
+  if(cmd.isSet("role")){
+      auto keys = cmd.getMany<int>("role");
+      role = keys[0];
+  }
+  if(role == -1){
+      throw std::runtime_error(LOCATION);
+  }
+  if(cmd.isSet("repeats")){
+    auto keys = cmd.getMany<int>("repeats");
+    repeats_ = keys[0];
+  }
+
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  distribute_setup((u64)role, ios, enc, eval, runtime);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  auto mpiPtrTask = new MPISecretIndex<aby3::si64, int, aby3::si64, aby3::si64, SubIndex>(1, vector_size_start, role, enc, runtime, eval);
+  mpiPtrTask->circuit_construct({(size_t)vector_size_start}, {(size_t)n});
+  m = vector_size_start;
+  // data construct
+  size_t m_start = mpiPtrTask->m_start;
+  size_t m_end = mpiPtrTask->m_end;
+  size_t partial_len = m_end - m_start + 1;
+  si64Matrix sharedM(partial_len, 1);
+  si64Matrix sharedIndex(m, 1);
+  init_ones(role, enc, runtime, sharedM, partial_len);  
+  init_ones(role, enc, runtime, sharedIndex, m);  
+  int* range_index = new int[partial_len];
+  for(int i=m_start; i<m_end + 1; i++) range_index[i-m_start] = i;
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  
+  vector<si64> res(m);
+  vector<si64> vecM(partial_len);
+  vector<si64> vecIndex(m);
+  for(int i=0; i<m; i++) vecIndex[i] = sharedIndex(i, 0);
+  for(int i=0; i<m; i++) res[i] = init_res(i, 0);
+  for(int i=0; i<partial_len; i++) vecM[i] = sharedM(i, 0);
+
+  // construct the fake data
+  mpiPtrTask->set_selective_value(vecM.data(), 0);
+  FakeArray<aby3::si64> dataX = fake_repeat(vecIndex.data(), mpiPtrTask->shapeX, mpiPtrTask->m, 0);
+  FakeArray<int> dataY = fake_repeat(range_index, mpiPtrTask->shapeY, mpiPtrTask->n, 1, mpiPtrTask->m_start, mpiPtrTask->m_end - mpiPtrTask->m_start + 1);
+
+  start = clock();
+  for(int i=0; i<repeats_; i++){
+    mpiPtrTask->subTask->circuit_profile(dataX, dataY, mpiPtrTask->selectV);
+  }
+  end = clock();
+  double start_time;
+
+  if(role == 0){
+    start_time = double((end - start)*1000)/(repeats_ * CLOCKS_PER_SEC);
+    runtime.mComm.mNext.asyncSend<double>(start_time);
+    runtime.mComm.mPrev.asyncSend<double>(start_time);
+  }
+  if(role == 1){
+    auto tmp = runtime.mComm.mPrev.asyncRecv<double>(&start_time, 1);
+    tmp.get();
+  }
+  if(role == 2){
+    auto tmp = runtime.mComm.mNext.asyncRecv<double>(&start_time, 1);
+    tmp.get();
+  }
+
+  double double_time = -1;
+  size_t vector_size = vector_size_start;
+  double last_ratio = start_time / vector_size;
+  double ratio = last_ratio / 2;
+
+  #ifdef LOGING
+  write_log(logging_file, "time = " + to_string(start_time) + " | vector_size = " + to_string(vector_size) + "| ratio = " + to_string(start_time / vector_size));
+  #endif
+
+  // exponential probe
+  // while(ratio < last_ratio){
+  while(true){
+    vector_size *= 2;
+    auto testMpiTask = new MPISecretIndex<aby3::si64, int, aby3::si64, aby3::si64, SubIndex>(1, vector_size, role, enc, runtime, eval);
+    testMpiTask->circuit_construct({vector_size}, {n});
+    m = vector_size;
+    // data construct
+    size_t m_start_ = testMpiTask->m_start;
+    size_t m_end_ = testMpiTask->m_end;
+    size_t partial_len_ = m_end_ - m_start_ + 1;
+    si64Matrix sharedM_(partial_len_, 1);
+    si64Matrix sharedIndex_(vector_size, 1);
+    init_ones(role, enc, runtime, sharedM_, partial_len_);  
+    init_ones(role, enc, runtime, sharedIndex_, vector_size);  
+    int* range_index_ = new int[partial_len_];
+    for(int i=m_start_; i<m_end_ + 1; i++) range_index_[i-m_start_] = i;
+    si64Matrix init_res_;
+    init_zeros(role, enc, runtime, init_res_, vector_size);
+    
+    vector<si64> res_(m);
+    vector<si64> vecM_(partial_len_);
+    vector<si64> vecIndex_(m);
+    for(int i=0; i<m; i++) vecIndex_[i] = sharedIndex_(i, 0);
+    for(int i=0; i<m; i++) res_[i] = init_res_(i, 0);
+    for(int i=0; i<partial_len_; i++) vecM_[i] = sharedM_(i, 0);
+
+    FakeArray<aby3::si64> dataX_ = fake_repeat(vecIndex_.data(), testMpiTask->shapeX, testMpiTask->m, 0);
+    FakeArray<int> dataY_ = fake_repeat(range_index_, testMpiTask->shapeY, testMpiTask->n, 1, testMpiTask->m_start, testMpiTask->m_end - testMpiTask->m_start + 1);
+
+    testMpiTask->set_default_value(dval);
+    testMpiTask->set_selective_value(vecM_.data(), 0);
+
+    #ifdef LOGING
+    write_log(logging_file, "!!!! staring with vector: " + to_string(vector_size));
+    this_thread::sleep_for(chrono::seconds(3));
+    #endif
+
+    if(vector_size > 5000 && vector_size < 50000){
+      repeats_ = 1000;
+    }
+
+    if(vector_size > 50000){
+      repeats_ = 50;
+    }
+    
+    start = clock();
+    for(int i=0; i<repeats_; i++){
+      testMpiTask->subTask->circuit_profile(dataX_, dataY_, testMpiTask->selectV);
+    }
+    end = clock();
+
+    // #ifdef LOGING
+    // write_log(logging_file, "time = " + to_string(double_time) + " | vector_size = " + to_string(vector_size));
+    // write_log(logging_file, "time diff = " + to_string(double_time - start_time));
+    // #endif
+
+    // synchronize with double time...
+    if(role == 0){
+      double_time = double((end - start)*1000)/(repeats_ * CLOCKS_PER_SEC);
+      runtime.mComm.mNext.asyncSend<double>(double_time);
+      runtime.mComm.mPrev.asyncSend<double>(double_time);
+    }
+    if(role == 1){
+      auto tmp = runtime.mComm.mPrev.asyncRecv<double>(&double_time, 1);
+      tmp.get();
+    }
+    if(role == 2){
+      auto tmp = runtime.mComm.mNext.asyncRecv<double>(&double_time, 1);
+      tmp.get();
+    }
+
+    last_ratio = ratio;
+    ratio = double_time / vector_size;
+
+    #ifdef LOGING
+    write_log(logging_file, "time = " + to_string(double_time) + " | vector_size = " + to_string(vector_size) + "| ratio = " + to_string(double_time / vector_size));
+    write_log(logging_file, "time diff = " + to_string(double_time - start_time));
+    #endif
+
+  }
+
+  // then find B by binary split.
+  size_t vector_start = vector_size / 2;
+  size_t vector_end = vector_size;
+
+  #ifdef LOGING
+  write_log(logging_file, "after exponential probe, interval is at : " + to_string(vector_start) + " to " + to_string(vector_end));
+  #endif
+
+
+  // size_t mid_point;
+  while((vector_end - vector_start) > gap){
+    vector_size = (size_t) (vector_start + vector_end) / 2;
+
+    // measure time
+    auto testMpiTask = new MPISecretIndex<aby3::si64, int, aby3::si64, aby3::si64, SubIndex>(1, vector_size, role, enc, runtime, eval);
+    testMpiTask->circuit_construct({vector_size}, {n});
+    m = vector_size;
+
+    // data construct
+    size_t m_start_ = testMpiTask->m_start;
+    size_t m_end_ = testMpiTask->m_end;
+    size_t partial_len_ = m_end_ - m_start_ + 1;
+    si64Matrix sharedM_(partial_len_, 1);
+    si64Matrix sharedIndex_(vector_size, 1);
+    init_ones(role, enc, runtime, sharedM_, partial_len_);  
+    init_ones(role, enc, runtime, sharedIndex_, vector_size);  
+    int* range_index_ = new int[partial_len_];
+    for(int i=m_start_; i<m_end_ + 1; i++) range_index_[i-m_start_] = i;
+    si64Matrix init_res_(vector_size, 1);
+    init_ones(role, enc, runtime, init_res_, vector_size);
+
+    vector<si64> res_(m);
+    vector<si64> vecM_(partial_len_);
+    vector<si64> vecIndex_(m);
+    for(int i=0; i<m; i++) vecIndex_[i] = sharedIndex_(i, 0);
+    for(int i=0; i<m; i++) res_[i] = init_res_(i, 0);
+    for(int i=0; i<partial_len_; i++) vecM_[i] = sharedM_(i, 0);
+
+    FakeArray<aby3::si64> dataX_ = fake_repeat(vecIndex_.data(), testMpiTask->shapeX, testMpiTask->m, 0);
+    FakeArray<int> dataY_ = fake_repeat(range_index_, testMpiTask->shapeY, testMpiTask->n, 1, testMpiTask->m_start, testMpiTask->m_end - testMpiTask->m_start + 1);
+
+    testMpiTask->set_default_value(dval);
+    testMpiTask->set_selective_value(vecM_.data(), 0);
+
+    start = clock();
+    for(int i=0; i<repeats_; i++){
+      // cout << "in test: " << i << endl;
+      testMpiTask->subTask->circuit_profile(dataX_, dataY_, testMpiTask->selectV);
+    }
+    end = clock();
+    // double_time = double((end - start)*1000)/(repeats_ * CLOCKS_PER_SEC);
+
+    // synchronize with double time...
+    if(role == 0){
+      double_time = double((end - start)*1000)/(repeats_ * CLOCKS_PER_SEC);
+      runtime.mComm.mNext.asyncSend<double>(double_time);
+      runtime.mComm.mPrev.asyncSend<double>(double_time);
+    }
+    if(role == 1){
+      auto tmp = runtime.mComm.mPrev.asyncRecv<double>(&double_time, 1);
+      tmp.get();
+    }
+    if(role == 2){
+      auto tmp = runtime.mComm.mNext.asyncRecv<double>(&double_time, 1);
+      tmp.get();
+    }
+
+    last_ratio = ratio;
+    ratio = double_time / vector_size;
+
+    #ifdef LOGING
+    write_log(logging_file, "time = " + to_string(double_time) + " | vector_size = " + to_string(vector_size) + "| ratio = " + to_string(double_time / vector_size));
+    #endif
+
+    if(ratio > last_ratio) vector_end = vector_size;
+    else vector_start = vector_size;
+  }
+
+  size_t optimal_b = (size_t) ((vector_start + vector_end) / 2);
+  
+  // save the optimalB to config file.
+  std::ofstream resfs(profiler_file, std::ios_base::app);
+  resfs << "optimal_B: " << optimal_b << std::endl;  
+  resfs.close();
+
+  return 0;
 }
 
 
