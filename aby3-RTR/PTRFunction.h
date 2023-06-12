@@ -571,6 +571,220 @@ class MPIAverage : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
   }
 };
 
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class SubMeanDis : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor* enc;
+  aby3::Sh3Runtime* runtime;
+  aby3::Sh3Evaluator* eval;
+
+  using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+  SubMeanDis(const size_t optimal_block, const int task_id, const int pIdx,
+          aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+          aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+    this->have_selective = false;
+  }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+    
+    for (int i = 0; i < resLeft.size(); i++)
+      local_res[i] = resLeft[i] + resRight[i];
+    return;
+  }
+
+ protected:
+  virtual void compute_local_table(std::vector<NUMX>& expandX,
+                                   std::vector<NUMY>& expandY,
+                                   std::vector<NUMT>& local_table,
+                                   BlockInfo* binfo) {
+    // expand the selectV
+    size_t k = expandX[0].size();
+
+    // flat the two-dimensional inputs.
+    size_t exp_len = expandX.size()*k;
+    std::vector<typename NUMX::value_type> flatX, flatY;
+    for (const auto& innerVec : expandX){
+        for (const auto& element : innerVec) flatX.push_back(element);
+    }
+    for (const auto& innerVec : expandY){
+        for (const auto& element : innerVec) flatY.push_back(element);
+    }
+    // vector mul
+    if(std::is_same<typename NUMX::value_type, aby3::si64>::value){
+      vector_mean_square(this->pIdx, flatX, flatY, flatX, *(this->eval), *(this->enc), *(this->runtime));
+    }
+    
+    // reduce to local table
+    for(int i=0; i<expandX.size(); i++){
+        local_table[i] = this->initial_value;
+        for (int j=0; j<k; j++) local_table[i] = local_table[i] + flatX[j];
+    }
+    return;
+  }
+};
+
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
+          template <typename, typename, typename, typename> class TASK>
+class MPIMeanDis : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor& enc;
+  aby3::Sh3Runtime& runtime;
+  aby3::Sh3Evaluator& eval;
+
+  // setup all the aby3 environment variables, pIdx and rank.
+  using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
+  MPIMeanDis(int tasks, size_t optimal_block, const int pIdx,
+                 aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+                 aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(enc),
+        runtime(runtime),
+        eval(eval),
+        MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {}
+
+  // override sub_task create.
+  void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
+                       size_t table_end) override {
+    auto subTaskPtr(
+        new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
+                                         this->enc, this->runtime, this->eval));
+    this->subTask.reset(subTaskPtr);
+    this->subTask->initial_value = this->default_value;
+    this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
+                                     table_end);
+    for (int j = 0; j < this->n; j++)
+      this->subTask->res[j] = this->default_value;
+  }
+};
+
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class SubBioMetric : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor* enc;
+  aby3::Sh3Runtime* runtime;
+  aby3::Sh3Evaluator* eval;
+
+  using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+  SubBioMetric(const size_t optimal_block, const int task_id, const int pIdx,
+          aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+          aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+    this->have_selective = false;
+  }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+    aby3::sbMatrix comp_res;
+    vector_cipher_gt(this->pIdx, resLeft, resRight, comp_res, *(this->eval), *(this->enc), *(this->runtime));
+    // cout << "after new gt" << endl;
+    // multiply for value extraction.
+    aby3::si64Matrix matSub;
+    matSub.resize(resLeft.size(), 1);
+    for(int i=0; i<resLeft.size(); i++) matSub(i, 0, resRight[i] - resLeft[i]);
+    cipher_mul_seq(this->pIdx, matSub, comp_res, matSub, *(this->eval), *(this->enc), *(this->runtime));
+    // compute the final result
+    for(int i=0; i<resLeft.size(); i++){
+      local_res[i] = resRight[i] - matSub(i, 0);
+    }
+    // cout << "before return reduce? " << endl;
+    return;
+  }
+
+ protected:
+  virtual void compute_local_table(std::vector<NUMX>& expandX,
+                                   std::vector<NUMY>& expandY,
+                                   std::vector<NUMT>& local_table,
+                                   BlockInfo* binfo) {
+    // expand the selectV
+    size_t k = expandX[0].size();
+
+    // flat the two-dimensional inputs.
+    size_t exp_len = expandX.size()*k;
+    std::vector<typename NUMX::value_type> flatX, flatY;
+    for (const auto& innerVec : expandX){
+        for (const auto& element : innerVec) flatX.push_back(element);
+    }
+    for (const auto& innerVec : expandY){
+        for (const auto& element : innerVec) flatY.push_back(element);
+    }
+    // vector mul
+    if(std::is_same<typename NUMX::value_type, aby3::si64>::value){
+      vector_mean_square(this->pIdx, flatX, flatY, flatX, *(this->eval), *(this->enc), *(this->runtime));
+    }
+    
+    // reduce to local table
+    for(int i=0; i<expandX.size(); i++){
+        local_table[i] = this->initial_value;
+        for (int j=0; j<k; j++) local_table[i] = local_table[i] + flatX[j];
+    }
+    // cout << "can finished local table" << endl;
+    return;
+  }
+};
+
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
+          template <typename, typename, typename, typename> class TASK>
+class MPIBioMetric : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor& enc;
+  aby3::Sh3Runtime& runtime;
+  aby3::Sh3Evaluator& eval;
+
+  // setup all the aby3 environment variables, pIdx and rank.
+  using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
+  MPIBioMetric(int tasks, size_t optimal_block, const int pIdx,
+                 aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+                 aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(enc),
+        runtime(runtime),
+        eval(eval),
+        MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {}
+
+  // override sub_task create.
+  void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
+                       size_t table_end) override {
+    auto subTaskPtr(
+        new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
+                                         this->enc, this->runtime, this->eval));
+    this->subTask.reset(subTaskPtr);
+    this->subTask->initial_value = this->default_value;
+    this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
+                                     table_end);
+    for (int j = 0; j < this->n; j++)
+      this->subTask->res[j] = this->default_value;
+  }
+};
+
+
 int ptr_secret_index(int pIdx, std::vector<aby3::si64>& sharedM,
                      std::vector<aby3::si64>& secretIndex,
                      std::vector<aby3::si64>& res, aby3::Sh3Evaluator& eval,

@@ -10,6 +10,8 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
+#define LOCAL_TEST
+
 static int BASEPORT=6000;
 
 void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
@@ -43,6 +45,7 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
     runtime.init(partyIdx, comm);
 }
 
+#ifndef LOCAL_TEST
 void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval, Sh3Runtime &runtime){
   CommPkg comm;
   string fport, sport, tport;
@@ -79,7 +82,46 @@ void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor 
   // Copies the Channels and will use them for later protcols.
   runtime.init(partyIdx, comm);
 }
+#endif
 
+#ifdef LOCAL_TEST
+void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval, Sh3Runtime &runtime){
+  CommPkg comm;
+  string fport, sport, tport;
+  switch (partyIdx) {
+    case 0:
+      fport = std::to_string(BASEPORT + 3*rank);
+      sport = std::to_string(BASEPORT + 3*rank + 1);
+      comm.mNext = Session(ios, "127.0.0.1:"+fport, SessionMode::Server, "01")
+                       .addChannel();
+      comm.mPrev = Session(ios, "127.0.0.1:"+sport, SessionMode::Server, "02")
+                       .addChannel();
+      break;
+    case 1:
+      fport = std::to_string(BASEPORT + 3*rank);
+      tport = std::to_string(BASEPORT + 3*rank + 2);
+      comm.mNext = Session(ios, "127.0.0.1:"+tport, SessionMode::Server, "12")
+                       .addChannel();
+      comm.mPrev = Session(ios, "127.0.0.1:"+fport, SessionMode::Client, "01")
+                       .addChannel();
+      break;
+    default:
+      sport = std::to_string(BASEPORT + 3*rank + 1);
+      tport = std::to_string(BASEPORT + 3*rank + 2);
+      comm.mNext = Session(ios, "127.0.0.1:"+sport, SessionMode::Client, "02")
+                       .addChannel();
+      comm.mPrev = Session(ios, "127.0.0.1:"+tport, SessionMode::Client, "12")
+                       .addChannel();
+      break;
+  }
+  // Establishes some shared randomness needed for the later protocols
+  enc.init(partyIdx, comm, sysRandomSeed());
+  // Establishes some shared randomness needed for the later protocols
+  eval.init(partyIdx, comm, sysRandomSeed());
+  // Copies the Channels and will use them for later protcols.
+  runtime.init(partyIdx, comm);
+}
+#endif
 
 void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
            Sh3Runtime &runtime) {
@@ -110,6 +152,22 @@ void basic_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &
     eval.init(partyIdx, comm, sysRandomSeed());
     // Copies the Channels and will use them for later protcols.
     runtime.init(partyIdx, comm);
+}
+
+
+int vector_mean_square(int pIdx, const std::vector<aby3::si64>&sharedA, const std::vector<aby3::si64>&sharedB, std::vector<aby3::si64>&res, Sh3Evaluator &eval, Sh3Encryptor& enc, Sh3Runtime &runtime){
+  si64Matrix matA(sharedA.size(), 1);
+  si64Matrix matRes(res.size(), 1);
+
+  for(int i=0; i<sharedA.size(); i++){
+    matA(i, 0, sharedA[i] - sharedB[i]);
+  }
+
+  eval.asyncMul(runtime, matA, matA, matRes).get();
+
+  for(int i=0; i<res.size(); i++) res[i] = matRes(i, 0);
+
+  return 0;
 }
 
 
@@ -394,14 +452,26 @@ int cipher_gt(int pIdx, si64Matrix &sharedA, si64Matrix &sharedB, sbMatrix &res,
 }
 
 
-int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, std::vector<aby3::si64>& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
+int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, aby3::sbMatrix& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
   si64Matrix diffAB(sintA.size(), 1);
-  sbMatrix tmpRes(sintA.size(), 1);
+  // sbMatrix tmpRes(sintA.size(), 1);
   for(int i=0; i<sintA.size(); i++){
     diffAB(i, 0, sintA[i] - sintB[1]);
   }
   Sh3Task task = runtime.noDependencies();
-  fetch_msb(pIdx, diffAB, tmpRes, eval, runtime, task);
+  fetch_msb(pIdx, diffAB, res, eval, runtime, task);
+  return 0;
+}
+
+int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, std::vector<aby3::si64>& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
+  // si64Matrix diffAB(sintA.size(), 1);
+  sbMatrix tmpRes(sintA.size(), 1);
+  vector_cipher_gt(pIdx, sintA, sintB, tmpRes, eval, enc, runtime);
+  // for(int i=0; i<sintA.size(); i++){
+  //   diffAB(i, 0, sintA[i] - sintB[1]);
+  // }
+  // Sh3Task task = runtime.noDependencies();
+  // fetch_msb(pIdx, diffAB, tmpRes, eval, runtime, task);
 
   si64Matrix ones(sintA.size(), 1);
   cipher_mul_seq(pIdx, ones, tmpRes, ones, eval, enc, runtime);
@@ -410,6 +480,17 @@ int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
   }
   return 0;
 }
+
+// int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, aby3::sbMatrix& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
+//   si64Matrix diffAB(sintA.size(), 1);
+//   sbMatrix tmpRes(sintA.size(), 1);
+//   for(int i=0; i<sintA.size(); i++){
+//     diffAB(i, 0, sintA[i] - sintB[1]);
+//   }
+//   Sh3Task task = runtime.noDependencies();
+//   fetch_msb(pIdx, diffAB, tmpRes, eval, runtime, task);
+//   return 0;
+// }
 
 
 int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, sbMatrix& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){

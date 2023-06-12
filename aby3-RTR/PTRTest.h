@@ -21,6 +21,12 @@ int test_cipher_select_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num,
 int test_cipher_average_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num,
                                 int opt_B);
 
+int test_cipher_mean_distance(oc::CLP& cmd, int n, int m, int k, int task_num,
+                              int opt_B);
+
+int test_cipher_bio_metric(oc::CLP& cmd, int n, int m, int k, int task_num,
+                              int opt_B);
+
 int profile_index(oc::CLP& cmd, int n, int m, int vector_size, int task_num);
 
 int probe_profile_index(oc::CLP& cmd, int n, int m, int vector_size_start,
