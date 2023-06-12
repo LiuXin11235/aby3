@@ -1,8 +1,6 @@
 task_list=("search" "select" "index" "average")
 log_folder_list=(./Record/Record_search ./Record/Record_select ./Record/Record_index ./Record/Record_average)
 
-# task_list=("average")
-# log_folder_list=(./Record/Record_average)
 
 day=$(date +%m-%d);
 timeStamp=$(date +"%H%M%s");
@@ -26,9 +24,9 @@ scp ./bin/frontend aby32:~/aby3/bin/ &
 wait;
 
 # test settings.
-N_list=(1000000)
+N_list=(100000)
 M=1
-optB_list=(250000)
+optB_list=(2500)
 repeat=1; test_times=10; retry_threshold=5
 task_num_list=(16)
 
@@ -61,5 +59,5 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
   done;
 
   # tar the results.
-  # tar cvf $log_folder.tar $log_folder;
+  tar cvf $log_folder.tar $log_folder;
 done;
