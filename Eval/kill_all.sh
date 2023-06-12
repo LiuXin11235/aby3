@@ -23,8 +23,6 @@ for pid in $pids; do
 done 
 
 targets=(aby31 aby32);
-if [ -n "$2" ]; then
-    for target_machine in ${targets[*]}; do
-        ssh $target_machine "sh ./aby3/Eval/kill_all.sh "${keyword};
-    done
-fi
+for target_machine in ${targets[*]}; do
+    ssh $target_machine "sh ./aby3/Eval/kill_all.sh "${keyword};
+done
