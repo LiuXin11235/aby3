@@ -12,7 +12,7 @@ using namespace std;
 // #define DEBUG
 #define LOGING
 
-int test_cipher_index_ptr(CLP& cmd, int n, int m){
+int test_cipher_index_ptr(CLP& cmd, size_t n, size_t m){
 
   int role = -1;
   if(cmd.isSet("role")){
@@ -83,7 +83,7 @@ int test_cipher_index_ptr(CLP& cmd, int n, int m){
 }
 
 
-int test_cipher_index_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
+int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int opt_B){
 
   // Get current process rank and size  
 	int rank, size;  
@@ -195,7 +195,7 @@ int test_cipher_index_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
 }
 
 
-int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
+int test_cipher_select_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int opt_B){
 
   // Get current process rank and size  
 	int rank, size;  
@@ -303,7 +303,7 @@ int test_cipher_select_ptr_mpi(CLP& cmd, int n, int m, int task_num, int opt_B){
 }
 
 
-int test_cipher_rank_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
+int test_cipher_rank_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   // Get current process rank and size  
 	int rank, size;  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
@@ -401,7 +401,7 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
 }
 
 
-int test_cipher_sort_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
+int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   // Get current process rank and size  
 	int rank, size;  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
@@ -505,7 +505,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, int n, int task_num, int opt_B){
 }
 
 
-int test_cipher_search_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt_B){
+int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, int opt_B){
   // Get current process rank and size  
 	int rank, size;  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
@@ -625,7 +625,7 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt
 }
 
 
-int test_cipher_average_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int opt_B){
+int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, int opt_B){
   
   //1.  task setup.
 	int rank, size;  
@@ -663,7 +663,7 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int op
   aby3::si64 dval;
   dval.mData[0] = 0, dval.mData[1] = 0;
   mpiPtrTask->set_default_value(dval);
-  mpiPtrTask->circuit_construct({1}, {n});
+  mpiPtrTask->circuit_construct({m}, {n});
   end = clock(); // time for task init.
   double time_task_init = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
@@ -701,7 +701,7 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, int n, int m, int task_num, int op
 }
 
 
-int profile_index(oc::CLP& cmd, int n, int m, int vector_size, int task_num){
+int profile_index(oc::CLP& cmd, size_t n, size_t m, int vector_size, int task_num){
     // Get current process rank and size  
 	int rank, size;  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
@@ -821,7 +821,7 @@ int profile_index(oc::CLP& cmd, int n, int m, int vector_size, int task_num){
 }
 
 
-int probe_profile_index(oc::CLP& cmd, int n, int m, int vector_size_start, double epsilon, size_t gap){
+int probe_profile_index(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, double epsilon, size_t gap){
 
   // used to profile single task with limited bandwidth and see its performence.
   clock_t start, end;
@@ -1088,7 +1088,7 @@ int probe_profile_index(oc::CLP& cmd, int n, int m, int vector_size_start, doubl
 }
 
 
-int test_vectorization(oc::CLP& cmd, int n_, int task_num){
+int test_vectorization(oc::CLP& cmd, size_t n_, int task_num){
   // Get current process rank and size  
 	int rank, size;  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
@@ -1123,7 +1123,7 @@ int test_vectorization(oc::CLP& cmd, int n_, int task_num){
   end = clock();
   double time_task_setup = double((end - start)*1000)/(CLOCKS_PER_SEC);
 
-  int n = n_;
+  size_t n = n_;
   int repeats = repeats_;
 
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) + "-TASKS=" + std::to_string(task_num) + "-" + std::to_string(rank);

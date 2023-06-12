@@ -23,28 +23,28 @@ int main(int argc, char** argv) {
   // reinit the environment and then finalize the environment.
   MPI_Init(&argc, &argv);
 
-  int N, M, TASK_NUM, OPT_BLOCK;
+  size_t N, M, TASK_NUM, OPT_BLOCK;
   std::string FUNC;
   if (cmd.isSet("N")) {
-    auto keys = cmd.getMany<int>("N");
+    auto keys = cmd.getMany<size_t>("N");
     N = keys[0];
   } else {
     throw std::runtime_error("No N defined");
   }
   if (cmd.isSet("M")) {
-    auto keys = cmd.getMany<int>("M");
+    auto keys = cmd.getMany<size_t>("M");
     M = keys[0];
   } else {
     throw std::runtime_error("No M defined");
   }
   if (cmd.isSet("TASK_NUM")) {
-    auto keys = cmd.getMany<int>("TASK_NUM");
+    auto keys = cmd.getMany<size_t>("TASK_NUM");
     TASK_NUM = keys[0];
   } else {
     throw std::runtime_error("No TASK_NUM defined");
   }
   if (cmd.isSet("OPT_BLOCK")) {
-    auto keys = cmd.getMany<int>("OPT_BLOCK");
+    auto keys = cmd.getMany<size_t>("OPT_BLOCK");
     OPT_BLOCK = keys[0];
   } else {
     throw std::runtime_error("No OPT_BLOCK defined");
