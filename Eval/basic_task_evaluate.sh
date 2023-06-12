@@ -24,11 +24,11 @@ scp ./bin/frontend aby32:~/aby3/bin/ &
 wait;
 
 # test settings.
-N_list=(100000)
-M=1
+N_list=(100000000 100000000 10000000)
+M_list=(1 10 100)
 optB_list=(2500)
-repeat=1; test_times=10; retry_threshold=5
-task_num_list=(16)
+repeat=1; test_times=3; retry_threshold=5
+task_num_list=(256)
 
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
@@ -40,18 +40,20 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
   for taskN in ${task_num_list[@]}; do
     for (( k=0; k<$test_times; k++ )); do
       for N in ${N_list[@]}; do
-        for optB in ${optB_list[@]}; do
-          # run the tasks with retrying.
-          j=0;
-          while [ $j -lt $retry_threshold ]; do
-            timeout 15m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
-            if [ $? -eq 0 ]; then
-              break; 
-            fi
-            j=$(expr $j + 1);
-            if [ $j -eq $retry_threshold ]; then
-              echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
-            fi
+        for M in ${M_list[@]}; do
+          for optB in ${optB_list[@]}; do
+            # run the tasks with retrying.
+            j=0;
+            while [ $j -lt $retry_threshold ]; do
+              timeout 50m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
+              if [ $? -eq 0 ]; then
+                break; 
+              fi
+              j=$(expr $j + 1);
+              if [ $j -eq $retry_threshold ]; then
+                echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
+              fi
+            done;
           done;
         done;
       done;
