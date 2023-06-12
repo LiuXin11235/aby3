@@ -109,7 +109,35 @@ int main(int argc, char** argv) {
     }
     probe_profile_index(cmd, N, M, vec_start, epsilon, gap);
   }
-    // profile_index(cmd, N, M, OPT_BLOCK, TASK_NUM);
+
+  if(FUNC == "mean_distance"){
+    int k = -1;
+    if(cmd.isSet("K")){
+      auto keys = cmd.getMany<int>("K");
+      k = keys[0];
+    }
+    if(k < 0){
+      throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                             " K must be setted, while K = " +
+                             std::to_string(k));
+    }
+    test_cipher_mean_distance(cmd, N, M, k, TASK_NUM, OPT_BLOCK);
+  }
+
+  if(FUNC == "bio_metric"){
+    int k = -1;
+    if(cmd.isSet("K")){
+      auto keys = cmd.getMany<int>("K");
+      k = keys[0];
+    }
+    if(k < 0){
+      throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                             " K must be setted, while K = " +
+                             std::to_string(k));
+    }
+    // cout << "can in this block!" << endl;
+    test_cipher_bio_metric(cmd, N, M, k, TASK_NUM, OPT_BLOCK);
+  }
 		
 
   MPI_Finalize();

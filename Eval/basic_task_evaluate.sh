@@ -1,8 +1,6 @@
 task_list=("search" "select" "index" "average")
 log_folder_list=(./Record/Record_search ./Record/Record_select ./Record/Record_index ./Record/Record_average)
 
-# task_list=("average")
-# log_folder_list=(./Record/Record_average)
 
 day=$(date +%m-%d);
 timeStamp=$(date +"%H%M%s");
