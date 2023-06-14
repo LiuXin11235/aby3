@@ -771,7 +771,7 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   }
 }
 
-int test_cipher_mean_distance(oc::CLP& cmd, int n, int m, int k, int task_num,
+int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
                               int opt_B) {
   // 1.  task setup.
   int rank, size;
@@ -867,7 +867,7 @@ int test_cipher_mean_distance(oc::CLP& cmd, int n, int m, int k, int task_num,
   }
 }
 
-int test_cipher_bio_metric(oc::CLP& cmd, int n, int m, int k, int task_num,
+int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
                               int opt_B) {
   // 1.  task setup.
   int rank, size;
@@ -965,7 +965,7 @@ int test_cipher_bio_metric(oc::CLP& cmd, int n, int m, int k, int task_num,
 
 
 
-int profile_index(oc::CLP& cmd, int n, int m, int vector_size, int task_num) {
+int profile_index(oc::CLP& cmd, size_t n, size_t m, int vector_size, int task_num) {
   // Get current process rank and size
   int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
