@@ -10,7 +10,7 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-#define LOCAL_TEST
+// #define LOCAL_TEST
 
 static int BASEPORT=6000;
 
