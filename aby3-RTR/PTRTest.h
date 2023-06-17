@@ -5,6 +5,8 @@
 
 int test_cipher_index_ptr(oc::CLP& cmd, size_t n, size_t m);
 
+int test_cipher_index_ptr_mpi_large(oc::CLP& cmd, size_t n, size_t m, int task_num, int opt_B);
+
 int test_cipher_index_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num,
                               int opt_B);
 

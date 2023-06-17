@@ -4,6 +4,8 @@
 #include "./Pair_then_Reduce/include/datatype.h"
 #include "BuildingBlocks.h"
 #include "PTRFunction.h"
+#include <sys/mman.h>
+#include <fcntl.h>
 
 using namespace oc;
 using namespace aby3;
@@ -11,6 +13,7 @@ using namespace std;
 
 // #define DEBUG
 #define LOGING
+const long MEM_LIMIT = 100000;
 
 int test_cipher_index_ptr(CLP& cmd, size_t n, size_t m){
 
@@ -79,6 +82,223 @@ int test_cipher_index_ptr(CLP& cmd, size_t n, size_t m){
       }
     }
     cout << "FINISH!" << endl;
+  }
+}
+
+
+int test_cipher_index_ptr_mpi_large(CLP& cmd, size_t n, size_t m, int task_num, int opt_B){
+
+  // Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // set the log file.
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_index/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
+                             "-M=" + std::to_string(n) + "-TASKS=" +
+                             std::to_string(task_num) + "-OPT_B=" +
+                             std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if (cmd.isSet("role")) {
+    auto keys = cmd.getMany<int>("role");
+    role = keys[0];
+  }
+  if (role == -1) {
+    throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // construct task
+  auto mpiPtrTask =
+      new MPISecretIndex<aby3::si64, int, aby3::si64, aby3::si64, SubIndex>(
+          task_num, opt_B, role, enc, runtime, eval);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrTask->set_default_value(dval);
+  mpiPtrTask->circuit_construct({m}, {n});
+
+  end = clock();  // time for task init.
+  double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  size_t m_start = mpiPtrTask->m_start;
+  size_t m_end = mpiPtrTask->m_end;
+
+  // generate the full data.
+  i64Matrix plainIndex(m, 1);
+  // inverse sequence.
+  for (int i = 0; i < m; i++) {
+    plainIndex(i, 0) = n - 1 - i;
+  }
+  si64Matrix sharedIndex(m, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+  } else {
+    enc.remoteIntMatrix(runtime, sharedIndex).get();
+  }
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  vector<si64> res(m);
+  vector<si64> vecIndex(m);
+  for (int i = 0; i < m; i++) vecIndex[i] = sharedIndex(i, 0);
+  for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+
+  // generate the large-scale data.
+  size_t partial_len = m_end - m_start + 1;
+  int* range_index;
+  si64* vecM;
+
+  if(partial_len > MEM_LIMIT){
+
+    // using mmap to for data generation vecM
+    static std::string file_vecM = "/root/aby3/aby3-RTR/vecM_rank-" + to_string(rank) + "role-" + to_string(role) + ".bin";
+    int fd_vecM = open(file_vecM.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd_vecM == -1) {
+        std::cerr << "无法打开文件" << std::endl;
+        return 1;
+    }
+    // init the file size.
+    if(ftruncate(fd_vecM, partial_len * sizeof(si64)) == -1){
+      std::cerr << "fd for vecM failed" << std::endl;
+      close(fd_vecM);
+      return 1;
+    }
+    // construct the mmap array
+    vecM = static_cast<si64*>(mmap(NULL, partial_len * sizeof(si64), PROT_READ | PROT_WRITE, MAP_SHARED, fd_vecM, 0));
+    if (vecM == MAP_FAILED) {
+        std::cerr << "mmap failed for vecM" << std::endl;
+        close(fd_vecM);
+        return 1;
+    }
+
+    // using mmap to for data generation range
+    static std::string file_range = "/root/aby3/aby3-RTR/range_rank-" + to_string(rank) + "role-" + to_string(role) + ".bin";
+    int fd_range = open(file_range.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd_range == -1) {
+        std::cerr << "无法打开文件" << std::endl;
+        return 1;
+    }
+    // init the file size.
+    if(ftruncate(fd_range, partial_len * sizeof(int)) == -1){
+      std::cerr << "fd for vecM failed" << std::endl;
+      close(fd_range);
+      return 1;
+    }
+    // construct the mmap array
+    range_index = static_cast<int*>(mmap(NULL, partial_len * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd_range, 0));
+    if (range_index == MAP_FAILED) {
+        std::cerr << "mmap failed for vecM" << std::endl;
+        close(fd_range);
+        return 1;
+    }
+
+    // blockwise construct the data and set to the end of the file.
+    for(size_t k=0; k<partial_len; k+=MEM_LIMIT){
+      size_t block_end = std::min(k + MEM_LIMIT, partial_len);
+      size_t block_size = block_end - k;
+
+      // generate the range_inde.
+      for(size_t t=k; t<block_end; t++){
+        range_index[t] = t;
+      }
+
+      // generate the cipher data.
+      i64Matrix plainTest(block_size, 1);
+      for (int i = 0; i < block_size; i++) {
+        plainTest(i, 0) = i + k;
+      }
+      si64Matrix sharedM(block_size, 1);
+      if (role == 0) {
+        enc.localIntMatrix(runtime, plainTest, sharedM).get();
+      } else {
+        enc.remoteIntMatrix(runtime, sharedM).get();
+      }
+
+      // append to the mmap data
+      for(size_t t=k; t<block_end; t++){
+        range_index[t] = (int) t;
+        vecM[t] = sharedM(t-k, 0);
+      }
+    }
+  }
+
+  // i64Matrix plainTest(partial_len, 1);
+  // for (int i = 0; i < partial_len; i++) {
+  //   plainTest(i, 0) = i + m_start;
+  // }
+  // int* range_index = new int[partial_len];
+  // for (int i = m_start; i < m_end + 1; i++) range_index[i - m_start] = i;
+
+  // i64Matrix plainIndex(m, 1);
+  // // inverse sequence.
+  // for (int i = 0; i < m; i++) {
+  //   plainIndex(i, 0) = n - 1 - i;
+  // }
+
+  // // generate the cipher test data.
+  // si64Matrix sharedM(partial_len, 1);
+  // si64Matrix sharedIndex(m, 1);
+  // if (role == 0) {
+  //   enc.localIntMatrix(runtime, plainTest, sharedM).get();
+  //   enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+  // } else {
+  //   enc.remoteIntMatrix(runtime, sharedM).get();
+  //   enc.remoteIntMatrix(runtime, sharedIndex).get();
+  // }
+  // si64Matrix init_res;
+  // init_zeros(role, enc, runtime, init_res, m);
+
+  // vector<si64> res(m);
+  // vector<si64> vecM(partial_len);
+  // vector<si64> vecIndex(m);
+  // for (int i = 0; i < m; i++) vecIndex[i] = sharedIndex(i, 0);
+  // for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+  // for (int i = 0; i < partial_len; i++) vecM[i] = sharedM(i, 0);
+
+  // set the data related part.
+  mpiPtrTask->set_selective_value(vecM, 0);
+  end = clock();
+  double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  if (rank == 0) {
+    cout << "binning circuit evaluate..." << endl;
+  }
+  // evaluate the task.
+  mpiPtrTask->circuit_evaluate(vecIndex.data(), range_index, vecM,
+                               res.data());
+  // cout << "in here" << endl;
+  end = clock();
+  double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  if (rank == 0) {
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+        << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+        << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+        << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+        << "\n"
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "\ntime_combine: " << std::setprecision(5)
+        << mpiPtrTask->time_combine << "\n"
+        << std::endl;
+    ofs.close();
   }
 }
 

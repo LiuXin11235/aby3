@@ -138,8 +138,10 @@ int main(int argc, char** argv) {
     // cout << "can in this block!" << endl;
     test_cipher_bio_metric(cmd, N, M, k, TASK_NUM, OPT_BLOCK);
   }
-		
 
+  if(FUNC == "large_index")
+    test_cipher_index_ptr_mpi_large(cmd, N, M, TASK_NUM, OPT_BLOCK);
+		
   MPI_Finalize();
 
 #ifdef MPIDEBUG
