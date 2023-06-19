@@ -144,6 +144,18 @@ int main(int argc, char** argv) {
     test_cipher_sort_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
   }
 
+  if(FUNC == "max"){
+    test_cipher_max_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
+
+  if(FUNC == "min"){
+    test_cipher_min_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
+
+  if(FUNC == "medium"){
+    test_cipher_medium_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
+
   MPI_Finalize();
 
 #ifdef MPIDEBUG

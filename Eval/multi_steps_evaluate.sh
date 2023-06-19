@@ -1,5 +1,5 @@
-task_list=("sort")
-log_folder_list=(./Record/Record_sort)
+task_list=("sort" "max" "min" "medium")
+log_folder_list=(./Record/Record_sort ./Record/Record_max ./Record/Record_min ./Record/Record_medium)
 
 day=$(date +%m-%d);
 timeStamp=$(date +"%H%M%s");
@@ -17,10 +17,10 @@ done
 # compile
 python build.py
 
-N_list=(50000)
+N_list=(10000)
 M=1; K=1
 optB_list=(250000)
-task_num_list=(32)
+task_num_list=(16)
 repeat=1; test_times=1; retry_threshold=5
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
