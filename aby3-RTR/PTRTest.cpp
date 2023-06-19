@@ -469,6 +469,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
   end = clock();
   double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  // cout << "No." << rank << ": success after connection establish" << endl;
 
   start = clock();
   // construct task
@@ -513,6 +514,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   }
   si64Matrix init_res;
   init_zeros(role, enc, runtime, init_res, n);
+  // cout << "No." << rank << ": success after data construct" << endl;
 
   vector<si64> res(n);
   vector<si64> vecM(n);
@@ -520,6 +522,9 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   for (int i = 0; i < n; i++) vecM[i] = sharedM(i, 0);
   for (int i = 0; i < n; i++) res[i] = init_res(i, 0);
   for (int i = 0; i < partial_len; i++) vecPartialM[i] = partialM(i, 0);
+  vector<int> range_index(n);
+  for(int i=0; i<n; i++) range_index[i] = n;
+  mpiPtrIndex->set_selective_value(vecPartialM.data(), 0);
 
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
@@ -528,12 +533,44 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   // evaluate the task.
   mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
                                res.data());
-
-  // TODO:
-  // mpiPtrIndex->data();
-
+  // cout << "No." << rank << ": success after mpiPtrRank computation" << endl;
   end = clock();
-  double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  double time_task_first_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+
+  // 1. firstly distribute the data to each subtask.
+  start = clock();
+  size_t sharing_length;
+  aby3::si64* partial_data;
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m;
+    partial_data = res.data();
+  }
+  else{
+    sharing_length = mpiPtrIndex->m_end - m_start + 1;
+    partial_data = new aby3::si64[sharing_length];
+  }
+  mpiPtrIndex->data_sharing<aby3::si64>(partial_data, sharing_length, 1);
+  // cout << "No." << rank << ": success after data sharing" << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m_end - m_start + 1;
+    res.resize(sharing_length);
+    partial_data = res.data();
+  }
+  // 2. run the next step.
+  vector<si64> sort_res(n);
+  for (int i = 0; i < n; i++) res[i] = init_res(i, 0);
+  end = clock();
+  double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  // cout << "No." << rank << ": before next step evaluation" << endl;
+  start = clock();
+  mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
+  end = clock();
+
+  double time_task_second_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
   if (rank == 0) {
     // cout << logging_file << endl;
@@ -541,11 +578,13 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
     ofs << "time_setup: " << std::setprecision(5) << time_task_setup
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
-        << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
-        << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
-        << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrRank->time_combine << "\n"
+        << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
+        << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs.close();
   }
@@ -771,6 +810,7 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   }
 }
 
+
 int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
                               int opt_B) {
   // 1.  task setup.
@@ -867,6 +907,7 @@ int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int ta
   }
 }
 
+
 int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
                               int opt_B) {
   // 1.  task setup.
@@ -962,7 +1003,6 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
     ofs.close();
   }
 }
-
 
 
 int profile_index(oc::CLP& cmd, size_t n, size_t m, int vector_size, int task_num) {

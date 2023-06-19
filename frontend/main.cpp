@@ -138,7 +138,11 @@ int main(int argc, char** argv) {
     // cout << "can in this block!" << endl;
     test_cipher_bio_metric(cmd, N, M, k, TASK_NUM, OPT_BLOCK);
   }
-		
+
+  // multi-step functions.
+  if(FUNC == "sort"){
+    test_cipher_sort_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
 
   MPI_Finalize();
 

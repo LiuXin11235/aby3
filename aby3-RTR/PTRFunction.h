@@ -17,7 +17,7 @@
 #define TASKS 5
 // #define DEBUG
 #define TEST
-#define OPENMP
+// #define OPENMP
 
 #ifndef OPENMP
 
