@@ -82,6 +82,9 @@ int main(int argc, char** argv) {
 	if (FUNC == "search") 
 		test_cipher_search_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
   
+  if (FUNC == "new_search") 
+		test_cipher_search_new_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
+  
   if (FUNC == "select")
     test_cipher_select_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
 

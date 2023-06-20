@@ -744,6 +744,7 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   }
 }
 
+
 int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   // Get current process rank and size  
 	int rank, size;  
@@ -898,6 +899,7 @@ int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
     ofs.close();
   }
 }
+
 
 int test_cipher_medium_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   // Get current process rank and size  
@@ -1055,6 +1057,133 @@ int test_cipher_medium_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 }
 
 
+int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, int opt_B){
+  // Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // set the log file.
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_new_search/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
+                             "-M=" + std::to_string(n) + "-TASKS=" +
+                             std::to_string(task_num) + "-OPT_B=" +
+                             std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if (cmd.isSet("role")) {
+    auto keys = cmd.getMany<int>("role");
+    role = keys[0];
+  }
+  if (role == -1) {
+    throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // construct task
+  auto mpiPtrTask =
+      new MPINewSearch<aby3::si64, aby3::si64, aby3::si64, aby3::si64, SubNewSearch>(
+          task_num, opt_B, role, enc, runtime, eval);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrTask->set_default_value(dval);
+  mpiPtrTask->set_lookahead(1);
+  mpiPtrTask->circuit_construct({m}, {n});
+
+  end = clock();  // time for task init.
+  double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  size_t m_start = mpiPtrTask->m_start;
+  size_t m_end = mpiPtrTask->m_end;
+
+  // directly generate the partial data
+  size_t partial_len = m_end - m_start + 1;
+  i64Matrix plainTest(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) {
+    plainTest(i, 0) = i + m_start;
+  }
+
+  // non-sense diffValue, just for test, do not have to construct diffvalue in newSearch.
+  i64Matrix diffValue(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) {
+    diffValue(i, 0) = i + m_start;
+  }
+
+  i64Matrix searchKey(m, 1);
+  // inverse sequence.
+  for (int i = 0; i < m; i++) {
+    searchKey(i, 0) = n - 1 - i;
+  }
+
+  // generate the cipher test data.
+  si64Matrix secretDiff(partial_len, 1);
+  si64Matrix secretSpace(partial_len, 1);
+  si64Matrix secretKey(m, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, plainTest, secretSpace).get();
+    enc.localIntMatrix(runtime, diffValue, secretDiff).get();
+    enc.localIntMatrix(runtime, searchKey, secretKey).get();
+  } else {
+    enc.remoteIntMatrix(runtime, secretSpace).get();
+    enc.remoteIntMatrix(runtime, secretDiff).get();
+    enc.remoteIntMatrix(runtime, secretKey).get();
+  }
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+
+  vector<si64> res(m);
+  vector<si64> vecSpace(partial_len);
+  vector<si64> vecDiff(partial_len);
+  vector<si64> vecKey(m);
+  for (int i = 0; i < m; i++) vecKey[i] = secretKey(i, 0);
+  for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+  for (int i = 0; i < partial_len; i++) {
+    vecDiff[i] = secretDiff(i, 0);
+    vecSpace[i] = secretSpace(i, 0);
+  }
+
+  // set the data related part.
+  mpiPtrTask->set_selective_value(vecDiff.data(), 0);
+  end = clock();
+  double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // evaluate the task.
+  mpiPtrTask->circuit_evaluate(vecKey.data(), vecSpace.data(), vecDiff.data(),
+                               res.data());
+  end = clock();
+  double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  if (rank == 0) {
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+        << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+        << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+        << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "\ntime_combine: " << std::setprecision(5)
+        << mpiPtrTask->time_combine << "\n"
+        << std::endl;
+    ofs.close();
+  }
+
+  return 0;
+}
 
 
 int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, int opt_B){

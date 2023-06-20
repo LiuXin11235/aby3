@@ -11,6 +11,8 @@ int test_cipher_index_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num,
 int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num,
                                int opt_B);
 
+int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, int opt_B);
+
 int test_cipher_rank_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B);
 
 int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B);
