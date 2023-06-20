@@ -24,10 +24,10 @@ scp ./bin/frontend aby32:~/aby3/bin &
 wait;
 
 # test settings.
-N_list=(1073741824 268435456 67108864 16777216 4194304 1048576)
+N_list=(268435456 67108864 16777216 4194304 1048576)
 repeat=3; test_times=3; retry_threshold=5
 task_num_list=(256 128 64 32 16 4)
-optB_list=(524288 1048576 1048576 1048576 1048576 1048576)
+optB_list=(1048576 1048576 1048576 1048576 1048576)
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
 
@@ -37,7 +37,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
 
   for (( t=0; t<${#task_num_list[@]}; t++ )); do
     optB=${optB_list[t]}
-    M=1
+    M=16
     K=4
     taskN=${task_num_list[t]}
     for (( k=0; k<$test_times; k++ )); do
@@ -45,7 +45,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
         # run the tasks with retrying.
         j=0;
         while [ $j -lt $retry_threshold ]; do
-          timeout 15m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M k=$K repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
+          timeout 20m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M k=$K repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
           if [ $? -eq 0 ]; then
             break; 
           fi

@@ -96,6 +96,10 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_index/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -219,6 +223,10 @@ int test_cipher_select_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int o
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_select/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -337,6 +345,10 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_rank/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -446,6 +458,10 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_sort/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -564,6 +580,10 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, i
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_search/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -694,6 +714,10 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
 
   // 1) set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_average/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -771,6 +795,7 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   }
 }
 
+
 int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
                               int opt_B) {
   // 1.  task setup.
@@ -782,6 +807,10 @@ int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int ta
 
   // 1) set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_mean_distance/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-K=" + std::to_string(k) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -867,6 +896,7 @@ int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int ta
   }
 }
 
+
 int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
                               int opt_B) {
   // 1.  task setup.
@@ -878,6 +908,10 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
 
   // 1) set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_bio_metric/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-K=" + std::to_string(k) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -962,7 +996,6 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
     ofs.close();
   }
 }
-
 
 
 int profile_index(oc::CLP& cmd, size_t n, size_t m, int vector_size, int task_num) {

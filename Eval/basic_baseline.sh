@@ -1,5 +1,6 @@
-task_list=("search" "select" "index" "average")
-log_folder_list=(./Record/Record_search_base ./Record/Record_select_base ./Record/Record_index_base ./Record/Record_average_base)
+task_list=("index" "bio_metric" "average" "search" "select" "mean_distance")
+log_folder_list=(./Record/Record_index_base ./Record/Record_bio_metric_base ./Record/Record_average_base ./Record/Record_search_base ./Record/Record_select_base ./Record/Record_mean_distance_base)
+
 
 day=$(date +%m-%d);
 timeStamp=$(date +"%H%M%s");
@@ -13,7 +14,6 @@ for log_folder in ${log_folder_list[@]}; do
     mkdir ${log_folder};
   fi
 done
-
 # compile
 python build.py
 
@@ -24,12 +24,12 @@ wait;
 
 ## Direct parallel baseline
 # test settings.
-N_list=(8388608 1048576)
-M_list=(4 2 1 1 1 1)
-simulate_task_num_list=(2 4 8 8 8 8)
-optB_list=(262144)
-repeat=3; test_times=5; retry_threshold=5
-total_bw=10000; latency=0.003
+N_list=(1048576 4194304 16777216 67108864 268435456)
+M_list=(8 4 2 1 1 1)
+simulate_task_num_list=(2 4 8 16 16 16)
+optB_list=(1048576 1048576 1048576 1048576 1048576 1048576)
+repeat=1; test_times=1; retry_threshold=5
+total_bw=20000; latency=0.003
 
 # cleanup the old folder and create a clean one.
 for log_folder in ${log_folder_list[@]}; do
@@ -47,11 +47,16 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
   task=${task_list[i]};
   log_folder=${log_folder_list[i]};
 
-  for taskN in ${simulate_task_num_list[@]}; do
+  for (( t=0; t<${#simulate_task_num_list[@]}; t++ )); do
+  # for taskN in ${simulate_task_num_list[@]}; do
+    taskN=${simulate_task_num_list[t]}
+    M=${M_list[i]}
+    K=10
 
     # only set the bandwidth for simulation.
-    test_bw=$(python -c "print($total_bw / ($taskN * 2) )")
+    test_bw=$(python -c "print($total_bw / ($taskN) )")
     echo "test_bw = "${test_bw}
+
     # cleanup the settings on the eth
     ./Eval/network_clean.sh
 
@@ -66,7 +71,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
             # run the tasks with retrying.
             j=0;
             while [ $j -lt $retry_threshold ]; do
-              timeout 150m ./Eval/mpi_subtask.sh taskN=1 n=$N m=$M repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
+              timeout 15m ./Eval/mpi_subtask.sh taskN=1 n=$N m=$M k=$K repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
               if [ $? -eq 0 ]; then
                 break; 
               fi
