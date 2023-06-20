@@ -82,6 +82,9 @@ int main(int argc, char** argv) {
 	if (FUNC == "search") 
 		test_cipher_search_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
   
+  if (FUNC == "new_search") 
+		test_cipher_search_new_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
+  
   if (FUNC == "select")
     test_cipher_select_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
 
@@ -138,7 +141,23 @@ int main(int argc, char** argv) {
     // cout << "can in this block!" << endl;
     test_cipher_bio_metric(cmd, N, M, k, TASK_NUM, OPT_BLOCK);
   }
-		
+
+  // multi-step functions.
+  if(FUNC == "sort"){
+    test_cipher_sort_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
+
+  if(FUNC == "max"){
+    test_cipher_max_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
+
+  if(FUNC == "min"){
+    test_cipher_min_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
+
+  if(FUNC == "medium"){
+    test_cipher_medium_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
+  }
 
   MPI_Finalize();
 

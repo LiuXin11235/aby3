@@ -284,6 +284,79 @@ class SubSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
   }
 };
 
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class SubNewSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor* enc;
+  aby3::Sh3Runtime* runtime;
+  aby3::Sh3Evaluator* eval;
+
+  using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+  SubNewSearch(const size_t optimal_block, const int task_id, const int pIdx,
+          aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+          aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+    this->have_selective = true;
+    this->lookahead=1;
+  }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+
+    for (int i = 0; i < resLeft.size(); i++)
+      local_res[i] = resLeft[i] + resRight[i];
+    return;
+  }
+
+ protected:
+  virtual void compute_local_table(std::vector<NUMX>& expandX,
+                                   std::vector<NUMY>& expandY,
+                                   std::vector<NUMT>& local_table,
+                                   BlockInfo* binfo) {
+    aby3::u64 block_length = binfo->block_len;
+    aby3::u64 expand_length = binfo->block_len + this->lookahead * this->n;
+    if(binfo->t_start + expand_length >= (this->n * this->m)) expand_length = (this->n * this->m) - binfo->t_start;
+    aby3::sbMatrix partTable(binfo->block_len, 1);
+    aby3::sbMatrix expandTable(expand_length, 1);
+
+    clock_t start, end;
+    vector_cipher_ge(this->pIdx, expandX, expandY, expandTable, *(this->eval),
+                     *(this->enc), *(this->runtime));
+    
+    // shift & substraction.
+    if(binfo->t_start < (this->m - 1) * this->n){ // only when the table is not started in the last column, perform the shift & substraction. 
+      for(int i=0; i<expand_length - this->n; i++){
+        partTable.mShares[0](i) = expandTable.mShares[0](i) ^ expandTable.mShares[0](i + this->n);
+        partTable.mShares[1](i) = expandTable.mShares[1](i) ^ expandTable.mShares[1](i + this->n);
+      }
+      for(int i=expand_length-this->n; i<binfo->block_len; i++){
+        partTable.mShares[0](i) = expandTable.mShares[0](i);
+        partTable.mShares[1](i) = expandTable.mShares[1](i);
+      }
+    }
+    
+    // pairwise vector abmul.
+    aby3::si64Matrix expandV;
+    expandV.resize(block_length, 1);
+    for (size_t i = 0; i < block_length; i++) expandV(i, 0, this->selectV[binfo->t_start + i]);
+
+    cipher_mul_seq(this->pIdx, expandV, partTable, expandV, *(this->eval),
+                   *(this->enc), *(this->runtime));
+    
+    for (size_t i = 0; i < block_length; i++) local_table[i] = expandV(i, 0);
+  }
+};
+
+
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
           template <typename, typename, typename, typename> class TASK>
 class SecretIndex : public PTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
@@ -494,6 +567,45 @@ class MPISearch : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
       this->subTask->res[j] = this->default_value;
   }
 };
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
+          template <typename, typename, typename, typename> class TASK>
+class MPINewSearch : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor& enc;
+  aby3::Sh3Runtime& runtime;
+  aby3::Sh3Evaluator& eval;
+
+  // setup all the aby3 environment variables, pIdx and rank.
+  using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
+  MPINewSearch(int tasks, size_t optimal_block, const int pIdx,
+                 aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+                 aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(enc),
+        runtime(runtime),
+        eval(eval),
+        MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {
+          this->lookahead = 1;
+        }
+
+  // override sub_task create.
+  void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
+                       size_t table_end) override {
+    auto subTaskPtr(
+        new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
+                                         this->enc, this->runtime, this->eval));
+    this->subTask.reset(subTaskPtr);
+    this->subTask->initial_value = this->default_value;
+    this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
+                                     table_end);
+    for (int j = 0; j < this->n; j++)
+      this->subTask->res[j] = this->default_value;
+  }
+};
+
 
 
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>

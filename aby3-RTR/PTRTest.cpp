@@ -452,8 +452,6 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  // cout << rank << endl;
-
   clock_t start, end;
 
   // set the log file.
@@ -485,6 +483,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
   end = clock();
   double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  // cout << "No." << rank << ": success after connection establish" << endl;
 
   start = clock();
   // construct task
@@ -529,6 +528,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   }
   si64Matrix init_res;
   init_zeros(role, enc, runtime, init_res, n);
+  // cout << "No." << rank << ": success after data construct" << endl;
 
   vector<si64> res(n);
   vector<si64> vecM(n);
@@ -536,6 +536,9 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   for (int i = 0; i < n; i++) vecM[i] = sharedM(i, 0);
   for (int i = 0; i < n; i++) res[i] = init_res(i, 0);
   for (int i = 0; i < partial_len; i++) vecPartialM[i] = partialM(i, 0);
+  vector<int> range_index(n);
+  for(int i=0; i<n; i++) range_index[i] = n;
+  mpiPtrIndex->set_selective_value(vecPartialM.data(), 0);
 
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
@@ -544,10 +547,640 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   // evaluate the task.
   mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
                                res.data());
+  // cout << "No." << rank << ": success after mpiPtrRank computation" << endl;
+  end = clock();
+  double time_task_first_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
-  // TODO:
-  // mpiPtrIndex->data();
 
+  // 1. firstly distribute the data to each subtask.
+  start = clock();
+  size_t sharing_length;
+  aby3::si64* partial_data;
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m;
+    partial_data = res.data();
+  }
+  else{
+    sharing_length = mpiPtrIndex->m_end - m_start + 1;
+    partial_data = new aby3::si64[sharing_length];
+  }
+  mpiPtrIndex->data_sharing<aby3::si64>(partial_data, sharing_length, 1);
+  // cout << "No." << rank << ": success after data sharing" << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m_end - m_start + 1;
+    res.resize(sharing_length);
+    partial_data = res.data();
+  }
+  // 2. run the next step.
+  vector<si64> sort_res(n);
+  for (int i = 0; i < n; i++) sort_res[i] = init_res(i, 0);
+  end = clock();
+  double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  // cout << "No." << rank << ": before next step evaluation" << endl;
+  start = clock();
+  mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
+  end = clock();
+
+  double time_task_second_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  if (rank == 0) {
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+        << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+        << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+        << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
+        << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
+        << std::endl;
+    ofs.close();
+  }
+}
+
+
+int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
+  // Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // set the log file.
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_max/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
+                             "-M=" + std::to_string(n) + "-TASKS=" +
+                             std::to_string(task_num) + "-OPT_B=" +
+                             std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if (cmd.isSet("role")) {
+    auto keys = cmd.getMany<int>("role");
+    role = keys[0];
+  }
+  if (role == -1) {
+    throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  // cout << "No." << rank << ": success after connection establish" << endl;
+
+  start = clock();
+  // construct task
+  auto mpiPtrRank =
+      new MPIRank<aby3::si64, aby3::si64, aby3::si64, aby3::si64, SubRank>(
+          task_num, opt_B, role, enc, runtime, eval);
+  auto mpiPtrIndex =
+      new MPISecretIndex<int, aby3::si64, aby3::si64, aby3::si64, SubIndex>(
+          task_num, opt_B, role, enc, runtime, eval);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrRank->set_default_value(dval);
+  mpiPtrRank->circuit_construct({(size_t)n}, {(size_t)n});
+  mpiPtrIndex->set_default_value(dval);
+  mpiPtrIndex->circuit_construct({(size_t)1}, {(size_t)n});
+
+  end = clock();  // time for task init.
+  double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  size_t m_start = mpiPtrRank->m_start;
+  size_t m_end = mpiPtrRank->m_end;
+
+  // generate raw test data
+  i64Matrix testData(n, 1);
+  for (int i = 0; i < n; i++) testData(i, 0) = i;
+
+  size_t partial_len = m_end - m_start + 1;
+  i64Matrix partialData(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) partialData(i, 0) = (i + m_start);
+
+  // generate cipher test data
+  si64Matrix sharedM(n, 1);
+  si64Matrix partialM(partial_len, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, testData, sharedM).get();
+    enc.localIntMatrix(runtime, partialData, partialM).get();
+  } else {
+    enc.remoteIntMatrix(runtime, sharedM).get();
+    enc.remoteIntMatrix(runtime, partialM).get();
+  }
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, n);
+  // cout << "No." << rank << ": success after data construct" << endl;
+
+  vector<si64> res(n);
+  vector<si64> vecM(n);
+  vector<si64> vecPartialM(partial_len);
+  for (int i = 0; i < n; i++) vecM[i] = sharedM(i, 0);
+  for (int i = 0; i < n; i++) res[i] = init_res(i, 0);
+  for (int i = 0; i < partial_len; i++) vecPartialM[i] = partialM(i, 0);
+  vector<int> range_index(1);
+  range_index[0] = n-1;
+  mpiPtrIndex->set_selective_value(vecPartialM.data(), 0);
+
+  end = clock();
+  double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // evaluate the task.
+  mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
+                               res.data());
+  // cout << "No." << rank << ": success after mpiPtrRank computation" << endl;
+  end = clock();
+  double time_task_first_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+
+  // 1. firstly distribute the data to each subtask.
+  start = clock();
+  size_t sharing_length;
+  aby3::si64* partial_data;
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m;
+    partial_data = res.data();
+  }
+  else{
+    sharing_length = mpiPtrIndex->m_end - mpiPtrIndex->m_start + 1;
+    partial_data = new aby3::si64[sharing_length];
+  }
+
+  mpiPtrIndex->data_sharing<aby3::si64>(partial_data, sharing_length, 1);
+  // cout << "No." << rank << ": success after data sharing" << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m_end - mpiPtrIndex->m_start + 1;
+    res.resize(sharing_length);
+    partial_data = res.data();
+  }
+  // 2. run the next step.
+  vector<si64> sort_res(1);
+  sort_res[0] = init_res(0, 0);
+  end = clock();
+  double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  // cout << "No." << rank << ": before next step evaluation" << endl;
+  start = clock();
+  mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
+  end = clock();
+
+  double time_task_second_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  if (rank == 0) {
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+        << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+        << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+        << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
+        << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
+        << std::endl;
+    ofs.close();
+  }
+}
+
+
+int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
+  // Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // set the log file.
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_min/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
+                             "-M=" + std::to_string(n) + "-TASKS=" +
+                             std::to_string(task_num) + "-OPT_B=" +
+                             std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if (cmd.isSet("role")) {
+    auto keys = cmd.getMany<int>("role");
+    role = keys[0];
+  }
+  if (role == -1) {
+    throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  // cout << "No." << rank << ": success after connection establish" << endl;
+
+  start = clock();
+  // construct task
+  auto mpiPtrRank =
+      new MPIRank<aby3::si64, aby3::si64, aby3::si64, aby3::si64, SubRank>(
+          task_num, opt_B, role, enc, runtime, eval);
+  auto mpiPtrIndex =
+      new MPISecretIndex<int, aby3::si64, aby3::si64, aby3::si64, SubIndex>(
+          task_num, opt_B, role, enc, runtime, eval);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrRank->set_default_value(dval);
+  mpiPtrRank->circuit_construct({(size_t)n}, {(size_t)n});
+  mpiPtrIndex->set_default_value(dval);
+  mpiPtrIndex->circuit_construct({(size_t)1}, {(size_t)n});
+
+  end = clock();  // time for task init.
+  double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  size_t m_start = mpiPtrRank->m_start;
+  size_t m_end = mpiPtrRank->m_end;
+
+  // generate raw test data
+  i64Matrix testData(n, 1);
+  for (int i = 0; i < n; i++) testData(i, 0) = i;
+
+  size_t partial_len = m_end - m_start + 1;
+  i64Matrix partialData(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) partialData(i, 0) = (i + m_start);
+
+  // generate cipher test data
+  si64Matrix sharedM(n, 1);
+  si64Matrix partialM(partial_len, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, testData, sharedM).get();
+    enc.localIntMatrix(runtime, partialData, partialM).get();
+  } else {
+    enc.remoteIntMatrix(runtime, sharedM).get();
+    enc.remoteIntMatrix(runtime, partialM).get();
+  }
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, n);
+  // cout << "No." << rank << ": success after data construct" << endl;
+
+  vector<si64> res(n);
+  vector<si64> vecM(n);
+  vector<si64> vecPartialM(partial_len);
+  for (int i = 0; i < n; i++) vecM[i] = sharedM(i, 0);
+  for (int i = 0; i < n; i++) res[i] = init_res(i, 0);
+  for (int i = 0; i < partial_len; i++) vecPartialM[i] = partialM(i, 0);
+  vector<int> range_index(1);
+  range_index[0] = 0;
+  mpiPtrIndex->set_selective_value(vecPartialM.data(), 0);
+
+  end = clock();
+  double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // evaluate the task.
+  mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
+                               res.data());
+  // cout << "No." << rank << ": success after mpiPtrRank computation" << endl;
+  end = clock();
+  double time_task_first_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+
+  // 1. firstly distribute the data to each subtask.
+  start = clock();
+  size_t sharing_length;
+  aby3::si64* partial_data;
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m;
+    partial_data = res.data();
+  }
+  else{
+    sharing_length = mpiPtrIndex->m_end - mpiPtrIndex->m_start + 1;
+    partial_data = new aby3::si64[sharing_length];
+  }
+
+  mpiPtrIndex->data_sharing<aby3::si64>(partial_data, sharing_length, 1);
+  // cout << "No." << rank << ": success after data sharing" << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m_end - mpiPtrIndex->m_start + 1;
+    res.resize(sharing_length);
+    partial_data = res.data();
+  }
+  // 2. run the next step.
+  vector<si64> sort_res(1);
+  sort_res[0] = init_res(0, 0);
+  end = clock();
+  double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  // cout << "No." << rank << ": before next step evaluation" << endl;
+  start = clock();
+  mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
+  end = clock();
+
+  double time_task_second_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  if (rank == 0) {
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+        << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+        << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+        << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
+        << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
+        << std::endl;
+    ofs.close();
+  }
+}
+
+
+int test_cipher_medium_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
+  // Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // set the log file.
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_medium/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
+                             "-M=" + std::to_string(n) + "-TASKS=" +
+                             std::to_string(task_num) + "-OPT_B=" +
+                             std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if (cmd.isSet("role")) {
+    auto keys = cmd.getMany<int>("role");
+    role = keys[0];
+  }
+  if (role == -1) {
+    throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  // cout << "No." << rank << ": success after connection establish" << endl;
+
+  start = clock();
+  // construct task
+  auto mpiPtrRank =
+      new MPIRank<aby3::si64, aby3::si64, aby3::si64, aby3::si64, SubRank>(
+          task_num, opt_B, role, enc, runtime, eval);
+  auto mpiPtrIndex =
+      new MPISecretIndex<int, aby3::si64, aby3::si64, aby3::si64, SubIndex>(
+          task_num, opt_B, role, enc, runtime, eval);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrRank->set_default_value(dval);
+  mpiPtrRank->circuit_construct({(size_t)n}, {(size_t)n});
+  mpiPtrIndex->set_default_value(dval);
+  mpiPtrIndex->circuit_construct({(size_t)1}, {(size_t)n});
+
+  end = clock();  // time for task init.
+  double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  size_t m_start = mpiPtrRank->m_start;
+  size_t m_end = mpiPtrRank->m_end;
+
+  // generate raw test data
+  i64Matrix testData(n, 1);
+  for (int i = 0; i < n; i++) testData(i, 0) = i;
+
+  size_t partial_len = m_end - m_start + 1;
+  i64Matrix partialData(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) partialData(i, 0) = (i + m_start);
+
+  // generate cipher test data
+  si64Matrix sharedM(n, 1);
+  si64Matrix partialM(partial_len, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, testData, sharedM).get();
+    enc.localIntMatrix(runtime, partialData, partialM).get();
+  } else {
+    enc.remoteIntMatrix(runtime, sharedM).get();
+    enc.remoteIntMatrix(runtime, partialM).get();
+  }
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, n);
+  // cout << "No." << rank << ": success after data construct" << endl;
+
+  vector<si64> res(n);
+  vector<si64> vecM(n);
+  vector<si64> vecPartialM(partial_len);
+  for (int i = 0; i < n; i++) vecM[i] = sharedM(i, 0);
+  for (int i = 0; i < n; i++) res[i] = init_res(i, 0);
+  for (int i = 0; i < partial_len; i++) vecPartialM[i] = partialM(i, 0);
+  vector<int> range_index(1);
+  range_index[0] = (int) n/2;
+  mpiPtrIndex->set_selective_value(vecPartialM.data(), 0);
+
+  end = clock();
+  double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // evaluate the task.
+  mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
+                               res.data());
+  // cout << "No." << rank << ": success after mpiPtrRank computation" << endl;
+  end = clock();
+  double time_task_first_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+
+  // 1. firstly distribute the data to each subtask.
+  start = clock();
+  size_t sharing_length;
+  aby3::si64* partial_data;
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m;
+    partial_data = res.data();
+  }
+  else{
+    sharing_length = mpiPtrIndex->m_end - mpiPtrIndex->m_start + 1;
+    partial_data = new aby3::si64[sharing_length];
+  }
+
+  mpiPtrIndex->data_sharing<aby3::si64>(partial_data, sharing_length, 1);
+  // cout << "No." << rank << ": success after data sharing" << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  if(rank == 0){
+    sharing_length = mpiPtrIndex->m_end - mpiPtrIndex->m_start + 1;
+    res.resize(sharing_length);
+    partial_data = res.data();
+  }
+  // 2. run the next step.
+  vector<si64> sort_res(1);
+  sort_res[0] = init_res(0, 0);
+  end = clock();
+  double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  // cout << "No." << rank << ": before next step evaluation" << endl;
+  start = clock();
+  mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
+  end = clock();
+
+  double time_task_second_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  if (rank == 0) {
+    // cout << logging_file << endl;
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+        << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+        << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+        << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
+        << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
+        << std::endl;
+    ofs.close();
+  }
+}
+
+
+int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, int opt_B){
+  // Get current process rank and size  
+	int rank, size;  
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);  
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // set the log file.
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_new_search/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
+                             "-M=" + std::to_string(n) + "-TASKS=" +
+                             std::to_string(task_num) + "-OPT_B=" +
+                             std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if (cmd.isSet("role")) {
+    auto keys = cmd.getMany<int>("role");
+    role = keys[0];
+  }
+  if (role == -1) {
+    throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // construct task
+  auto mpiPtrTask =
+      new MPINewSearch<aby3::si64, aby3::si64, aby3::si64, aby3::si64, SubNewSearch>(
+          task_num, opt_B, role, enc, runtime, eval);
+
+  aby3::si64 dval;
+  dval.mData[0] = 0, dval.mData[1] = 0;
+  mpiPtrTask->set_default_value(dval);
+  mpiPtrTask->set_lookahead(1);
+  mpiPtrTask->circuit_construct({m}, {n});
+
+  end = clock();  // time for task init.
+  double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  size_t m_start = mpiPtrTask->m_start;
+  size_t m_end = mpiPtrTask->m_end;
+
+  // directly generate the partial data
+  size_t partial_len = m_end - m_start + 1;
+  i64Matrix plainTest(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) {
+    plainTest(i, 0) = i + m_start;
+  }
+
+  // non-sense diffValue, just for test, do not have to construct diffvalue in newSearch.
+  i64Matrix diffValue(partial_len, 1);
+  for (int i = 0; i < partial_len; i++) {
+    diffValue(i, 0) = i + m_start;
+  }
+
+  i64Matrix searchKey(m, 1);
+  // inverse sequence.
+  for (int i = 0; i < m; i++) {
+    searchKey(i, 0) = n - 1 - i;
+  }
+
+  // generate the cipher test data.
+  si64Matrix secretDiff(partial_len, 1);
+  si64Matrix secretSpace(partial_len, 1);
+  si64Matrix secretKey(m, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, plainTest, secretSpace).get();
+    enc.localIntMatrix(runtime, diffValue, secretDiff).get();
+    enc.localIntMatrix(runtime, searchKey, secretKey).get();
+  } else {
+    enc.remoteIntMatrix(runtime, secretSpace).get();
+    enc.remoteIntMatrix(runtime, secretDiff).get();
+    enc.remoteIntMatrix(runtime, secretKey).get();
+  }
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+
+  vector<si64> res(m);
+  vector<si64> vecSpace(partial_len);
+  vector<si64> vecDiff(partial_len);
+  vector<si64> vecKey(m);
+  for (int i = 0; i < m; i++) vecKey[i] = secretKey(i, 0);
+  for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+  for (int i = 0; i < partial_len; i++) {
+    vecDiff[i] = secretDiff(i, 0);
+    vecSpace[i] = secretSpace(i, 0);
+  }
+
+  // set the data related part.
+  mpiPtrTask->set_selective_value(vecDiff.data(), 0);
+  end = clock();
+  double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  start = clock();
+  // evaluate the task.
+  mpiPtrTask->circuit_evaluate(vecKey.data(), vecSpace.data(), vecDiff.data(),
+                               res.data());
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
@@ -558,13 +1191,14 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
-        << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\nsubTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrRank->time_combine << "\n"
+        << mpiPtrTask->time_combine << "\n"
         << std::endl;
     ofs.close();
   }
+
+  return 0;
 }
 
 
