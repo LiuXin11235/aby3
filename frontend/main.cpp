@@ -8,6 +8,7 @@
 #include "aby3-RTR/DistributeRTRTest.h"
 #include "aby3-RTR/PTRTest.h"
 #include "aby3-RTR/RTRTest.h"
+#include "aby3-RTR/PTRProfile.h"
 #include "eric.h"
 
 #define MPI
@@ -158,6 +159,9 @@ int main(int argc, char** argv) {
   if(FUNC == "medium"){
     test_cipher_medium_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
   }
+
+  // profile...
+
 
   MPI_Finalize();
 

@@ -8,6 +8,13 @@
 #ifndef _A_H_
 #define _A_H_
 
+/// @brief generate the synchronized time using the one in role 0.
+/// @param pIdx 
+/// @param time_slot 
+/// @param runtime 
+/// @return 
+double synchronized_time(int pIdx, double time_slot, aby3::Sh3Runtime &runtime);
+
 // setup function.
 void distribute_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
            aby3::Sh3Runtime &runtime);
@@ -75,11 +82,15 @@ int vector_cipher_eq(int pIdx, std::vector<int>& intA, std::vector<aby3::si64>& 
 // fetch_eq_res.
 int fetch_eq_res(int pIdx, aby3::sbMatrix& circuitA, aby3::sbMatrix& circuitB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
+int vector_mean_square(int pIdx, const std::vector<aby3::si64>&sharedA, const std::vector<aby3::si64>&sharedB, std::vector<aby3::si64>&res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
+
 // initiate functions.
 int init_ones(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix &res, int n);
 
 int init_zeros(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix &res, int n);
 
-int vector_mean_square(int pIdx, const std::vector<aby3::si64>&sharedA, const std::vector<aby3::si64>&sharedB, std::vector<aby3::si64>&res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
+int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<aby3::si64>& vecRes);
+
+int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<int>& vecRes);
 
 #endif
