@@ -1,7 +1,8 @@
 task="profile_index"
+save_folder=/root/aby3/Record/probe_info
 
 total_bw=10000
-available_cores_list=(256 128 64 32 16 8 4 2 1)
+available_cores_list=(256)
 latency=0.03
 
 # compile.
@@ -38,11 +39,11 @@ for available_cores in ${available_cores_list[@]}; do
   ./Eval/network_set.sh ${test_bw} ${latency}
 
   # evaluate on aby3
-  n=1; optB=64; m=1000000000; repeat=100; epsilon=1000; gap=100
+  n=1; optB=67108864; m=1000000000; repeat=1; epsilon=1000; gap=100
 
-  timeout 100m ./Eval/mpi_subtask.sh taskN=1 n=${n} m=${m} repeat=${repeat} task=${task} optB=${optB} log_folder=${log_folder}/ epsilon=${epsilon} gap=${gap} vec_start=${optB}
+  timeout 500m ./Eval/mpi_subtask.sh taskN=1 n=${n} m=${m} repeat=${repeat} task=${task} optB=${optB} log_folder=${log_folder}/ epsilon=${epsilon} gap=${gap} vec_start=${optB}
 
-  cp ./Record/Record_probe/probe.log ./Record/probe_info/probe_${test_bw}bw.log
-  cp ./Record/Record_probe/probe.res ./Record/probe_info/probe_${test_bw}bw.res
+  cp ./Record/Record_probe/probe.log ${save_folder}/probe_${test_bw}bw.log
+  cp ./Record/Record_probe/probe.res ${save_folder}/probe_${test_bw}bw.res
 
 done;

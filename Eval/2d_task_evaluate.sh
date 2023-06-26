@@ -17,10 +17,10 @@ done
 # compile
 python build.py
 
-# # synchroonize with others
-# scp ./bin/frontend aby31:~/aby3/bin/ &
-# scp ./bin/frontend aby32:~/aby3/bin/ &
-# wait;
+# synchroonize with others
+scp ./bin/frontend aby31:~/aby3/bin/ &
+scp ./bin/frontend aby32:~/aby3/bin/ &
+wait;
 
 N_list=(100000)
 M_list=(1)
