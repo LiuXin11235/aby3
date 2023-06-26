@@ -13,7 +13,7 @@
 /// @param time_slot 
 /// @param runtime 
 /// @return 
-double synchronized_time(int pIdx, double time_slot, aby3::Sh3Runtime &runtime);
+double synchronized_time(int pIdx, double& time_slot, aby3::Sh3Runtime &runtime);
 
 // setup function.
 void distribute_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
@@ -92,5 +92,7 @@ int init_zeros(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<aby3::si64>& vecRes);
 
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<int>& vecRes);
+
+int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<std::vector<aby3::si64>>& vecRes);
 
 #endif

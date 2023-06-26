@@ -1,5 +1,7 @@
-task_list=("search" "select" "index" "average")
-log_folder_list=(./Record/Record_search ./Record/Record_select ./Record/Record_index ./Record/Record_average)
+# task_list=("search" "select" "index" "average")
+# log_folder_list=(./Record/Record_search ./Record/Record_select ./Record/Record_index ./Record/Record_average)
+task_list=("new_search" "search")
+log_folder_list=(./Record/Record_new_search ./Record/Record_search)
 
 
 day=$(date +%m-%d);
@@ -18,17 +20,19 @@ done
 # compile
 python build.py
 
-# synchroonize with others
-scp ./bin/frontend aby31:~/aby3/bin/ &
-scp ./bin/frontend aby32:~/aby3/bin/ &
-wait;
+# # synchroonize with others
+# scp ./bin/frontend aby31:~/aby3/bin/ &
+# scp ./bin/frontend aby32:~/aby3/bin/ &
+# wait;
 
 # test settings.
-N_list=(1000000000 100000000 10000000 1000000)
+# N_list=(1000000000 100000000 10000000 1000000)
+N_list=(100000)
 M_list=(1)
 optB_list=(250000)
 repeat=1; test_times=3; retry_threshold=5
-task_num_list=(256 128 64 32 16 8 4 2 1)
+task_num_list=(16)
+# task_num_list=(256 128 64 32 16 8 4 2 1)
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
 

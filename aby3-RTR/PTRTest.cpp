@@ -1375,9 +1375,10 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   init_ones(role, enc, runtime, data, partial_len);
 
   vector<si64> vecM(partial_len);
-  vector<int> x(1);
+  vector<int> x(m);
   vector<si64> res(m);
-  x[0] = 0;
+  for(int i=0; i<m; i++) x[i] = m;
+  // x[0] = 0;
   for (int i = 0; i < partial_len; i++) vecM[i] = data(i, 0);
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
   end = clock();
