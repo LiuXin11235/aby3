@@ -19,6 +19,12 @@
 #define TEST
 // #define OPENMP
 
+template<typename T>
+struct indData{
+  T value;
+  aby3::si64 index;
+};
+
 #ifndef OPENMP
 
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
@@ -607,7 +613,6 @@ class MPINewSearch : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
 };
 
 
-
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
 class SubAvg : public SubTask<NUMX, NUMY, NUMT, NUMR> {
  public:
@@ -897,6 +902,145 @@ class MPIBioMetric : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
       this->subTask->res[j] = this->default_value;
   }
 };
+
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class SubMetric : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor* enc;
+  aby3::Sh3Runtime* runtime;
+  aby3::Sh3Evaluator* eval;
+
+  using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+  SubMetric(const size_t optimal_block, const int task_id, const int pIdx,
+          aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+          aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+    this->have_selective = false;
+  }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+    aby3::sbMatrix comp_res;
+    std::vector<aby3::si64> resLeft_value(resLeft.size());
+    std::vector<aby3::si64> resRight_value(resRight.size());
+    // initiate the value
+    for(int i=0; i<resLeft.size(); i++){
+      resLeft_value[i] = resLeft[i].value; resRight_value[i] = resRight[i].value;
+    }
+    vector_cipher_gt(this->pIdx, resLeft_value, resRight_value, comp_res, *(this->eval), *(this->enc), *(this->runtime));
+    // cout << "after new gt" << endl;
+    // multiply for value extraction.
+    aby3::si64Matrix matSub;
+    matSub.resize(resLeft.size(), 1);
+    for(int i=0; i<resLeft.size(); i++) matSub(i, 0, resRight[i].value - resLeft[i].value);
+    cipher_mul_seq(this->pIdx, matSub, comp_res, matSub, *(this->eval), *(this->enc), *(this->runtime));
+
+    aby3::si64Matrix matIndex;
+    matIndex.resize(resLeft.size(), 1);
+    for(int i=0; i<matIndex.size(); i++) matIndex(i, 0, resRight[i].index - resLeft[i].index);
+    cipher_mul_seq(this->pIdx, matIndex, comp_res, matIndex, *(this->eval), *(this->enc), *(this->runtime));
+
+    // compute the final result
+    for(int i=0; i<resLeft.size(); i++){
+      local_res[i].value = resRight[i].value - matSub(i, 0);
+      local_res[i].index = resRight[i].index - matIndex(i, 0);
+    }
+    // cout << "before return reduce? " << endl;
+    return;
+  }
+
+ protected:
+  virtual void compute_local_table(std::vector<NUMX>& expandX,
+                                   std::vector<NUMY>& expandY,
+                                   std::vector<NUMT>& local_table,
+                                   BlockInfo* binfo) {
+    // expand the selectV
+    size_t k = expandX[0].size();
+
+    // flat the two-dimensional inputs.
+    size_t exp_len = expandX.size()*k;
+    std::vector<typename NUMX::value_type> flatX, flatY;
+    for (const auto& innerVec : expandX){
+        for (const auto& element : innerVec) flatX.push_back(element);
+    }
+    for (const auto& innerVec : expandY){
+        for (const auto& element : innerVec) flatY.push_back(element);
+    }
+    // vector mul
+    if(std::is_same<typename NUMX::value_type, aby3::si64>::value){
+      vector_mean_square(this->pIdx, flatX, flatY, flatX, *(this->eval), *(this->enc), *(this->runtime));
+    }
+    
+    // enc index.
+    aby3::i64Matrix indexMat(expandX.size(), 1);
+    aby3::si64Matrix sindex(expandX.size(), 1);
+    for(int i=0; i<expandX.size(); i++) indexMat(i, 0) = binfo->t_start + i;
+    if(this->pIdx == 0){
+      this->enc->localIntMatrix(*(this->runtime), indexMat, sindex).get();
+    }
+    else{
+      this->enc->remoteIntMatrix(*(this->runtime), sindex).get();
+    }
+
+    // reduce to local table
+    for(int i=0; i<expandX.size(); i++){
+        local_table[i].value = this->initial_value.value;
+        local_table[i].index = sindex(i, 0);
+        for (int j=0; j<k; j++){
+          local_table[i].value = local_table[i].value + flatX[j];
+        }
+    }
+    // cout << "can finished local table" << endl;
+    return;
+  }
+};
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
+          template <typename, typename, typename, typename> class TASK>
+class MPIMetric : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor& enc;
+  aby3::Sh3Runtime& runtime;
+  aby3::Sh3Evaluator& eval;
+
+  // setup all the aby3 environment variables, pIdx and rank.
+  using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
+  MPIMetric(int tasks, size_t optimal_block, const int pIdx,
+                 aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+                 aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(enc),
+        runtime(runtime),
+        eval(eval),
+        MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {}
+
+  // override sub_task create.
+  void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
+                       size_t table_end) override {
+    auto subTaskPtr(
+        new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
+                                         this->enc, this->runtime, this->eval));
+    this->subTask.reset(subTaskPtr);
+    this->subTask->initial_value = this->default_value;
+    this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
+                                     table_end);
+    for (int j = 0; j < this->n; j++)
+      this->subTask->res[j] = this->default_value;
+  }
+};
+
 
 #endif
 

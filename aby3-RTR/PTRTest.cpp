@@ -1834,6 +1834,116 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
   }
 }
 
+int test_cipher_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
+                              int opt_B) {
+  // 1.  task setup.
+  int rank, size;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  clock_t start, end;
+
+  // 1) set the log file.
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_metric/";
+  std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
+                             "-M=" + std::to_string(n) + "-K=" + std::to_string(k) + "-TASKS=" +
+                             std::to_string(task_num) + "-OPT_B=" +
+                             std::to_string(opt_B) + "-" + std::to_string(rank);
+
+  int role = -1;
+  if (cmd.isSet("role")) {
+    auto keys = cmd.getMany<int>("role");
+    role = keys[0];
+  }
+  if (role == -1) {
+    throw std::runtime_error(LOCATION);
+  }
+
+  start = clock();
+  // 2) setup communications.
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
+  end = clock();
+  double time_task_setup = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  // cout << "before init" << endl;
+  // 3) initial task.
+  start = clock();
+  auto mpiPtrTask = new MPIMetric<vector<aby3::si64>, vector<aby3::si64>,
+                                   indData<aby3::si64>, indData<aby3::si64>, SubMetric>(
+      task_num, opt_B, role, enc, runtime, eval);
+  indData<aby3::si64> dData;
+  aby3::si64 dval;
+  if(role == 0){
+    dval.mData[0] = 2<<32, dval.mData[1] = 0;
+  }
+  else if(role == 1){
+    dval.mData[1] = 2<<32, dval.mData[0] = 0;
+  }
+  else{
+    dval.mData[1] = 0, dval.mData[0] = 0;
+  }
+
+  dData.value = dval;
+  dData.index = dval;
+  
+  mpiPtrTask->set_default_value(dData);
+  mpiPtrTask->circuit_construct({m}, {n});
+  end = clock();  // time for task init.
+  double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  // 2. data generation -> high dimensional
+  start = clock();
+  size_t m_start = mpiPtrTask->m_start;
+  size_t m_end = mpiPtrTask->m_end;
+  size_t partial_len = m_end - m_start + 1;
+  si64Matrix data(partial_len * k, 1);
+  si64Matrix target(m * k, 1);
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  init_ones(role, enc, runtime, data, partial_len * k);
+  init_zeros(role, enc, runtime, target, m * k);
+
+  vector<vector<aby3::si64>> vecM(partial_len, vector<aby3::si64>(k));
+  vector<vector<aby3::si64>> vecTarget(m, vector<aby3::si64>(k));
+  vector<indData<si64>> res(m);
+  for (int i = 0; i < partial_len; i++) {
+    for (int j = 0; j < k; j++) vecM[i][j] = data(i * k + j, 0);
+  }
+  for (int i = 0; i < m; i++) {
+    for (int j = 0; j < k; j++) vecTarget[i][j] = target(i * k + j, 0);
+  }
+  for (int i = 0; i < m; i++){
+    res[i].value = init_res(i, 0); res[i].index = init_res(i, 0);
+  }
+  end = clock();
+  double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  // cout << "before circuit evaluation" << endl;
+  
+  // 3. task evaluate.
+  start = clock();
+  mpiPtrTask->circuit_evaluate(vecTarget.data(), vecM.data(), nullptr,
+                               res.data());
+  end = clock();
+  double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+
+  if (rank == 0) {
+    std::ofstream ofs(logging_file, std::ios_base::app);
+    ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+        << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+        << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+        << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+        << "\n"
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "\ntime_combine: " << std::setprecision(5)
+        << mpiPtrTask->time_combine << "\n"
+        << std::endl;
+    ofs.close();
+  }
+}
+
 
 int profile_index(oc::CLP& cmd, size_t n, size_t m, int vector_size, int task_num) {
   // Get current process rank and size
