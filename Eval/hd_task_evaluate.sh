@@ -1,11 +1,7 @@
-# 1d functions.
-# task_list=("average" "index" "search" "new_search" "select")
-task_list=("index" "search" "select")
-log_folder_list=(./Record/Record_index ./Record/Record_search ./Record/Record_select)
-# task_list=("select")
-# log_folder_list=(./Record/Record_select)
-# log_folder_list=(./Record/Record_average ./Record/Record_index ./Record/Record_search ./Record/Record_new_search ./Record/Record_select)
-
+# task_list=("bio_metric" "mean_distance")
+# log_folder_list=(./Record/Record_bio_metric ./Record/Record_mean_distance)
+task_list=("metric")
+log_folder_list=(./Record/Record_metric)
 
 day=$(date +%m-%d);
 timeStamp=$(date +"%H%M%s");
@@ -24,19 +20,21 @@ done
 python build.py
 
 # synchroonize with others
-scp ./bin/frontend aby31:~/aby3/bin &
-scp ./bin/frontend aby32:~/aby3/bin &
+scp ./bin/frontend aby31:~/aby3/bin/ &
+scp ./bin/frontend aby32:~/aby3/bin/ &
 wait;
 
-# test settings.
 # N_list=(1048576 16777216 134217728 1073741824)
-N_list=(1073741824)
-# N_list=(500000000)
-repeat=3; test_times=3; retry_threshold=5
-task_num_list=(1)
+N_list=(1073741824 134217728 16777216 1048576)
+M=1; K=2;
+# M_list=(1)
+# K_list=(2)
+repeat=1; test_times=3; retry_threshold=5
 # task_num_list=(256 128 64 32 16 4 1)
-optB_list=(1048576 1048576 1048576 1048576 1048576 1048576 1048576)
-exceed_time=(120)
+task_num_list=(1 4 16 32 64 128 256)
+optB_list=(524288 524288 524288 524288 524288 524288 524288)
+exceed_time=(100 75 45 30 15 15 15)
+# exceed_time=(15 15 15 30 45 75 100)
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
 
@@ -45,9 +43,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
   log_folder=${log_folder_list[i]};
 
   for (( t=0; t<${#task_num_list[@]}; t++ )); do
-    optB=${optB_list[t]}; taskN=${task_num_list[t]}; outLimit=${exceed_time[t]};
-    M=1; K=4
-    taskN=${task_num_list[t]}
+    taskN=${task_num_list[t]}; optB=${optB_list[t]}; outLimit=${exceed_time[t]};
     for (( k=0; k<$test_times; k++ )); do
       for N in ${N_list[@]}; do
         # run the tasks with retrying.
@@ -65,5 +61,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
       done;
     done;
   done;
+  # tar the results.
   tar cvf $log_folder.tar $log_folder;
 done;
+

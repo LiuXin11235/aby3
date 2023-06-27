@@ -11,6 +11,8 @@ using namespace std;
 
 // #define DEBUG
 #define LOGING
+const long ENC_LIMIT = 500000000;
+
 
 int test_cipher_index_ptr(CLP& cmd, size_t n, size_t m){
 
@@ -141,41 +143,69 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
   start = clock();
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
-
-  // directly generate the partial data
   size_t partial_len = m_end - m_start + 1;
-  i64Matrix plainTest(partial_len, 1);
-  for (int i = 0; i < partial_len; i++) {
-    plainTest(i, 0) = i + m_start;
-  }
-  int* range_index = new int[partial_len];
-  for (int i = m_start; i < m_end + 1; i++) range_index[i - m_start] = i;
-
-  i64Matrix plainIndex(m, 1);
-  // inverse sequence.
-  for (int i = 0; i < m; i++) {
-    plainIndex(i, 0) = n - 1 - i;
-  }
-
-  // generate the cipher test data.
-  si64Matrix sharedM(partial_len, 1);
-  si64Matrix sharedIndex(m, 1);
-  if (role == 0) {
-    enc.localIntMatrix(runtime, plainTest, sharedM).get();
-    enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
-  } else {
-    enc.remoteIntMatrix(runtime, sharedM).get();
-    enc.remoteIntMatrix(runtime, sharedIndex).get();
-  }
-  si64Matrix init_res;
-  init_zeros(role, enc, runtime, init_res, m);
 
   vector<si64> res(m);
   vector<si64> vecM(partial_len);
   vector<si64> vecIndex(m);
+
+  // directly generate the partial data
+  int* range_index = new int[partial_len];
+  for (int i = m_start; i < m_end + 1; i++) range_index[i - m_start] = i;
+  i64Matrix plainIndex(m, 1);
+  // inverse sequence.
+  for (int i = 0; i < m; i++) plainIndex(i, 0) = n - 1 - i;
+  si64Matrix init_res;
+  si64Matrix sharedIndex(m, 1);
+  init_zeros(role, enc, runtime, init_res, m);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+  } else {
+    enc.remoteIntMatrix(runtime, sharedIndex).get();
+  }
   for (int i = 0; i < m; i++) vecIndex[i] = sharedIndex(i, 0);
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
-  for (int i = 0; i < partial_len; i++) vecM[i] = sharedM(i, 0);
+
+  // blockwise vecM.
+  for(size_t k=0; k<partial_len; k+=ENC_LIMIT){
+    size_t block_end = std::min(k+ENC_LIMIT, partial_len);
+    size_t block_size = block_end - k;
+    i64Matrix plainTest(block_size, 1);
+    for (int i = 0; i < block_size; i++) {
+      plainTest(i, 0) = i + m_start + k;
+    }
+    si64Matrix sharedM(block_size, 1);
+    if (role == 0) {
+      enc.localIntMatrix(runtime, plainTest, sharedM).get();
+    } else {
+      enc.remoteIntMatrix(runtime, sharedM).get();
+    }
+    for (int i = k; i < block_end; i++) vecM[i] = sharedM(i-k, 0);
+  }
+
+  // i64Matrix plainTest(partial_len, 1);
+  // for (int i = 0; i < partial_len; i++) {
+  //   plainTest(i, 0) = i + m_start;
+  // }
+  // generate the cipher test data.
+  // si64Matrix sharedM(partial_len, 1);
+  // si64Matrix sharedIndex(m, 1);
+  // if (role == 0) {
+  //   enc.localIntMatrix(runtime, plainTest, sharedM).get();
+  //   enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+  // } else {
+  //   enc.remoteIntMatrix(runtime, sharedM).get();
+  //   enc.remoteIntMatrix(runtime, sharedIndex).get();
+  // }
+  // si64Matrix init_res;
+  // init_zeros(role, enc, runtime, init_res, m);
+
+  // vector<si64> res(m);
+  // vector<si64> vecM(partial_len);
+  // vector<si64> vecIndex(m);
+  // for (int i = 0; i < m; i++) vecIndex[i] = sharedIndex(i, 0);
+  // for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+  // for (int i = 0; i < partial_len; i++) vecM[i] = sharedM(i, 0);
 
   // set the data related part.
   mpiPtrTask->set_selective_value(vecM.data(), 0);
@@ -269,40 +299,73 @@ int test_cipher_select_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int o
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
 
-  // directly generate the partial data
-  size_t partial_len = m_end - m_start + 1;
-  i64Matrix plainTest(partial_len, 1);
-  for (int i = 0; i < partial_len; i++) {
-    plainTest(i, 0) = i + m_start;
-  }
   int* range_index = new int[m];
   for (int i = 0; i < m; i++) range_index[i] = i;
-
-  i64Matrix plainIndex(partial_len, 1);
-  // inverse sequence.
-  for (int i = 0; i < partial_len; i++) {
-    plainIndex(i, 0) = n - 1 - (i + m_start);
-  }
-
-  // generate the cipher test data.
-  si64Matrix sharedM(partial_len, 1);
-  si64Matrix sharedIndex(partial_len, 1);
-  if (role == 0) {
-    enc.localIntMatrix(runtime, plainTest, sharedM).get();
-    enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
-  } else {
-    enc.remoteIntMatrix(runtime, sharedM).get();
-    enc.remoteIntMatrix(runtime, sharedIndex).get();
-  }
   si64Matrix init_res;
   init_zeros(role, enc, runtime, init_res, m);
-
   vector<si64> res(m);
+  for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+
+  // blockwisely data generation.
+  // directly generate the partial data
+  size_t partial_len = m_end - m_start + 1;
   vector<si64> vecM(partial_len);
   vector<si64> vecIndex(partial_len);
-  for (int i = 0; i < partial_len; i++) vecIndex[i] = sharedIndex(i, 0);
-  for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
-  for (int i = 0; i < partial_len; i++) vecM[i] = sharedM(i, 0);
+
+  for(size_t k=0; k<partial_len; k+=ENC_LIMIT){
+    size_t block_end = std::min(k+ENC_LIMIT, partial_len);
+    size_t block_size = block_end - k;
+
+    // enc data preparation.
+    i64Matrix plainTest(block_size, 1);
+    for (int i = 0; i < block_size; i++) {
+      plainTest(i, 0) = i + m_start + k;
+    }
+    i64Matrix plainIndex(block_size, 1);
+    // inverse sequence.
+    for (int i = 0; i < block_size; i++) {
+      plainIndex(i, 0) = n - 1 - (i + m_start + k);
+    }
+
+    si64Matrix sharedM(block_size, 1);
+    si64Matrix sharedIndex(block_size, 1);
+    if (role == 0) {
+      enc.localIntMatrix(runtime, plainTest, sharedM).get();
+      enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+    } else {
+      enc.remoteIntMatrix(runtime, sharedM).get();
+      enc.remoteIntMatrix(runtime, sharedIndex).get();
+    }
+
+    for (int i = k; i < block_end; i++) vecIndex[i] = sharedIndex(i-k, 0);
+    for (int i = k; i < block_end; i++) vecM[i] = sharedM(i-k, 0);
+  }
+
+  // i64Matrix plainTest(partial_len, 1);
+  // for (int i = 0; i < partial_len; i++) {
+  //   plainTest(i, 0) = i + m_start;
+  // }
+  // i64Matrix plainIndex(partial_len, 1);
+  // // inverse sequence.
+  // for (int i = 0; i < partial_len; i++) {
+  //   plainIndex(i, 0) = n - 1 - (i + m_start);
+  // }
+
+  // // generate the cipher test data.
+  // si64Matrix sharedM(partial_len, 1);
+  // si64Matrix sharedIndex(partial_len, 1);
+  // if (role == 0) {
+  //   enc.localIntMatrix(runtime, plainTest, sharedM).get();
+  //   enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
+  // } else {
+  //   enc.remoteIntMatrix(runtime, sharedM).get();
+  //   enc.remoteIntMatrix(runtime, sharedIndex).get();
+  // }
+
+  // vector<si64> vecM(partial_len);
+  // vector<si64> vecIndex(partial_len);
+  // for (int i = 0; i < partial_len; i++) vecIndex[i] = sharedIndex(i, 0);
+  // for (int i = 0; i < partial_len; i++) vecM[i] = sharedM(i, 0);
 
   // set the data related part.
   mpiPtrTask->set_selective_value(vecM.data(), 0);
@@ -345,6 +408,10 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_rank/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   if (cmd.isSet("logFolder")) {
     auto keys = cmd.getMany<std::string>("logFolder");
     LOG_FOLDER = keys[0];
@@ -456,6 +523,10 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_sort/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   if (cmd.isSet("logFolder")) {
     auto keys = cmd.getMany<std::string>("logFolder");
     LOG_FOLDER = keys[0];
@@ -583,9 +654,9 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   start = clock();
   mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
   end = clock();
-
   double time_task_second_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
-
+  MPI_Barrier(MPI_COMM_WORLD);
+  
   if (rank == 0) {
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
@@ -600,8 +671,10 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
         << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
+    ofs << "i am rank: " << rank << " and my role is: " << role << std::endl;
     ofs.close();
   }
+  return 0;
 }
 
 
@@ -615,6 +688,10 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_max/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -771,6 +848,10 @@ int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_min/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -927,6 +1008,10 @@ int test_cipher_medium_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_medium/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(n) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -1083,6 +1168,10 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
 
   // set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_new_search/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
@@ -1125,52 +1214,98 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
   start = clock();
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
-
-  // directly generate the partial data
   size_t partial_len = m_end - m_start + 1;
-  i64Matrix plainTest(partial_len, 1);
-  for (int i = 0; i < partial_len; i++) {
-    plainTest(i, 0) = i + m_start;
-  }
-
-  // non-sense diffValue, just for test, do not have to construct diffvalue in newSearch.
-  i64Matrix diffValue(partial_len, 1);
-  for (int i = 0; i < partial_len; i++) {
-    diffValue(i, 0) = i + m_start;
-  }
-
-  i64Matrix searchKey(m, 1);
-  // inverse sequence.
-  for (int i = 0; i < m; i++) {
-    searchKey(i, 0) = n - 1 - i;
-  }
-
-  // generate the cipher test data.
-  si64Matrix secretDiff(partial_len, 1);
-  si64Matrix secretSpace(partial_len, 1);
-  si64Matrix secretKey(m, 1);
-  if (role == 0) {
-    enc.localIntMatrix(runtime, plainTest, secretSpace).get();
-    enc.localIntMatrix(runtime, diffValue, secretDiff).get();
-    enc.localIntMatrix(runtime, searchKey, secretKey).get();
-  } else {
-    enc.remoteIntMatrix(runtime, secretSpace).get();
-    enc.remoteIntMatrix(runtime, secretDiff).get();
-    enc.remoteIntMatrix(runtime, secretKey).get();
-  }
-  si64Matrix init_res;
-  init_zeros(role, enc, runtime, init_res, m);
-
   vector<si64> res(m);
   vector<si64> vecSpace(partial_len);
   vector<si64> vecDiff(partial_len);
   vector<si64> vecKey(m);
-  for (int i = 0; i < m; i++) vecKey[i] = secretKey(i, 0);
+
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
-  for (int i = 0; i < partial_len; i++) {
-    vecDiff[i] = secretDiff(i, 0);
-    vecSpace[i] = secretSpace(i, 0);
+
+  i64Matrix searchKey(m, 1);
+  // inverse sequence.
+  for (int i = 0; i < m; i++) searchKey(i, 0) = n - 1 - i;
+  si64Matrix secretKey(m, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, searchKey, secretKey).get();
+  } else {
+    enc.remoteIntMatrix(runtime, secretKey).get();
   }
+
+  for(size_t k=0; k<partial_len; k+=ENC_LIMIT){
+
+    size_t block_end = std::min(k+ENC_LIMIT, partial_len);
+    size_t block_size = block_end - k;
+
+    i64Matrix plainTest(block_size, 1);
+    for (int i = 0; i < block_size; i++) plainTest(i, 0) = i + m_start + k;
+    i64Matrix diffValue(block_size, 1);
+    for (int i = 0; i < block_size; i++) diffValue(i, 0) = i + m_start + k;
+
+    si64Matrix secretDiff(block_size, 1);
+    si64Matrix secretSpace(block_size, 1);
+
+    if (role == 0) {
+      enc.localIntMatrix(runtime, plainTest, secretSpace).get();
+      enc.localIntMatrix(runtime, diffValue, secretDiff).get();
+    } else {
+      enc.remoteIntMatrix(runtime, secretSpace).get();
+      enc.remoteIntMatrix(runtime, secretDiff).get();
+    }
+
+    for (int i = k; i < block_end; i++) {
+      vecDiff[i] = secretDiff(i-k, 0);
+      vecSpace[i] = secretSpace(i-k, 0);
+    }
+  }
+
+  // // directly generate the partial data
+  // size_t partial_len = m_end - m_start + 1;
+  // i64Matrix plainTest(partial_len, 1);
+  // for (int i = 0; i < partial_len; i++) {
+  //   plainTest(i, 0) = i + m_start;
+  // }
+
+  // // non-sense diffValue, just for test, do not have to construct diffvalue in newSearch.
+  // i64Matrix diffValue(partial_len, 1);
+  // for (int i = 0; i < partial_len; i++) {
+  //   diffValue(i, 0) = i + m_start;
+  // }
+
+  // i64Matrix searchKey(m, 1);
+  // // inverse sequence.
+  // for (int i = 0; i < m; i++) {
+  //   searchKey(i, 0) = n - 1 - i;
+  // }
+
+  // // generate the cipher test data.
+  // si64Matrix secretDiff(partial_len, 1);
+  // si64Matrix secretSpace(partial_len, 1);
+  // si64Matrix secretKey(m, 1);
+  // if (role == 0) {
+  //   enc.localIntMatrix(runtime, plainTest, secretSpace).get();
+  //   enc.localIntMatrix(runtime, diffValue, secretDiff).get();
+  //   enc.localIntMatrix(runtime, searchKey, secretKey).get();
+  // } else {
+  //   enc.remoteIntMatrix(runtime, secretSpace).get();
+  //   enc.remoteIntMatrix(runtime, secretDiff).get();
+  //   enc.remoteIntMatrix(runtime, secretKey).get();
+  // }
+  // si64Matrix init_res;
+  // init_zeros(role, enc, runtime, init_res, m);
+
+  // vector<si64> res(m);
+  // vector<si64> vecSpace(partial_len);
+  // vector<si64> vecDiff(partial_len);
+  // vector<si64> vecKey(m);
+  // for (int i = 0; i < m; i++) vecKey[i] = secretKey(i, 0);
+  // for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+  // for (int i = 0; i < partial_len; i++) {
+  //   vecDiff[i] = secretDiff(i, 0);
+  //   vecSpace[i] = secretSpace(i, 0);
+  // }
 
   // set the data related part.
   mpiPtrTask->set_selective_value(vecDiff.data(), 0);
@@ -1259,51 +1394,52 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, i
   start = clock();
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
-
-  // directly generate the partial data
   size_t partial_len = m_end - m_start + 1;
-  i64Matrix plainTest(partial_len, 1);
-  for (int i = 0; i < partial_len; i++) {
-    plainTest(i, 0) = i + m_start;
-  }
-
-  // non-sense diffValue, just for test.
-  i64Matrix diffValue(partial_len, 1);
-  for (int i = 0; i < partial_len; i++) {
-    diffValue(i, 0) = i + m_start;
-  }
-
-  i64Matrix searchKey(m, 1);
-  // inverse sequence.
-  for (int i = 0; i < m; i++) {
-    searchKey(i, 0) = n - 1 - i;
-  }
-
-  // generate the cipher test data.
-  si64Matrix secretDiff(partial_len, 1);
-  si64Matrix secretSpace(partial_len, 1);
-  si64Matrix secretKey(m, 1);
-  if (role == 0) {
-    enc.localIntMatrix(runtime, plainTest, secretSpace).get();
-    enc.localIntMatrix(runtime, diffValue, secretDiff).get();
-    enc.localIntMatrix(runtime, searchKey, secretKey).get();
-  } else {
-    enc.remoteIntMatrix(runtime, secretSpace).get();
-    enc.remoteIntMatrix(runtime, secretDiff).get();
-    enc.remoteIntMatrix(runtime, secretKey).get();
-  }
-  si64Matrix init_res;
-  init_zeros(role, enc, runtime, init_res, m);
-
+  
   vector<si64> res(m);
   vector<si64> vecSpace(partial_len);
   vector<si64> vecDiff(partial_len);
   vector<si64> vecKey(m);
-  for (int i = 0; i < m; i++) vecKey[i] = secretKey(i, 0);
+
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
-  for (int i = 0; i < partial_len; i++) {
-    vecDiff[i] = secretDiff(i, 0);
-    vecSpace[i] = secretSpace(i, 0);
+
+  i64Matrix searchKey(m, 1);
+  // inverse sequence.
+  for (int i = 0; i < m; i++) searchKey(i, 0) = n - 1 - i;
+  si64Matrix secretKey(m, 1);
+  if (role == 0) {
+    enc.localIntMatrix(runtime, searchKey, secretKey).get();
+  } else {
+    enc.remoteIntMatrix(runtime, secretKey).get();
+  }
+
+  for(size_t k=0; k<partial_len; k+=ENC_LIMIT){
+
+    size_t block_end = std::min(k+ENC_LIMIT, partial_len);
+    size_t block_size = block_end - k;
+
+    i64Matrix plainTest(block_size, 1);
+    for (int i = 0; i < block_size; i++) plainTest(i, 0) = i + m_start + k;
+    i64Matrix diffValue(block_size, 1);
+    for (int i = 0; i < block_size; i++) diffValue(i, 0) = i + m_start + k;
+
+    si64Matrix secretDiff(block_size, 1);
+    si64Matrix secretSpace(block_size, 1);
+
+    if (role == 0) {
+      enc.localIntMatrix(runtime, plainTest, secretSpace).get();
+      enc.localIntMatrix(runtime, diffValue, secretDiff).get();
+    } else {
+      enc.remoteIntMatrix(runtime, secretSpace).get();
+      enc.remoteIntMatrix(runtime, secretDiff).get();
+    }
+
+    for (int i = k; i < block_end; i++) {
+      vecDiff[i] = secretDiff(i-k, 0);
+      vecSpace[i] = secretSpace(i-k, 0);
+    }
   }
 
   // set the data related part.
@@ -1384,6 +1520,7 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   aby3::si64 dval;
   dval.mData[0] = 0, dval.mData[1] = 0;
   mpiPtrTask->set_default_value(dval);
+  cout << "m: " << m << "n: " << n << endl;
   mpiPtrTask->circuit_construct({m}, {n});
   end = clock(); // time for task init.
   double time_task_init = double((end - start)*1000)/(CLOCKS_PER_SEC);
@@ -1393,19 +1530,34 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
   size_t partial_len = m_end - m_start + 1;
-  si64Matrix data(partial_len, 1);
-  si64Matrix init_res;
-  init_zeros(role, enc, runtime, init_res, m);
-  init_ones(role, enc, runtime, data, partial_len);
 
-  vector<si64> vecM(partial_len);
   vector<int> x(1);
   vector<si64> res(m);
+  vector<si64> vecM(partial_len);
+  si64Matrix init_res(m, 1);
+  init_zeros(role, enc, runtime, init_res, m);
   x[0] = 0;
-  for (int i = 0; i < partial_len; i++) vecM[i] = data(i, 0);
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+
+  // blockwise construct data.
+  for(size_t k=0; k<partial_len; k+=ENC_LIMIT){
+    size_t block_end = std::min(k+ENC_LIMIT, partial_len);
+    size_t block_size = block_end - k;
+
+    si64Matrix data(block_size, 1);
+    init_ones(role, enc, runtime, data, block_size);
+    for(size_t t=k; t<block_end; t++) vecM[t] = data(t-k, 0);
+  }
+
+  // si64Matrix data(partial_len, 1);
+  // init_ones(role, enc, runtime, data, partial_len);
+  // cout << "success data init" << endl;
+  // vector<si64> vecM(partial_len);
+  // for (int i = 0; i < partial_len; i++) vecM[i] = data(i, 0);
+
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  cout << "success circuit construct" << endl;
 
   // 3. task evaluate.
   start = clock();
@@ -1488,23 +1640,48 @@ int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int ta
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
   size_t partial_len = m_end - m_start + 1;
-  si64Matrix data(partial_len * k, 1);
-  si64Matrix target(m * k, 1);
-  si64Matrix init_res;
-  init_zeros(role, enc, runtime, init_res, m);
-  init_ones(role, enc, runtime, data, partial_len * k);
-  init_zeros(role, enc, runtime, target, m * k);
 
   vector<vector<aby3::si64>> vecM(partial_len, vector<aby3::si64>(k));
   vector<vector<aby3::si64>> vecTarget(m, vector<aby3::si64>(k));
   vector<si64> res(m);
-  for (int i = 0; i < partial_len; i++) {
-    for (int j = 0; j < k; j++) vecM[i][j] = data(i * k + j, 0);
-  }
+
+  si64Matrix target(m * k, 1);
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  init_zeros(role, enc, runtime, target, m * k);
   for (int i = 0; i < m; i++) {
     for (int j = 0; j < k; j++) vecTarget[i][j] = target(i * k + j, 0);
   }
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+
+  // blockwise construct.
+  size_t hd_length = ENC_LIMIT / k;
+  for(size_t t = 0; t<partial_len; t += hd_length){
+    size_t block_end = std::min(t + hd_length, partial_len);
+    size_t block_size = block_end - t;
+    si64Matrix data(block_size*k, 1);
+    init_ones(role, enc, runtime, data, block_size * k);
+    for(int i=t; i<block_end; i++){
+      for(int j=0; j<k; j++) vecM[i][j] = data((i-t) * k + j);
+    }
+  }
+  // si64Matrix data(partial_len * k, 1);
+  // si64Matrix target(m * k, 1);
+  // si64Matrix init_res;
+  // init_zeros(role, enc, runtime, init_res, m);
+  // init_ones(role, enc, runtime, data, partial_len * k);
+  // init_zeros(role, enc, runtime, target, m * k);
+
+  // vector<vector<aby3::si64>> vecM(partial_len, vector<aby3::si64>(k));
+  // vector<vector<aby3::si64>> vecTarget(m, vector<aby3::si64>(k));
+  // vector<si64> res(m);
+  // for (int i = 0; i < partial_len; i++) {
+  //   for (int j = 0; j < k; j++) vecM[i][j] = data(i * k + j, 0);
+  // }
+  // for (int i = 0; i < m; i++) {
+  //   for (int j = 0; j < k; j++) vecTarget[i][j] = target(i * k + j, 0);
+  // }
+  // for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   
@@ -1588,23 +1765,49 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
   size_t partial_len = m_end - m_start + 1;
-  si64Matrix data(partial_len * k, 1);
-  si64Matrix target(m * k, 1);
-  si64Matrix init_res;
-  init_zeros(role, enc, runtime, init_res, m);
-  init_ones(role, enc, runtime, data, partial_len * k);
-  init_zeros(role, enc, runtime, target, m * k);
 
   vector<vector<aby3::si64>> vecM(partial_len, vector<aby3::si64>(k));
   vector<vector<aby3::si64>> vecTarget(m, vector<aby3::si64>(k));
   vector<si64> res(m);
-  for (int i = 0; i < partial_len; i++) {
-    for (int j = 0; j < k; j++) vecM[i][j] = data(i * k + j, 0);
-  }
+
+  si64Matrix target(m * k, 1);
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  init_zeros(role, enc, runtime, target, m * k);
   for (int i = 0; i < m; i++) {
     for (int j = 0; j < k; j++) vecTarget[i][j] = target(i * k + j, 0);
   }
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+
+  // blockwise construct.
+  size_t hd_length = ENC_LIMIT / k;
+  for(size_t t = 0; t<partial_len; t += hd_length){
+    size_t block_end = std::min(t + hd_length, partial_len);
+    size_t block_size = block_end - t;
+    si64Matrix data(block_size*k, 1);
+    init_ones(role, enc, runtime, data, block_size * k);
+    for(int i=t; i<block_end; i++){
+      for(int j=0; j<k; j++) vecM[i][j] = data((i-t) * k + j);
+    }
+  }
+
+  // si64Matrix data(partial_len * k, 1);
+  // si64Matrix target(m * k, 1);
+  // si64Matrix init_res;
+  // init_zeros(role, enc, runtime, init_res, m);
+  // init_ones(role, enc, runtime, data, partial_len * k);
+  // init_zeros(role, enc, runtime, target, m * k);
+
+  // vector<vector<aby3::si64>> vecM(partial_len, vector<aby3::si64>(k));
+  // vector<vector<aby3::si64>> vecTarget(m, vector<aby3::si64>(k));
+  // vector<si64> res(m);
+  // for (int i = 0; i < partial_len; i++) {
+  //   for (int j = 0; j < k; j++) vecM[i][j] = data(i * k + j, 0);
+  // }
+  // for (int i = 0; i < m; i++) {
+  //   for (int j = 0; j < k; j++) vecTarget[i][j] = target(i * k + j, 0);
+  // }
+  // for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   // cout << "before circuit evaluation" << endl;

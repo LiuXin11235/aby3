@@ -65,8 +65,6 @@ int main(int argc, char** argv) {
                              std::to_string(TASK_NUM));
   }
 
-  // cout << "task_size: " << task_size << endl;
-
   if (FUNC == "index")
     test_cipher_index_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
   
@@ -75,9 +73,6 @@ int main(int argc, char** argv) {
 
   if (FUNC == "rank") 
 		test_cipher_rank_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
-  
-  if (FUNC == "sort")
-    test_cipher_sort_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
 
 	if (FUNC == "search") 
 		test_cipher_search_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
