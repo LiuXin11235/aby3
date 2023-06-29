@@ -21,9 +21,11 @@
 #   sleep 1800;  # 每分钟检查一次
 # done;
 
-
-./Eval/hd_task_evaluate.sh
-wait;
+# ./Eval/basic_task_evaluate.sh
+# wait;
 
 ./Eval/multi_steps_evaluate.sh
+wait;
+
+./Eval/hd_task_evaluate.sh
 wait;

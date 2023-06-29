@@ -1,7 +1,7 @@
 # 1d functions.
 # task_list=("average" "index" "search" "new_search" "select")
-task_list=("index" "search" "select")
-log_folder_list=(./Record/Record_index ./Record/Record_search ./Record/Record_select)
+task_list=("average")
+log_folder_list=(./Record/Record_average)
 # task_list=("select")
 # log_folder_list=(./Record/Record_select)
 # log_folder_list=(./Record/Record_average ./Record/Record_index ./Record/Record_search ./Record/Record_new_search ./Record/Record_select)
@@ -33,10 +33,11 @@ wait;
 N_list=(1073741824)
 # N_list=(500000000)
 repeat=3; test_times=3; retry_threshold=5
-task_num_list=(1)
+task_num_list=(256 128)
 # task_num_list=(256 128 64 32 16 4 1)
-optB_list=(1048576 1048576 1048576 1048576 1048576 1048576 1048576)
-exceed_time=(120)
+optB_list=(1024 16384 131072 1048576 16777216 134217728)
+# optB_list=(1048576 1048576 1048576 1048576 1048576 1048576 1048576)
+exceed_time=(50 100)
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
 
@@ -45,22 +46,23 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
   log_folder=${log_folder_list[i]};
 
   for (( t=0; t<${#task_num_list[@]}; t++ )); do
-    optB=${optB_list[t]}; taskN=${task_num_list[t]}; outLimit=${exceed_time[t]};
+    taskN=${task_num_list[t]}; outLimit=${exceed_time[t]};
     M=1; K=4
-    taskN=${task_num_list[t]}
-    for (( k=0; k<$test_times; k++ )); do
-      for N in ${N_list[@]}; do
-        # run the tasks with retrying.
-        j=0;
-        while [ $j -lt $retry_threshold ]; do
-          timeout ${outLimit}m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M k=$K repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
-          if [ $? -eq 0 ]; then
-            break; 
-          fi
-          j=$(expr $j + 1);
-          if [ $j -eq $retry_threshold ]; then
-            echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
-          fi
+    for optB in ${optB_list[@]}; do
+      for (( k=0; k<$test_times; k++ )); do
+        for N in ${N_list[@]}; do
+          # run the tasks with retrying.
+          j=0;
+          while [ $j -lt $retry_threshold ]; do
+            timeout ${outLimit}m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M k=$K repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
+            if [ $? -eq 0 ]; then
+              break; 
+            fi
+            j=$(expr $j + 1);
+            if [ $j -eq $retry_threshold ]; then
+              echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
+            fi
+          done;
         done;
       done;
     done;

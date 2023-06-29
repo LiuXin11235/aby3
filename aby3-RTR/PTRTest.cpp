@@ -1520,7 +1520,6 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   aby3::si64 dval;
   dval.mData[0] = 0, dval.mData[1] = 0;
   mpiPtrTask->set_default_value(dval);
-  cout << "m: " << m << "n: " << n << endl;
   mpiPtrTask->circuit_construct({m}, {n});
   end = clock(); // time for task init.
   double time_task_init = double((end - start)*1000)/(CLOCKS_PER_SEC);
@@ -1557,7 +1556,7 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
 
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
-  cout << "success circuit construct" << endl;
+  // cout << "success circuit construct" << endl;
 
   // 3. task evaluate.
   start = clock();
@@ -1899,25 +1898,53 @@ int test_cipher_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
   size_t partial_len = m_end - m_start + 1;
-  si64Matrix data(partial_len * k, 1);
-  si64Matrix target(m * k, 1);
-  si64Matrix init_res;
-  init_zeros(role, enc, runtime, init_res, m);
-  init_ones(role, enc, runtime, data, partial_len * k);
-  init_zeros(role, enc, runtime, target, m * k);
-
   vector<vector<aby3::si64>> vecM(partial_len, vector<aby3::si64>(k));
   vector<vector<aby3::si64>> vecTarget(m, vector<aby3::si64>(k));
   vector<indData<si64>> res(m);
-  for (int i = 0; i < partial_len; i++) {
-    for (int j = 0; j < k; j++) vecM[i][j] = data(i * k + j, 0);
-  }
+
+  si64Matrix target(m * k, 1);
+  si64Matrix init_res;
+  init_zeros(role, enc, runtime, init_res, m);
+  init_zeros(role, enc, runtime, target, m * k);
   for (int i = 0; i < m; i++) {
     for (int j = 0; j < k; j++) vecTarget[i][j] = target(i * k + j, 0);
   }
   for (int i = 0; i < m; i++){
     res[i].value = init_res(i, 0); res[i].index = init_res(i, 0);
   }
+
+  // blockwise construct the data
+  size_t hd_length = ENC_LIMIT / k;
+  for(size_t t=0; t<partial_len; t += hd_length){
+    size_t block_end = std::min(t + hd_length, partial_len);
+    size_t block_size = block_end - t;
+    si64Matrix data(block_size*k, 1);
+    init_ones(role, enc, runtime, data, block_size * k);
+    for(int i=t; i<block_end; i++){
+      for(int j=0; j<k; j++) vecM[i][j] = data((i-t) * k + j);
+    }
+  }
+
+
+  // si64Matrix data(partial_len * k, 1);
+  // si64Matrix target(m * k, 1);
+  // si64Matrix init_res;
+  // init_zeros(role, enc, runtime, init_res, m);
+  // init_ones(role, enc, runtime, data, partial_len * k);
+  // init_zeros(role, enc, runtime, target, m * k);
+
+  // vector<vector<aby3::si64>> vecM(partial_len, vector<aby3::si64>(k));
+  // vector<vector<aby3::si64>> vecTarget(m, vector<aby3::si64>(k));
+  // vector<indData<si64>> res(m);
+  // for (int i = 0; i < partial_len; i++) {
+  //   for (int j = 0; j < k; j++) vecM[i][j] = data(i * k + j, 0);
+  // }
+  // for (int i = 0; i < m; i++) {
+  //   for (int j = 0; j < k; j++) vecTarget[i][j] = target(i * k + j, 0);
+  // }
+  // for (int i = 0; i < m; i++){
+  //   res[i].value = init_res(i, 0); res[i].index = init_res(i, 0);
+  // }
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   // cout << "before circuit evaluation" << endl;
