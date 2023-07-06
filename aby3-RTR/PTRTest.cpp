@@ -664,12 +664,12 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
-        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine1: " << std::setprecision(5) << mpiPtrRank->time_combine
         << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
         << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
-        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
+        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine2: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs << "i am rank: " << rank << " and my role is: " << role << std::endl;
     ofs.close();
@@ -826,12 +826,12 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
-        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine1: " << std::setprecision(5) << mpiPtrRank->time_combine
         << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
         << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
-        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
+        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine2: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs.close();
   }
@@ -986,12 +986,12 @@ int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
-        << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
+        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\ntime_combine1: " << std::setprecision(5) << mpiPtrRank->time_combine
         << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
         << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
-        << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
+        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\ntime_combine2: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs.close();
   }

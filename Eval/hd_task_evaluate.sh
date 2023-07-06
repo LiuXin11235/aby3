@@ -24,21 +24,14 @@ scp ./bin/frontend aby31:~/aby3/bin/ &
 scp ./bin/frontend aby32:~/aby3/bin/ &
 wait;
 
-# N_list=(1048576 16777216 134217728 1073741824)
-# N_list=(1073741824 134217728 16777216 1048576
-N_list=(536870912)
-M=1; K=2;
+N_list=(67108864)
+M=16; K=1;
 # M_list=(1)
 # K_list=(2)
-repeat=1; test_times=3; retry_threshold=5
-# task_num_list=(256 128 64 32 16 4 1)
-# task_num_list=(1 4 16 32 64 128 256)
-task_num_list=(256 128)
-optB_list=(1024 16384 131072 1048576 134217728)
-# optB_list=(1024 8192 131072 1048576 16777216 134217728)
-# optB_list=(524288 524288 524288 524288 524288 524288 524288)
-exceed_time=(150 90)
-# exceed_time=(15 15 15 30 45 75 100)
+repeat=1; test_times=10; retry_threshold=10
+task_num_list=(256 128 64)
+optB_list=(16388 65536 262144 1048576 4194304)
+exceed_time=(3 5 8 10 15)
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
 
