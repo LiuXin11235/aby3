@@ -32,10 +32,10 @@ latency=0.03
 # compile.
 python build.py
 
-# # synchronize with others.
-# scp ./bin/frontend aby31:~/aby3/bin &
-# scp ./bin/frontend aby32:~/aby3/bin &
-# wait;
+# synchronize with others.
+scp ./bin/frontend aby31:~/aby3/bin &
+scp ./bin/frontend aby32:~/aby3/bin &
+wait;
 
 retry_threshold=5;
 
@@ -47,14 +47,14 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
     test_bw=$(python -c "print($total_bw / ($available_cores * 2) )")
     echo "test_bw = "${test_bw}
 
-    # cleanup the settings on the eth
+    # # cleanup the settings on the eth
     # ./Eval/network_clean.sh
 
     # add a new, clean log folder.
     day=$(date +%m-%d);
     timeStamp=$(date +"%H%M%s");
 
-    # setup the network
+    # # setup the network
     # ./Eval/network_set.sh ${test_bw} ${latency}
 
     # evaluate on aby3
