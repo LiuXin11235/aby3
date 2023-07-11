@@ -1,7 +1,8 @@
-# task_list=("search" "select" "index" "average")
-# log_folder_list=(./Record/Record_search ./Record/Record_select ./Record/Record_index ./Record/Record_average)
-task_list=("new_search" "search")
-log_folder_list=(./Record/Record_new_search ./Record/Record_search)
+# 1d functions.
+# task_list=("index" "search" "new_search" "select")
+# log_folder_list=(./Record/Record_index ./Record/Record_search ./Record/Record_new_search ./Record/Record_select)
+task_list=("select")
+log_folder_list=(./Record/Record_select)
 
 
 day=$(date +%m-%d);
@@ -20,19 +21,18 @@ done
 # compile
 python build.py
 
-# # synchroonize with others
-# scp ./bin/frontend aby31:~/aby3/bin/ &
-# scp ./bin/frontend aby32:~/aby3/bin/ &
-# wait;
+# synchroonize with others
+scp ./bin/frontend aby31:~/aby3/bin &
+scp ./bin/frontend aby32:~/aby3/bin &
+wait;
 
 # test settings.
-# N_list=(1000000000 100000000 10000000 1000000)
-N_list=(100000)
-M_list=(1)
-optB_list=(250000)
-repeat=1; test_times=3; retry_threshold=5
-task_num_list=(16)
-# task_num_list=(256 128 64 32 16 8 4 2 1)
+N_list=(67108864); M=16
+repeat=3; test_times=10; retry_threshold=5
+task_num_list=(256 128 64)
+optB_list=(65536 16384 262144 1048576 4194304)
+# optB_list=(1048576 1048576 1048576 1048576 1048576 1048576 1048576)
+exceed_time=(5 10 15)
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
 
@@ -40,29 +40,27 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
   task=${task_list[i]};
   log_folder=${log_folder_list[i]};
 
-  for taskN in ${task_num_list[@]}; do
-    for (( k=0; k<$test_times; k++ )); do
-      for N in ${N_list[@]}; do
-        for M in ${M_list[@]}; do
-          for optB in ${optB_list[@]}; do
-            # run the tasks with retrying.
-            j=0;
-            while [ $j -lt $retry_threshold ]; do
-              timeout 150m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
-              if [ $? -eq 0 ]; then
-                break; 
-              fi
-              j=$(expr $j + 1);
-              if [ $j -eq $retry_threshold ]; then
-                echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
-              fi
-            done;
+  for (( t=0; t<${#task_num_list[@]}; t++ )); do
+    taskN=${task_num_list[t]}; outLimit=${exceed_time[t]};
+    M=32; K=4
+    for optB in ${optB_list[@]}; do
+      for (( k=0; k<$test_times; k++ )); do
+        for N in ${N_list[@]}; do
+          # run the tasks with retrying.
+          j=0;
+          while [ $j -lt $retry_threshold ]; do
+            timeout ${outLimit}m ./Eval/mpi_subtask.sh taskN=$taskN n=$N m=$M k=$K repeat=$repeat task=$task optB=$optB log_folder=$log_folder/
+            if [ $? -eq 0 ]; then
+              break; 
+            fi
+            j=$(expr $j + 1);
+            if [ $j -eq $retry_threshold ]; then
+              echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
+            fi
           done;
         done;
       done;
     done;
   done;
-
-  # tar the results.
   tar cvf $log_folder.tar $log_folder;
 done;

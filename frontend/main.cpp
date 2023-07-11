@@ -65,8 +65,6 @@ int main(int argc, char** argv) {
                              std::to_string(TASK_NUM));
   }
 
-  // cout << "task_size: " << task_size << endl;
-
   if (FUNC == "index")
     test_cipher_index_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
   
@@ -75,9 +73,6 @@ int main(int argc, char** argv) {
 
   if (FUNC == "rank") 
 		test_cipher_rank_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
-  
-  if (FUNC == "sort")
-    test_cipher_sort_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
 
 	if (FUNC == "search") 
 		test_cipher_search_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
@@ -140,6 +135,21 @@ int main(int argc, char** argv) {
     }
     // cout << "can in this block!" << endl;
     test_cipher_bio_metric(cmd, N, M, k, TASK_NUM, OPT_BLOCK);
+  }
+
+  if(FUNC == "metric"){
+    int k = -1;
+    if(cmd.isSet("K")){
+      auto keys = cmd.getMany<int>("K");
+      k = keys[0];
+    }
+    if(k < 0){
+      throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                             " K must be setted, while K = " +
+                             std::to_string(k));
+    }
+    // cout << "can in this block!" << endl;
+    test_cipher_metric(cmd, N, M, k, TASK_NUM, OPT_BLOCK);
   }
 
   // multi-step functions.
