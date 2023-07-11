@@ -1,8 +1,6 @@
-task_list=("prof_bio_metric" "prof_average" "prof_mean_distance" "prof_cipher_index" "prof_sort" "prof_rank" "prof_max")
-log_folder_list=(./Record/Prof_bio_metric ./Record/Prof_average ./Record/Prof_mean_distance ./Record/Prof_index ./Record/Prof_sort ./Record/Prof_rank ./Record/Prof_max)
-
-# task_list=("prof_bio_metric" "prof_max" "prof_sort" "prof_rank")
-# log_folder_list=(./Record/Prof_bio_metric ./Record/Prof_max ./Record/Prof_sort ./Record/Prof_rank)
+task_list=("prof_cipher_index_mpi" "prof_average_mpi" "prof_mean_distance_mpi" "prof_bio_metric_mpi" "prof_sort_mpi" "prof_rank_mpi" "prof_max_mpi")
+log_folder_list=(./Record/Prof_mpi_index ./Record/Prof_mpi_average ./Record/Prof_mpi_mean_distance ./Record/Prof_mpi_bio_metric  ./Record/Prof_mpi_sort ./Record/Prof_mpi_rank ./Record/Prof_mpi_max)
+# log_folder_list=(./Record/Prof_mpi_index)
 
 # cleanup the old folder and create a clean one.
 for log_folder in ${log_folder_list[@]}; do
@@ -26,7 +24,10 @@ fi
 
 total_bw=10000
 # available_cores_list=(256 64 16 4 1)
-available_cores_list=(256)
+# available_cores_list=(256 128 64 32 16 4)
+available_cores_list=(256 64 4)
+repeat_list=(100 500 1000)
+# available_cores_list=(4)
 latency=0.03
 
 # compile.
@@ -42,10 +43,12 @@ retry_threshold=5;
 for (( i=0; i<${#task_list[@]}; i++ )); do
   task=${task_list[i]}; log_folder=${log_folder_list[i]};
 
-  for available_cores in ${available_cores_list[@]}; do
+  # for available_cores in ${available_cores_list[@]}; do
+  for (( k=0; k<${#available_cores_list[@]}; k++ )); do
+    available_cores=${available_cores_list[k]}; repeat=${repeat_list[k]}
 
-    test_bw=$(python -c "print($total_bw / ($available_cores * 2) )")
-    echo "test_bw = "${test_bw}
+    # test_bw=$(python -c "print($total_bw / ($available_cores * 2) )")
+    # echo "test_bw = "${test_bw}
 
     # # cleanup the settings on the eth
     # ./Eval/network_clean.sh
@@ -57,12 +60,12 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
     # # setup the network
     # ./Eval/network_set.sh ${test_bw} ${latency}
 
-    # evaluate on aby3
-    n=1; optB=1024; m=1000000000; repeat=10; epsilon=0.1; gap=100; K=2;
+    # evaluate on aby
+    n=1; optB=65536; m=1000000000; epsilon=0.1; gap=100; K=2;
 
     j=0;
     while [ $j -lt $retry_threshold ]; do
-      timeout 10m ./Eval/eval_subtask.sh taskN=1 n=${n} m=${m} repeat=${repeat} task=${task} optB=${optB} log_folder=${log_folder}/ epsilon=${epsilon} gap=${gap} vec_start=${optB} k=${K};
+      timeout 20m ./Eval/mpi_subtask.sh taskN=${available_cores} n=${n} m=${m} repeat=${repeat} task=${task} optB=${optB} log_folder=${log_folder}/ epsilon=${epsilon} gap=${gap} vec_start=${optB} k=${K};
       if [ $? -eq 0 ]; then
         break; 
       fi
@@ -72,7 +75,9 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
       fi
     done;
 
-    cp ${log_folder}/probe.log ${res_folder}/probe-task_${task}_${test_bw}bw.log
-    cp ${log_folder}/probe.res ${res_folder}/probe-task_${task}_${test_bw}bw.res
+    cp ${log_folder}/probe.log ${res_folder}/probe-task_${task}_c=${available_cores}.log
+    cp ${log_folder}/probe.res ${res_folder}/probe-task_${task}_c=${available_cores}.res
+
+    rm -r ${log_folder}/*
   done;
 done;

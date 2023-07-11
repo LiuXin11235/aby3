@@ -20,7 +20,6 @@ using namespace aby3;
 #ifdef MPI
 int main(int argc, char** argv) {
   oc::CLP cmd(argc, argv);
-  
   // reinit the environment and then finalize the environment.
   MPI_Init(&argc, &argv);
 
@@ -162,6 +161,7 @@ int main(int argc, char** argv) {
 
   // profile...
   std::string start_prefix = FUNC.substr(0, 4);
+  // cout << "FUNC: " << FUNC << endl;
   // cout << start_prefix << endl;
   if(start_prefix == "prof"){
 
@@ -187,18 +187,34 @@ int main(int argc, char** argv) {
 
     if(FUNC == "prof_cipher_index")
       profile_cipher_index(cmd, N, M, vec_start, epsilon, gap);    
+
+    if(FUNC == "prof_cipher_index_mpi")
+      profile_cipher_index_mpi(cmd, N, M, vec_start, epsilon, gap);  
     
     if(FUNC == "prof_average")
       profile_average(cmd, N, M, vec_start, epsilon, gap);
+
+    if(FUNC == "prof_average_mpi")
+      profile_average_mpi(cmd, N, M, vec_start, epsilon, gap);
+    
     
     if(FUNC == "prof_rank")
       profile_rank(cmd, N, M, vec_start, epsilon, gap);
+
+    if(FUNC == "prof_rank_mpi")
+      profile_rank_mpi(cmd, N, M, vec_start, epsilon, gap);
     
     if(FUNC == "prof_sort")
       profile_sort(cmd, N, M, vec_start, epsilon, gap);
+
+    if(FUNC == "prof_sort_mpi")
+      profile_sort_mpi(cmd, N, M, vec_start, epsilon, gap);
     
     if(FUNC == "prof_max")
       profile_max(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_max_mpi")
+      profile_max_mpi(cmd, N, M, vec_start, epsilon, gap);
     
     if(FUNC == "prof_bio_metric"){
       int k = -1;
@@ -216,6 +232,22 @@ int main(int argc, char** argv) {
       profile_bio_metric(cmd, N, M, k, vec_start, epsilon, gap);
     }
 
+    if(FUNC == "prof_bio_metric_mpi"){
+      int k = -1;
+      if(cmd.isSet("K")){
+        // cout << "in check" << endl;
+        auto keys = cmd.getMany<int>("K");
+        k = keys[0];
+        // cout << "k = " << k << endl;
+      }
+      if(k < 0){
+        throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                              " K must be setted, while K = " +
+                              std::to_string(k));
+      }
+      profile_bio_metric_mpi(cmd, N, M, k, vec_start, epsilon, gap);
+    }
+
     if(FUNC == "prof_mean_distance"){
       int k = -1;
       if(cmd.isSet("K")){
@@ -230,6 +262,22 @@ int main(int argc, char** argv) {
                               std::to_string(k));
       }
       profile_mean_distance(cmd, N, M, k, vec_start, epsilon, gap);
+    }
+
+    if(FUNC == "prof_mean_distance_mpi"){
+      int k = -1;
+      if(cmd.isSet("K")){
+        // cout << "in check" << endl;
+        auto keys = cmd.getMany<int>("K");
+        k = keys[0];
+        // cout << "k = " << k << endl;
+      }
+      if(k < 0){
+        throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                              " K must be setted, while K = " +
+                              std::to_string(k));
+      }
+      profile_mean_distance_mpi(cmd, N, M, k, vec_start, epsilon, gap);
     }
   }
 
