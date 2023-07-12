@@ -1,4 +1,14 @@
 
+# ./Eval/basic_task_evaluate.sh
+# wait;
+
+./Eval/hd_task_evaluate.sh
+wait;
+
+./Eval/multi_steps_evaluate.sh
+wait;
+
+
 # ./Eval/basic_task_evaluate.sh;
 # wait;
 
@@ -20,12 +30,3 @@
 #   # 休眠一段时间后再次检查
 #   sleep 1800;  # 每分钟检查一次
 # done;
-
-# ./Eval/basic_task_evaluate.sh
-# wait;
-
-./Eval/multi_steps_evaluate.sh
-wait;
-
-./Eval/hd_task_evaluate.sh
-wait;
