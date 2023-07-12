@@ -1833,6 +1833,7 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
   }
 }
 
+
 int test_cipher_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
                               int opt_B) {
   // 1.  task setup.

@@ -640,8 +640,11 @@ class SubAvg : public SubTask<NUMX, NUMY, NUMT, NUMR> {
                                   std::vector<NUMR>& local_res,
                                   BlockInfo* binfo) override {
 
-    for (int i = 0; i < resLeft.size(); i++)
+    for (int i = 0; i < resLeft.size(); i++){
       local_res[i] = resLeft[i] + resRight[i];
+      local_res[i].mData[0] = (aby3::i64) (local_res[i].mData[0] * double (1 / this->m));
+      local_res[i].mData[1] = (aby3::i64) (local_res[i].mData[1] * double (1 / this->m));
+    }
     return;
   }
 
@@ -667,6 +670,85 @@ class MPIAverage : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
   // setup all the aby3 environment variables, pIdx and rank.
   using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
   MPIAverage(int tasks, size_t optimal_block, const int pIdx,
+                 aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+                 aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(enc),
+        runtime(runtime),
+        eval(eval),
+        MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {}
+
+  // override sub_task create.
+  void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
+                       size_t table_end) override {
+    auto subTaskPtr(
+        new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
+                                         this->enc, this->runtime, this->eval));
+    this->subTask.reset(subTaskPtr);
+    this->subTask->initial_value = this->default_value;
+    this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
+                                     table_end);
+    for (int j = 0; j < this->n; j++)
+      this->subTask->res[j] = this->default_value;
+  }
+};
+
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class SubSum : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor* enc;
+  aby3::Sh3Runtime* runtime;
+  aby3::Sh3Evaluator* eval;
+
+  using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+  SubSum(const size_t optimal_block, const int task_id, const int pIdx,
+          aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+          aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+    this->have_selective = false;
+  }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+
+    for (int i = 0; i < resLeft.size(); i++){
+      local_res[i] = resLeft[i] + resRight[i];
+    }
+    return;
+  }
+
+ protected:
+  virtual void compute_local_table(std::vector<NUMX>& expandX,
+                                   std::vector<NUMY>& expandY,
+                                   std::vector<NUMT>& local_table,
+                                   BlockInfo* binfo) {
+    local_table = expandY;
+  }
+};
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
+          template <typename, typename, typename, typename> class TASK>
+class MPISum : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor& enc;
+  aby3::Sh3Runtime& runtime;
+  aby3::Sh3Evaluator& eval;
+
+  // setup all the aby3 environment variables, pIdx and rank.
+  using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
+  MPISum(int tasks, size_t optimal_block, const int pIdx,
                  aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
                  aby3::Sh3Evaluator& eval)
       : pIdx(pIdx),
