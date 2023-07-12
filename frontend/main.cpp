@@ -207,7 +207,6 @@ int main(int argc, char** argv) {
     if(FUNC == "prof_average_mpi")
       profile_average_mpi(cmd, N, M, vec_start, epsilon, gap);
     
-    
     if(FUNC == "prof_rank")
       profile_rank(cmd, N, M, vec_start, epsilon, gap);
 
@@ -225,6 +224,9 @@ int main(int argc, char** argv) {
     
     if(FUNC == "prof_max_mpi")
       profile_max_mpi(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_new_search_mpi")
+      profile_new_search_mpi(cmd, N, M, vec_start, epsilon, gap);
     
     if(FUNC == "prof_bio_metric"){
       int k = -1;

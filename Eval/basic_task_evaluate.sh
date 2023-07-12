@@ -1,8 +1,8 @@
 # 1d functions.
 # task_list=("index" "search" "new_search" "select")
 # log_folder_list=(./Record/Record_index ./Record/Record_search ./Record/Record_new_search ./Record/Record_select)
-task_list=("select")
-log_folder_list=(./Record/Record_select)
+task_list=("new_search")
+log_folder_list=(./Record/Record_new_search)
 
 
 day=$(date +%m-%d);
@@ -27,10 +27,11 @@ scp ./bin/frontend aby32:~/aby3/bin &
 wait;
 
 # test settings.
-N_list=(67108864); M=16
-repeat=3; test_times=10; retry_threshold=5
-task_num_list=(256 128 64)
-optB_list=(65536 16384 262144 1048576 4194304)
+N_list=(1000); M=16
+repeat=3; test_times=1; retry_threshold=5
+task_num_list=(16)
+optB_list=(65536)
+# optB_list=(65536 16384 262144 1048576 4194304)
 # optB_list=(1048576 1048576 1048576 1048576 1048576 1048576 1048576)
 exceed_time=(5 10 15)
 

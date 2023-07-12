@@ -792,7 +792,6 @@ int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runti
   return 0;
 }
 
-
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<std::vector<si64>>& vecRes){
   size_t inner_len = vecRes[0].size(); size_t length = vecRes.size();
   // cout << "inner_len: " << inner_len << " | length: " << length << endl;

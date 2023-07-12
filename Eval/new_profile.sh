@@ -1,6 +1,8 @@
-task_list=("prof_cipher_index_mpi" "prof_average_mpi" "prof_mean_distance_mpi" "prof_bio_metric_mpi" "prof_sort_mpi" "prof_rank_mpi" "prof_max_mpi")
-log_folder_list=(./Record/Prof_mpi_index ./Record/Prof_mpi_average ./Record/Prof_mpi_mean_distance ./Record/Prof_mpi_bio_metric  ./Record/Prof_mpi_sort ./Record/Prof_mpi_rank ./Record/Prof_mpi_max)
-# log_folder_list=(./Record/Prof_mpi_index)
+# task_list=("prof_cipher_index_mpi" "prof_average_mpi" "prof_mean_distance_mpi" "prof_bio_metric_mpi" "prof_sort_mpi" "prof_rank_mpi" "prof_max_mpi")
+# log_folder_list=(./Record/Prof_mpi_index ./Record/Prof_mpi_average ./Record/Prof_mpi_mean_distance ./Record/Prof_mpi_bio_metric  ./Record/Prof_mpi_sort ./Record/Prof_mpi_rank ./Record/Prof_mpi_max)
+
+task_list=("prof_new_search_mpi")
+log_folder_list=(./Record/Prof_mpi_new_search)
 
 # cleanup the old folder and create a clean one.
 for log_folder in ${log_folder_list[@]}; do
@@ -25,9 +27,9 @@ fi
 total_bw=10000
 # available_cores_list=(256 64 16 4 1)
 # available_cores_list=(256 128 64 32 16 4)
+# available_cores_list=(256 64 4)
 available_cores_list=(256 64 4)
-repeat_list=(100 500 1000)
-# available_cores_list=(4)
+repeat_list=(300 500 1000)
 latency=0.03
 
 # compile.
@@ -61,7 +63,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
     # ./Eval/network_set.sh ${test_bw} ${latency}
 
     # evaluate on aby
-    n=1; optB=65536; m=1000000000; epsilon=0.1; gap=100; K=2;
+    n=1; optB=131072; m=1000000000; epsilon=0.1; gap=5000; K=2;
 
     j=0;
     while [ $j -lt $retry_threshold ]; do
@@ -74,6 +76,8 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
         echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;
       fi
     done;
+
+    sh ./Eval/kill_all.sh frontend;
 
     cp ${log_folder}/probe.log ${res_folder}/probe-task_${task}_c=${available_cores}.log
     cp ${log_folder}/probe.res ${res_folder}/probe-task_${task}_c=${available_cores}.res

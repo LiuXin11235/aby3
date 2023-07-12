@@ -15,7 +15,6 @@
 
 #define OPTIMAL_BLOCK 100
 #define TASKS 5
-// #define DEBUG
 #define TEST
 // #define OPENMP
 
@@ -594,6 +593,7 @@ class MPINewSearch : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
         runtime(runtime),
         eval(eval),
         MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {
+          // cout << "in creation" << endl;
           this->lookahead = 1;
         }
 
