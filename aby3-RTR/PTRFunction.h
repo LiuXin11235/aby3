@@ -331,10 +331,8 @@ class SubNewSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     aby3::u64 block_length = binfo->block_len;
     aby3::u64 expand_length = binfo->block_len + this->lookahead * this->n;
     if(binfo->t_start + expand_length >= (this->n * this->m)) expand_length = (this->n * this->m) - binfo->t_start;
-    aby3::sbMatrix partTable(binfo->block_len, 1);
-    aby3::sbMatrix expandTable(expand_length, 1);
+    aby3::sbMatrix partTable(binfo->block_len, 1); aby3::sbMatrix expandTable(expand_length, 1);
 
-    clock_t start, end;
     vector_cipher_ge(this->pIdx, expandX, expandY, expandTable, *(this->eval),
                      *(this->enc), *(this->runtime));
     
@@ -1123,6 +1121,71 @@ class MPIMetric : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
   }
 };
 
+
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class SubHistogram : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+ public:
+  // aby3 info
+  int pIdx;
+  aby3::Sh3Encryptor* enc;
+  aby3::Sh3Runtime* runtime;
+  aby3::Sh3Evaluator* eval;
+
+  using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+  SubHistogram(const size_t optimal_block, const int task_id, const int pIdx,
+          aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+          aby3::Sh3Evaluator& eval)
+      : pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+    this->have_selective = true;
+    this->lookahead=1;
+    this->lookahead_axis=1;
+  }
+
+  virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+
+    for (int i = 0; i < resLeft.size(); i++)
+      local_res[i] = resLeft[i] + resRight[i];
+    return;
+  }
+
+ protected:
+  virtual void compute_local_table(std::vector<NUMX>& expandX,
+                                   std::vector<NUMY>& expandY,
+                                   std::vector<NUMT>& local_table,
+                                   BlockInfo* binfo) {
+
+    aby3::u64 block_length = binfo->block_len;
+    aby3::u64 expand_length = binfo->block_len + this->lookahead;
+    if(binfo->t_start + expand_length >= (this->n * this->m)) expand_length = (this->n * this->m) - binfo->t_start;
+
+    aby3::sbMatrix partTable(binfo->block_len, 1); aby3::sbMatrix expandTable(expand_length, 1);
+
+    vector_cipher_ge(this->pIdx, expandX, expandY, expandTable, *(this->eval),
+                     *(this->enc), *(this->runtime));
+    
+    // shift & substraction.
+    for(int i=0; i<block_length; i++){
+      int index_ = binfo->t_start + i;
+      if(index_ % this->n != (this->n - 1)){
+        partTable.mShares[0](i) = expandTable.mShares[0](i) ^ expandTable.mShares[0](i + 1);
+        partTable.mShares[1](i) = expandTable.mShares[1](i) ^ expandTable.mShares[1](i + 1);
+      }
+    }
+
+    // trans to secret int.
+    boolean_to_arith(pIdx, partTable, local_table, *(this->eval), *(this->enc), *(this->runtime));
+
+    return;
+  }
+};
 
 #endif
 

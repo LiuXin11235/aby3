@@ -10,7 +10,7 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-// #define LOCAL_TEST
+#define LOCAL_TEST
 
 static int BASEPORT=6000;
 
@@ -467,15 +467,24 @@ int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
   // si64Matrix diffAB(sintA.size(), 1);
   sbMatrix tmpRes(sintA.size(), 1);
   vector_cipher_gt(pIdx, sintA, sintB, tmpRes, eval, enc, runtime);
-  // for(int i=0; i<sintA.size(); i++){
-  //   diffAB(i, 0, sintA[i] - sintB[1]);
-  // }
-  // Sh3Task task = runtime.noDependencies();
-  // fetch_msb(pIdx, diffAB, tmpRes, eval, runtime, task);
 
   si64Matrix ones(sintA.size(), 1);
+  init_ones(pIdx, enc, runtime, ones, sintA.size());
   cipher_mul_seq(pIdx, ones, tmpRes, ones, eval, enc, runtime);
   for(int i=0; i<sintA.size(); i++){
+    res[i] = ones(i, 0);
+  }
+  return 0;
+}
+
+
+int boolean_to_arith(int pIdx, const aby3::sbMatrix mat,std::vector<aby3::si64>& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
+
+  size_t length = res.size();
+  aby3::si64Matrix ones(length, 1);
+  init_ones(pIdx, enc, runtime, ones, length);
+  cipher_mul_seq(pIdx, ones, mat, ones, eval, enc, runtime);
+  for(int i=0; i<length; i++){
     res[i] = ones(i, 0);
   }
   return 0;
