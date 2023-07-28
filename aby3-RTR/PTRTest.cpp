@@ -1845,6 +1845,10 @@ int test_cipher_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
 
   // 1) set the log file.
   static std::string LOG_FOLDER = "/root/aby3/Record/Record_metric/";
+  if (cmd.isSet("logFolder")) {
+    auto keys = cmd.getMany<std::string>("logFolder");
+    LOG_FOLDER = keys[0];
+  }
   std::string logging_file = LOG_FOLDER + "log-config-N=" + std::to_string(m) +
                              "-M=" + std::to_string(n) + "-K=" + std::to_string(k) + "-TASKS=" +
                              std::to_string(task_num) + "-OPT_B=" +
