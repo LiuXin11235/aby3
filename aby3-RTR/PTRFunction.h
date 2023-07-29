@@ -331,7 +331,8 @@ class SubNewSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     aby3::u64 block_length = binfo->block_len;
     aby3::u64 expand_length = binfo->block_len + this->lookahead * this->n;
     if(binfo->t_start + expand_length >= (this->n * this->m)) expand_length = (this->n * this->m) - binfo->t_start;
-    aby3::sbMatrix partTable(binfo->block_len, 1); aby3::sbMatrix expandTable(expand_length, 1);
+    aby3::sbMatrix partTable(binfo->block_len, 1); 
+    aby3::sbMatrix expandTable(expand_length, 1);
 
     vector_cipher_ge(this->pIdx, expandX, expandY, expandTable, *(this->eval),
                      *(this->enc), *(this->runtime));
@@ -641,6 +642,7 @@ class SubAvg : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     for (int i = 0; i < resLeft.size(); i++){
       local_res[i] = resLeft[i] + resRight[i];
       local_res[i].mData[0] = (aby3::i64) (local_res[i].mData[0] * double (1 / this->m));
+      cout << sizeof(local_res[i]) << endl;
       local_res[i].mData[1] = (aby3::i64) (local_res[i].mData[1] * double (1 / this->m));
     }
     return;

@@ -505,10 +505,10 @@ int boolean_to_arith(int pIdx, const aby3::sbMatrix mat,std::vector<aby3::si64>&
 int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, sbMatrix& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
   si64Matrix diffAB(sintA.size(), 1);
   for(int i=0; i<sintA.size(); i++){
-    diffAB(i, 0, sintA[i] - sintB[1]);
+    diffAB(i, 0, sintA[i] - sintB[i]);
   }
-  Sh3Task task = runtime.noDependencies();
-  fetch_msb(pIdx, diffAB, res, eval, runtime, task);
+  // Sh3Task task = runtime.noDependencies();
+  fetch_msb(pIdx, diffAB, res, eval, runtime);
   for(int i=0; i<sintA.size(); i++){
     res.mShares[0](i) ^= true;
     res.mShares[1](i) ^= true;
