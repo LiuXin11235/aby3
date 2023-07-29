@@ -14,6 +14,27 @@ using namespace oc;
 
 static int BASEPORT=6000;
 
+double synchronized_time(int pIdx, double& time_slot, Sh3Runtime &runtime){
+  // double sync_time = time_slot;
+  if(pIdx == 0){
+    runtime.mComm.mNext.asyncSend<double>(time_slot);
+    runtime.mComm.mPrev.asyncSend<double>(time_slot);
+    return time_slot;
+  }
+  if(pIdx == 1){
+    auto tmp = runtime.mComm.mPrev.asyncRecv<double>(&time_slot, 1);
+    tmp.get();
+    return time_slot;
+  }
+  if(pIdx == 2){
+    auto tmp = runtime.mComm.mNext.asyncRecv<double>(&time_slot, 1);
+    tmp.get();
+    return time_slot;
+  }
+  return time_slot;
+}
+
+
 void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
            Sh3Runtime &runtime) {
   CommPkg comm;
@@ -764,4 +785,31 @@ int init_ones(int pIdx, Sh3Encryptor &enc, Sh3Runtime &runtime, si64Matrix &res,
         enc.remoteIntMatrix(runtime, res).get();
     }
     return 0;
+}
+
+int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<si64>& vecRes){
+  size_t length = vecRes.size();
+  si64Matrix sharedM(length, 1);
+  init_ones(pIdx, enc, runtime, sharedM, length);
+  for(int i=0; i<length; i++) vecRes[i] = sharedM(i, 0);
+  return 0;
+}
+
+int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<int>& vecRes){
+  size_t length = vecRes.size();
+  for(int i=0; i<length; i++) vecRes[i] = 1;
+  return 0;
+}
+
+int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<std::vector<si64>>& vecRes){
+  size_t inner_len = vecRes[0].size(); size_t length = vecRes.size();
+  // cout << "inner_len: " << inner_len << " | length: " << length << endl;
+  si64Matrix sharedM(length * inner_len, 1);
+  init_ones(pIdx, enc, runtime, sharedM, length * inner_len);
+  for(int i=0; i<length; i++) {
+    for(int j=0; j<inner_len; j++){
+      vecRes[i][j] = sharedM(i*inner_len + j);
+    }
+  }
+  return 0;
 }

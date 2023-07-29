@@ -8,6 +8,7 @@
 #include "aby3-RTR/DistributeRTRTest.h"
 #include "aby3-RTR/PTRTest.h"
 #include "aby3-RTR/RTRTest.h"
+#include "aby3-RTR/PTRProfile.h"
 #include "eric.h"
 
 #define MPI
@@ -19,7 +20,6 @@ using namespace aby3;
 #ifdef MPI
 int main(int argc, char** argv) {
   oc::CLP cmd(argc, argv);
-  
   // reinit the environment and then finalize the environment.
   MPI_Init(&argc, &argv);
 
@@ -168,6 +168,131 @@ int main(int argc, char** argv) {
   if(FUNC == "medium"){
     test_cipher_medium_ptr_mpi(cmd, N, TASK_NUM, OPT_BLOCK);
   }
+
+  // profile...
+  std::string start_prefix = FUNC.substr(0, 4);
+  // cout << "FUNC: " << FUNC << endl;
+  // cout << start_prefix << endl;
+  if(start_prefix == "prof"){
+
+    // configs for probe-based profiler.
+    if(task_size != 1){
+      std::runtime_error("For profiling, the task_size can only be 1, instead of : " + to_string(task_size));
+    }
+    double epsilon = 5;
+    size_t gap = 1000;
+    size_t vec_start = 1 << 5;
+    if(cmd.isSet("EPSILON")) {
+      auto keys = cmd.getMany<double>("EPSILON");
+      epsilon = keys[0];
+    }
+    if(cmd.isSet("GAP")) {
+      auto keys = cmd.getMany<size_t>("GAP");
+      gap = keys[0];
+    }
+    if(cmd.isSet("VEC_START")){
+      auto keys = cmd.getMany<size_t>("VEC_START");
+      vec_start = keys[0];
+    }
+
+    if(FUNC == "prof_cipher_index")
+      profile_cipher_index(cmd, N, M, vec_start, epsilon, gap);    
+
+    if(FUNC == "prof_cipher_index_mpi")
+      profile_cipher_index_mpi(cmd, N, M, vec_start, epsilon, gap);  
+    
+    if(FUNC == "prof_average")
+      profile_average(cmd, N, M, vec_start, epsilon, gap);
+
+    if(FUNC == "prof_average_mpi")
+      profile_average_mpi(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_rank")
+      profile_rank(cmd, N, M, vec_start, epsilon, gap);
+
+    if(FUNC == "prof_rank_mpi")
+      profile_rank_mpi(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_sort")
+      profile_sort(cmd, N, M, vec_start, epsilon, gap);
+
+    if(FUNC == "prof_sort_mpi")
+      profile_sort_mpi(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_max")
+      profile_max(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_max_mpi")
+      profile_max_mpi(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_new_search_mpi")
+      profile_new_search_mpi(cmd, N, M, vec_start, epsilon, gap);
+    
+    if(FUNC == "prof_bio_metric"){
+      int k = -1;
+      if(cmd.isSet("K")){
+        // cout << "in check" << endl;
+        auto keys = cmd.getMany<int>("K");
+        k = keys[0];
+        // cout << "k = " << k << endl;
+      }
+      if(k < 0){
+        throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                              " K must be setted, while K = " +
+                              std::to_string(k));
+      }
+      profile_bio_metric(cmd, N, M, k, vec_start, epsilon, gap);
+    }
+
+    if(FUNC == "prof_bio_metric_mpi"){
+      int k = -1;
+      if(cmd.isSet("K")){
+        // cout << "in check" << endl;
+        auto keys = cmd.getMany<int>("K");
+        k = keys[0];
+        // cout << "k = " << k << endl;
+      }
+      if(k < 0){
+        throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                              " K must be setted, while K = " +
+                              std::to_string(k));
+      }
+      profile_bio_metric_mpi(cmd, N, M, k, vec_start, epsilon, gap);
+    }
+
+    if(FUNC == "prof_mean_distance"){
+      int k = -1;
+      if(cmd.isSet("K")){
+        // cout << "in check" << endl;
+        auto keys = cmd.getMany<int>("K");
+        k = keys[0];
+        // cout << "k = " << k << endl;
+      }
+      if(k < 0){
+        throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                              " K must be setted, while K = " +
+                              std::to_string(k));
+      }
+      profile_mean_distance(cmd, N, M, k, vec_start, epsilon, gap);
+    }
+
+    if(FUNC == "prof_mean_distance_mpi"){
+      int k = -1;
+      if(cmd.isSet("K")){
+        // cout << "in check" << endl;
+        auto keys = cmd.getMany<int>("K");
+        k = keys[0];
+        // cout << "k = " << k << endl;
+      }
+      if(k < 0){
+        throw std::runtime_error("For high-dimensional test case: " + FUNC +
+                              " K must be setted, while K = " +
+                              std::to_string(k));
+      }
+      profile_mean_distance_mpi(cmd, N, M, k, vec_start, epsilon, gap);
+    }
+  }
+
 
   MPI_Finalize();
 
