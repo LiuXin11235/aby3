@@ -1,8 +1,8 @@
 # task_list=("prof_cipher_index_mpi" "prof_average_mpi" "prof_mean_distance_mpi" "prof_bio_metric_mpi" "prof_sort_mpi" "prof_rank_mpi" "prof_max_mpi")
 # log_folder_list=(./Record/Prof_mpi_index ./Record/Prof_mpi_average ./Record/Prof_mpi_mean_distance ./Record/Prof_mpi_bio_metric  ./Record/Prof_mpi_sort ./Record/Prof_mpi_rank ./Record/Prof_mpi_max)
 
-task_list=("prof_cipher_index_mpi" "prof_average_mpi" "prof_new_search_mpi" "prof_metric" "prof_max_mpi")
-log_folder_list=(./Record/Prof_mpi_index ./Record/Prof_mpi_average ./Record/Prof_mpi_new_search ./Record/Prof_mpi_metric ./Record/Prof_mpi_max)
+task_list=("prof_bio_metric_mpi" "prof_average_mpi")
+log_folder_list=(./Record/Prof_mpi_metric ./Record/Prof_mpi_average)
 
 # task_list=("prof_cipher_index_mpi")
 # log_folder_list=(./Record/Prof_mpi_index)

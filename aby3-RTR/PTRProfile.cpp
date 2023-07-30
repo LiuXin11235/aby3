@@ -698,10 +698,10 @@ int profile_average_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start,
   auto mpiPtrTask =
       new MPIAverage<int, aby3::si64, aby3::si64, aby3::si64, SubAvg>(
           size, vector_size_start, role, enc, runtime, eval);
-  mpiPtrTask->circuit_construct({(size_t) n}, {(size_t)vector_size_start});
+  mpiPtrTask->circuit_construct({(size_t) n}, {(size_t)size*vector_size_start});
 
   // data construct
-  m = vector_size_start;
+  m = size*vector_size_start;
   aby3::si64 dval; dval.mData[0] = 0; dval.mData[1] = 0;
 
   size_t m_start = mpiPtrTask->m_start; size_t m_end = mpiPtrTask->m_end;
@@ -748,8 +748,8 @@ int profile_average_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start,
         new MPIAverage<int, aby3::si64, aby3::si64, aby3::si64, SubAvg>(
           size, vector_size, role, enc, runtime, eval);
 
-    testMpiTask->circuit_construct({n}, {vector_size});
-    m = vector_size;
+    testMpiTask->circuit_construct({n}, {size * vector_size});
+    m = size*vector_size;
 
     // data construct
     size_t m_start_ = testMpiTask->m_start;
@@ -809,8 +809,8 @@ int profile_average_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start,
         new MPIAverage<int, aby3::si64, aby3::si64, aby3::si64, SubAvg>(
           size, vector_size, role, enc, runtime, eval);
 
-    testMpiTask->circuit_construct({n}, {vector_size});
-    m = vector_size;
+    testMpiTask->circuit_construct({n}, {size * vector_size});
+    m = size * vector_size;
 
     // data construct
     size_t m_start_ = testMpiTask->m_start;
@@ -862,7 +862,7 @@ int profile_average_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start,
       new MPIAverage<int, aby3::si64, aby3::si64, aby3::si64, SubAvg>(
         size, vector_size, role, enc, runtime, eval);
 
-  testMpiTask->circuit_construct({n}, {vector_size});
+  testMpiTask->circuit_construct({n}, {size * vector_size});
   m = vector_size;
 
   // data construct
@@ -2460,7 +2460,7 @@ int profile_max_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, dou
   size_t vector_end = vector_size;
 
 #ifdef LOGING
-  if(role == 0)
+  if(rank == 0)
     write_log(logging_file, "BINARY start");
 #endif
   while ((vector_end - vector_start) > gap) {
@@ -2475,7 +2475,7 @@ int profile_max_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, dou
         size, vector_size, role, enc, runtime, eval);
 
     if(vector_size > n*n){
-      std::cerr << "Warnning: profiling vector size is large than the table size, set the table size to corresponidng value." << std::endl;
+      // std::cerr << "Warnning: profiling vector size is large than the table size, set the table size to corresponidng value." << std::endl;
       n = vector_size;
       m = n;
     }
@@ -2873,10 +2873,10 @@ int profile_bio_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int vecto
                                    aby3::si64, aby3::si64, SubBioMetric>(
       size, vector_size_start, role, enc, runtime, eval);
   // cout << "n: " << n << "m: " << m << endl; 
-  mpiPtrTask->circuit_construct({(size_t)n}, {(size_t)vector_size_start});
+  mpiPtrTask->circuit_construct({(size_t)n}, {(size_t)size * vector_size_start});
 
   // data construct.
-  m = vector_size_start;
+  m = size * vector_size_start;
   aby3::si64 dval; dval.mData[0] = 0; dval.mData[1] = 0;
   mpiPtrTask->set_default_value(dval);
 
@@ -2909,7 +2909,7 @@ int profile_bio_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int vecto
   bool start_flag = true;
   // first: 1) exp
   #ifdef LOGING
-  if(role == 0){
+  if(rank == 0){
     write_log(logging_file,  "vector_size = " + to_string(vector_size) +
                               " | time = " + to_string(start_time) +
                               " | ratio = " + to_string(last_ratio));
@@ -2926,7 +2926,7 @@ int profile_bio_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int vecto
     auto mpiPtrTask_ = new MPIBioMetric<vector<aby3::si64>, vector<aby3::si64>,
                                     aby3::si64, aby3::si64, SubBioMetric>(
         size, vector_size, role, enc, runtime, eval);
-    mpiPtrTask_->circuit_construct({(size_t)n}, {(size_t)vector_size});
+    mpiPtrTask_->circuit_construct({(size_t)n}, {(size_t)size * vector_size});
     // write_log(logging_file, "role: " + to_string(role) + " after circuit_construct");
     // data construct.
     m = vector_size;
@@ -2968,7 +2968,7 @@ int profile_bio_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int vecto
 
   #ifdef LOGING
     // write_log(logging_file, "role: " + to_string(role) + "last_ratio: " + to_string(last_ratio) + " ratio: " + to_string(ratio));
-    if(role == 0){
+    if(rank == 0){
       write_log(logging_file, "vector_size = " + to_string(vector_size) +
                             " | time = " + to_string(double_time) +
                             " | ratio = " + to_string(double_time / vector_size));
@@ -2981,7 +2981,7 @@ int profile_bio_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int vecto
   size_t vector_end = vector_size;
 
 #ifdef LOGING
-  if(role == 0)
+  if(rank == 0)
     write_log(logging_file, "BINARY start");
 #endif
 
@@ -3045,10 +3045,10 @@ int profile_bio_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int vecto
   auto mpiPtrTask_ = new MPIBioMetric<vector<aby3::si64>, vector<aby3::si64>,
                                   aby3::si64, aby3::si64, SubBioMetric>(
       size, vector_size, role, enc, runtime, eval);
-  mpiPtrTask_->circuit_construct({(size_t)n}, {(size_t)vector_size});
+  mpiPtrTask_->circuit_construct({(size_t)n}, {(size_t)size * vector_size});
 
   // data construct.
-  m = vector_size;
+  m = size * vector_size;
   // aby3::si64 dval; dval.mData[0] = 0; dval.mData[1] = 0;
 
   size_t m_start_ = mpiPtrTask_->m_start; size_t m_end_ = mpiPtrTask_->m_end;
