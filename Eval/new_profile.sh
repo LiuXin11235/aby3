@@ -66,7 +66,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
     # ./Eval/network_set.sh ${test_bw} ${latency}
 
     # evaluate on aby
-    n=1; optB=16384; m=1000000000; epsilon=0.1; gap=16384; K=2;
+    n=1; optB=16384; m=1000000000; epsilon=0.1; gap=16384; K=1;
 
     j=0;
     while [ $j -lt $retry_threshold ]; do

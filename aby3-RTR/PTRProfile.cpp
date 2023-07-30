@@ -2992,7 +2992,7 @@ int profile_bio_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int vecto
     auto mpiPtrTask_ = new MPIBioMetric<vector<aby3::si64>, vector<aby3::si64>,
                                     aby3::si64, aby3::si64, SubBioMetric>(
         size, vector_size, role, enc, runtime, eval);
-    mpiPtrTask_->circuit_construct({(size_t)n}, {(size_t)vector_size});
+    mpiPtrTask_->circuit_construct({(size_t)n}, {(size_t)size * vector_size});
 
     // data construct.
     m = vector_size;
