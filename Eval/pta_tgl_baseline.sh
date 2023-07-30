@@ -1,8 +1,8 @@
 # task_list=("average" "index" "new_search" "metric")
 # log_folder_list=(./Record/Record_average_tgl ./Record/Record_index_tgl ./Record/Record_new_search_tgl ./Record/Record_metric_tgl)
 
-task_list=("average")
-log_folder_list=(./Record/Record_average_tgl)
+task_list=("index")
+log_folder_list=(./Record/Record_index_tgl)
 
 # cleanup the old folder and create a clean one.
 for log_folder in ${log_folder_list[@]}; do

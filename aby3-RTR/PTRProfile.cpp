@@ -2316,7 +2316,7 @@ int profile_max_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, dou
           size, vector_size_start, role, enc, runtime, eval);
   
   if(vector_size_start > n*n){
-    std::cerr << "Warnning: profiling vector size is large than the table size, set the table size to corresponidng value." << std::endl;
+    // std::cerr << "Warnning: profiling vector size is large than the table size, set the table size to corresponidng value." << std::endl;
     n = vector_size_start;
     m = n;
   }
@@ -2373,7 +2373,7 @@ int profile_max_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, dou
 
   // first: 1) exp
   #ifdef LOGING
-  if(role == 0)
+  if(rank == 0)
     write_log(logging_file, "EXP start");
   #endif
 
@@ -2389,7 +2389,7 @@ int profile_max_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, dou
         size, vector_size, role, enc, runtime, eval);
 
     if(vector_size > n*n){
-      std::cerr << "Warnning: profiling vector size is large than the table size, set the table size to corresponidng value." << std::endl;
+      // std::cerr << "Warnning: profiling vector size is large than the table size, set the table size to corresponidng value." << std::endl;
       n = vector_size;
       m = n;
     }
@@ -2429,7 +2429,7 @@ int profile_max_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, dou
 
     // adjusting the repeat time.
     // if (vector_size > 5000 && vector_size < 50000) repeats_ = 200;
-    if (vector_size > 50000) repeats_ = 5;
+    if (vector_size > 50000) repeats_ = 2;
 
     start = clock();
     for (int i = 0; i < repeats_; i++) {
@@ -2447,7 +2447,7 @@ int profile_max_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, dou
     ratio = double_time / vector_size;
 
 #ifdef LOGING
-    if(role == 0){
+    if(rank == 0){
       write_log(logging_file, "role: " + to_string(role) + "vector_size = " + to_string(vector_size) +
                             " | time = " + to_string(double_time) +
                             " | ratio = " + to_string(double_time / vector_size));
@@ -3568,6 +3568,7 @@ int profile_mean_distance_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k, int ve
   return 0;
 
 }
+
 
 int profile_new_search_mpi(oc::CLP& cmd, size_t n, size_t m, int vector_size_start, double epsilon, size_t gap){
   return abs_profile<aby3::si64, aby3::si64, aby3::si64, aby3::si64, SubNewSearch, MPINewSearch>(cmd, n, m, 1, vector_size_start, epsilon, gap);

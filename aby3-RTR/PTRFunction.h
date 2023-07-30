@@ -642,7 +642,7 @@ class SubAvg : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     for (int i = 0; i < resLeft.size(); i++){
       local_res[i] = resLeft[i] + resRight[i];
       local_res[i].mData[0] = (aby3::i64) (local_res[i].mData[0] * double (1 / this->m));
-      cout << sizeof(local_res[i]) << endl;
+      // cout << sizeof(local_res[i]) << endl;
       local_res[i].mData[1] = (aby3::i64) (local_res[i].mData[1] * double (1 / this->m));
     }
     return;
