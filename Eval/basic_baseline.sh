@@ -24,8 +24,8 @@ wait;
 
 ## Direct parallel baseline
 # test settings.
-N_list=(1048576 4194304 16777216 67108864 268435456)
-M_list=(8 4 2 1 1 1)
+N_list=(1048576 4194304)
+M_list=(8 4)
 simulate_task_num_list=(2 4 8 16 16 16)
 optB_list=(1048576 1048576 1048576 1048576 1048576 1048576)
 repeat=1; test_times=1; retry_threshold=5

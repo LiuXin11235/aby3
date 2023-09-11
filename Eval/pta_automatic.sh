@@ -1,9 +1,3 @@
-# log_folder_list=(./Record/Record_index ./Record/Record_index ./Record/Record_index ./Record/Record_index)
-# task_list=("index" "index" "index" "index")
-# M_list=(1 1 1 1 1 1 1 1)
-# N_list=(1048576 16777216 134217728 1073741824 1048576 16777216 134217728 1073741824)
-# c_list=(40 126 256 256 15 100 256 256)
-# optB_list=(26214 133152 524288 2247671 69905 167772 221184 221184)
 
 log_folder_list=(./Record/Record_average ./Record/Record_average ./Record/Record_average ./Record/Record_average ./Record/Record_cipher_index ./Record/Record_cipher_index ./Record/Record_cipher_index ./Record/Record_cipher_index ./Record/Record_new_search ./Record/Record_new_search ./Record/Record_new_search ./Record/Record_new_search ./Record/Record_max ./Record/Record_max ./Record/Record_max ./Record/Record_max ./Record/Record_metric ./Record/Record_metric ./Record/Record_metric ./Record/Record_metric)
 task_list=("average" "average" "average" "average" "cipher_index" "cipher_index" "cipher_index" "cipher_index" "new_search" "new_search" "new_search" "new_search" "max" "max" "max" "max" "metric" "metric" "metric" "metric")
