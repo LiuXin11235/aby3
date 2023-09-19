@@ -20,9 +20,9 @@ for pid in $pids; do
     for i in {1...$repeat}; do
         kill -9 $pid
     done;
-done 
+done
 
 targets=(aby31 aby32);
 for target_machine in ${targets[*]}; do
-    ssh $target_machine "sh ./aby3/Eval/kill_all.sh "${keyword};
+    ssh $target_machine "sh ./aby3/Eval/basic/kill_all.sh "${keyword};
 done

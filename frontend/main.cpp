@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
                              std::to_string(TASK_NUM));
   }
 
-  if (FUNC == "index")
+  if (FUNC == "cipher_index")
     test_cipher_index_ptr_mpi(cmd, N, M, TASK_NUM, OPT_BLOCK);
   
   if (FUNC == "average")

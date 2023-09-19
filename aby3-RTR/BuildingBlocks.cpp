@@ -74,9 +74,9 @@ void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor 
     case 0:
       fport = std::to_string(BASEPORT + 3*rank);
       sport = std::to_string(BASEPORT + 3*rank + 1);
-      comm.mNext = Session(ios, "10.0.1.12:"+fport, SessionMode::Server, "01")
+      comm.mNext = Session(ios, "10.0.1.15:"+fport, SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.12:"+sport, SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "10.0.1.15:"+sport, SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
@@ -84,13 +84,13 @@ void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor 
       tport = std::to_string(BASEPORT + 3*rank + 2);
       comm.mNext = Session(ios, "10.0.1.4:"+tport, SessionMode::Server, "12")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.12:"+fport, SessionMode::Client, "01")
+      comm.mPrev = Session(ios, "10.0.1.15:"+fport, SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
       sport = std::to_string(BASEPORT + 3*rank + 1);
       tport = std::to_string(BASEPORT + 3*rank + 2);
-      comm.mNext = Session(ios, "10.0.1.12:"+sport, SessionMode::Client, "02")
+      comm.mNext = Session(ios, "10.0.1.15:"+sport, SessionMode::Client, "02")
                        .addChannel();
       comm.mPrev = Session(ios, "10.0.1.4:"+tport, SessionMode::Client, "12")
                        .addChannel();
@@ -511,17 +511,6 @@ int boolean_to_arith(int pIdx, const aby3::sbMatrix mat,std::vector<aby3::si64>&
   return 0;
 }
 
-// int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, aby3::sbMatrix& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
-//   si64Matrix diffAB(sintA.size(), 1);
-//   sbMatrix tmpRes(sintA.size(), 1);
-//   for(int i=0; i<sintA.size(); i++){
-//     diffAB(i, 0, sintA[i] - sintB[1]);
-//   }
-//   Sh3Task task = runtime.noDependencies();
-//   fetch_msb(pIdx, diffAB, tmpRes, eval, runtime, task);
-//   return 0;
-// }
-
 
 int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, sbMatrix& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
   si64Matrix diffAB(sintA.size(), 1);
@@ -535,11 +524,6 @@ int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
     res.mShares[1](i) ^= true;
   }
 
-  // si64Matrix ones(sintA.size(), 1);
-  // cipher_mul_seq(pIdx, ones, tmpRes, ones, eval, enc, runtime);
-  // for(int i=0; i<sintA.size(); i++){
-  //   res[i] = ones(i, 0);
-  // }
   return 0;
 }
 

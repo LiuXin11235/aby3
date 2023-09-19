@@ -1,55 +1,17 @@
-prog=$1;
-testFlag=$2;
-if [ ! -n "${testFlag}"]; then
-    testFlag=-1;
-fi
-echo "prog: "${prog}" | testFlag: "${testFlag};
+log_folder_list=(./Record/Record_average ./Record/Record_cipher_index ./Record/Record_new_search ./Record/Record_max ./Record/Record_metric)
+task_list=("average" "cipher_index" "new_search" "max" "metric")
+M_list=(1 1 1 1024 1)
+N_list=(65536 65536 65536 1024 65536)
+c_list=(64 64 64 64 64)
+optB_list=(256 256 256 256 256)
 
-if [ ${prog} == 0 ]; then
-    keywords="basicOps";
-elif [ ${prog} == 1 ]; then
-    keywords="disBasicOps";
-elif [ ${prog} == 2 ]; then
-    keywords="test";
-elif [ ${prog} == 3 ]; then
-    keywords="cipher-index";
-elif [ ${prog} == 4 ]; then
-    keywords="new-api";
-elif [ ${prog} == 5 ]; then
-    keywords="ptr";
-else
-    keywords="invalid";
-    echo "invalid prog";
-fi
+test_times=1;outLimit=10;retry_threshold=5;K=1;
 
-day=$(date +%m-%d);
-timeStamp=$(date +"%H%M%s");
-
-echo ${day}
-echo ${timeStamp}
-
-rm /root/aby3/debug.txt
-
-# compile
-python build.py;
-
-# synchronize with others
-scp ./bin/frontend aby31:~/aby3/bin/ &
-scp ./bin/frontend aby32:~/aby3/bin/ &
-wait;
-
-# set the log file
-logFolder=./Record/Record${day}/
-logFile=${logFolder}log-${keywords}-${day}${timeStamp}
-
-if [ ! -d ${logFolder} ]; then
-    mkdir ${logFolder};
-fi
-
-# run functions
-./bin/frontend -prog ${prog} -role 0 -testFlag ${testFlag} >> ${logFile} &
-ssh aby31 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 1 -testFlag "${testFlag}" >> ./log" &
-ssh aby32 "cd ./aby3/; ./bin/frontend -prog "${prog}" -role 2 -testFlag "${testFlag}" >> ./log" &
-wait;
-
-cat $logFile
+./Eval/basic/seq_test.sh \
+  "$(IFS=":"; echo "${task_list[*]}")" \
+  "$(IFS=":"; echo "${log_folder_list[*]}")" \
+  "$(IFS=":"; echo "${M_list[*]}")" \
+  "$(IFS=":"; echo "${N_list[*]}")" \
+  "$(IFS=":"; echo "${c_list[*]}")" \
+  "$(IFS=":"; echo "${optB_list[*]}")" \
+  ${test_times} ${outLimit} ${retry_threshold} ${K}

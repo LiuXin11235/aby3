@@ -499,6 +499,7 @@ class MPISecretIndex : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
   }
 };
 
+
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
           template <typename, typename, typename, typename> class TASK>
 class MPIRank : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
@@ -571,6 +572,7 @@ class MPISearch : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
       this->subTask->res[j] = this->default_value;
   }
 };
+
 
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
           template <typename, typename, typename, typename> class TASK>
@@ -656,6 +658,7 @@ class SubAvg : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     local_table = expandY;
   }
 };
+
 
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
           template <typename, typename, typename, typename> class TASK>

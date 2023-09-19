@@ -97,7 +97,7 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
   clock_t start, end;
 
   // set the log file.
-  static std::string LOG_FOLDER = "/root/aby3/Record/Record_index/";
+  static std::string LOG_FOLDER = "/root/aby3/Record/Record_cipher_index/";
   if (cmd.isSet("logFolder")) {
     auto keys = cmd.getMany<std::string>("logFolder");
     LOG_FOLDER = keys[0];
@@ -1216,96 +1216,14 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
   size_t m_end = mpiPtrTask->m_end;
   size_t partial_len = m_end - m_start + 1;
   vector<si64> res(m);
-  vector<si64> vecSpace(partial_len);
-  vector<si64> vecDiff(partial_len);
-  vector<si64> vecKey(m);
-
+  vector<si64> vecSpace(partial_len); vector_generation(role, enc, runtime, vecSpace);
+  vector<si64> vecDiff(partial_len); vector_generation(role, enc, runtime, vecDiff);
+  vector<si64> vecKey(m); vector_generation(role, enc, runtime, vecKey);
   si64Matrix init_res;
   init_zeros(role, enc, runtime, init_res, m);
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
 
-  i64Matrix searchKey(m, 1);
-  // inverse sequence.
-  for (int i = 0; i < m; i++) searchKey(i, 0) = n - 1 - i;
-  si64Matrix secretKey(m, 1);
-  if (role == 0) {
-    enc.localIntMatrix(runtime, searchKey, secretKey).get();
-  } else {
-    enc.remoteIntMatrix(runtime, secretKey).get();
-  }
-
-  for(size_t k=0; k<partial_len; k+=ENC_LIMIT){
-
-    size_t block_end = std::min(k+ENC_LIMIT, partial_len);
-    size_t block_size = block_end - k;
-
-    i64Matrix plainTest(block_size, 1);
-    for (int i = 0; i < block_size; i++) plainTest(i, 0) = i + m_start + k;
-    i64Matrix diffValue(block_size, 1);
-    for (int i = 0; i < block_size; i++) diffValue(i, 0) = i + m_start + k;
-
-    si64Matrix secretDiff(block_size, 1);
-    si64Matrix secretSpace(block_size, 1);
-
-    if (role == 0) {
-      enc.localIntMatrix(runtime, plainTest, secretSpace).get();
-      enc.localIntMatrix(runtime, diffValue, secretDiff).get();
-    } else {
-      enc.remoteIntMatrix(runtime, secretSpace).get();
-      enc.remoteIntMatrix(runtime, secretDiff).get();
-    }
-
-    for (int i = k; i < block_end; i++) {
-      vecDiff[i] = secretDiff(i-k, 0);
-      vecSpace[i] = secretSpace(i-k, 0);
-    }
-  }
-
-  // // directly generate the partial data
-  // size_t partial_len = m_end - m_start + 1;
-  // i64Matrix plainTest(partial_len, 1);
-  // for (int i = 0; i < partial_len; i++) {
-  //   plainTest(i, 0) = i + m_start;
-  // }
-
-  // // non-sense diffValue, just for test, do not have to construct diffvalue in newSearch.
-  // i64Matrix diffValue(partial_len, 1);
-  // for (int i = 0; i < partial_len; i++) {
-  //   diffValue(i, 0) = i + m_start;
-  // }
-
-  // i64Matrix searchKey(m, 1);
-  // // inverse sequence.
-  // for (int i = 0; i < m; i++) {
-  //   searchKey(i, 0) = n - 1 - i;
-  // }
-
-  // // generate the cipher test data.
-  // si64Matrix secretDiff(partial_len, 1);
-  // si64Matrix secretSpace(partial_len, 1);
-  // si64Matrix secretKey(m, 1);
-  // if (role == 0) {
-  //   enc.localIntMatrix(runtime, plainTest, secretSpace).get();
-  //   enc.localIntMatrix(runtime, diffValue, secretDiff).get();
-  //   enc.localIntMatrix(runtime, searchKey, secretKey).get();
-  // } else {
-  //   enc.remoteIntMatrix(runtime, secretSpace).get();
-  //   enc.remoteIntMatrix(runtime, secretDiff).get();
-  //   enc.remoteIntMatrix(runtime, secretKey).get();
-  // }
-  // si64Matrix init_res;
-  // init_zeros(role, enc, runtime, init_res, m);
-
-  // vector<si64> res(m);
-  // vector<si64> vecSpace(partial_len);
-  // vector<si64> vecDiff(partial_len);
-  // vector<si64> vecKey(m);
-  // for (int i = 0; i < m; i++) vecKey[i] = secretKey(i, 0);
-  // for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
-  // for (int i = 0; i < partial_len; i++) {
-  //   vecDiff[i] = secretDiff(i, 0);
-  //   vecSpace[i] = secretSpace(i, 0);
-  // }
+  // if(rank == 0) cout << "data generation" << endl;
 
   // set the data related part.
   mpiPtrTask->set_selective_value(vecDiff.data(), 0);
@@ -1316,6 +1234,7 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecKey.data(), vecSpace.data(), vecDiff.data(),
                                res.data());
+  // if(rank == 0) cout << "circuit evaluate" << endl;
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
