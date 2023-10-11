@@ -4,6 +4,7 @@
 #include "./Pair_then_Reduce/include/datatype.h"
 #include "BuildingBlocks.h"
 #include "PTRFunction.h"
+#include "GASFunction.h"
 
 using namespace oc;
 using namespace aby3;
@@ -11,7 +12,7 @@ using namespace std;
 
 // #define DEBUG
 #define LOGING
-const long ENC_LIMIT = 500000000;
+const long ENC_LIMIT = 268435456;
 
 
 int test_cipher_index_ptr(CLP& cmd, size_t n, size_t m){
@@ -145,6 +146,10 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
   size_t m_end = mpiPtrTask->m_end;
   size_t partial_len = m_end - m_start + 1;
 
+  // cout << "in cipher index: " << endl;
+  // cout << "m_start: " << m_start << " m_end: " << m_end << endl;;
+  // cout << "partial_len: " << partial_len << endl;
+
   vector<si64> res(m);
   vector<si64> vecM(partial_len);
   vector<si64> vecIndex(m);
@@ -183,30 +188,6 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
     for (int i = k; i < block_end; i++) vecM[i] = sharedM(i-k, 0);
   }
 
-  // i64Matrix plainTest(partial_len, 1);
-  // for (int i = 0; i < partial_len; i++) {
-  //   plainTest(i, 0) = i + m_start;
-  // }
-  // generate the cipher test data.
-  // si64Matrix sharedM(partial_len, 1);
-  // si64Matrix sharedIndex(m, 1);
-  // if (role == 0) {
-  //   enc.localIntMatrix(runtime, plainTest, sharedM).get();
-  //   enc.localIntMatrix(runtime, plainIndex, sharedIndex).get();
-  // } else {
-  //   enc.remoteIntMatrix(runtime, sharedM).get();
-  //   enc.remoteIntMatrix(runtime, sharedIndex).get();
-  // }
-  // si64Matrix init_res;
-  // init_zeros(role, enc, runtime, init_res, m);
-
-  // vector<si64> res(m);
-  // vector<si64> vecM(partial_len);
-  // vector<si64> vecIndex(m);
-  // for (int i = 0; i < m; i++) vecIndex[i] = sharedIndex(i, 0);
-  // for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
-  // for (int i = 0; i < partial_len; i++) vecM[i] = sharedM(i, 0);
-
   // set the data related part.
   mpiPtrTask->set_selective_value(vecM.data(), 0);
   end = clock();
@@ -216,10 +197,13 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
   if (rank == 0) {
     cout << "binning circuit evaluate..." << endl;
   }
+  
+  MPI_Barrier(MPI_COMM_WORLD);
+  start = clock();
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecIndex.data(), range_index, vecM.data(),
                                res.data());
-
+  MPI_Barrier(MPI_COMM_WORLD);
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
@@ -231,9 +215,12 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -372,6 +359,7 @@ int test_cipher_select_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int o
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   start = clock();
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(range_index, vecIndex.data(), vecM.data(),
@@ -379,7 +367,21 @@ int test_cipher_select_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int o
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
-  if (rank == 0) {
+  // if (rank == 0) {
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+  //       << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+  //       << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+  //       << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+  //       << "\n"
+  //       << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+  //       << "\ntime_combine: " << std::setprecision(5)
+  //       << mpiPtrTask->time_combine << "\n"
+  //       << std::endl;
+  //   ofs.close();
+  // }
+    if (rank == 0) {
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
     ofs << "time_setup: " << std::setprecision(5) << time_task_setup
@@ -387,9 +389,12 @@ int test_cipher_select_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int o
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -489,6 +494,8 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+
+  MPI_Barrier(MPI_COMM_WORLD);
   start = clock();
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
@@ -496,7 +503,21 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
-  if (rank == 0) {
+  // if (rank == 0) {
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+  //       << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+  //       << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+  //       << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+  //       << "\n"
+  //       << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+  //       << "\ntime_combine: " << std::setprecision(5)
+  //       << mpiPtrTask->time_combine << "\n"
+  //       << std::endl;
+  //   ofs.close();
+  // }
+    if (rank == 0) {
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
     ofs << "time_setup: " << std::setprecision(5) << time_task_setup
@@ -504,9 +525,12 @@ int test_cipher_rank_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -614,6 +638,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   start = clock();
   // evaluate the task.
   mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
@@ -650,6 +675,7 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   // cout << "No." << rank << ": before next step evaluation" << endl;
   start = clock();
   mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
@@ -664,11 +690,13 @@ int test_cipher_sort_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
-        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->mean_subTask
+        << "\ntime_std_subTask1: " << std::setprecision(5) << mpiPtrRank->var_subTask
         << "\ntime_combine1: " << std::setprecision(5) << mpiPtrRank->time_combine
         << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
         << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
-        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->mean_subTask
+        << "\ntime_std_subTask2: " << std::setprecision(5) << mpiPtrIndex->var_subTask
         << "\ntime_combine2: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs << "i am rank: " << rank << " and my role is: " << role << std::endl;
@@ -774,6 +802,7 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
 
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
+  MPI_Barrier(MPI_COMM_WORLD);
 
   start = clock();
   // evaluate the task.
@@ -812,6 +841,8 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+
+  MPI_Barrier(MPI_COMM_WORLD);
   // cout << "No." << rank << ": before next step evaluation" << endl;
   start = clock();
   mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
@@ -826,11 +857,13 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
-        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->mean_subTask
+        << "\ntime_std_subTask1: " << std::setprecision(5) << mpiPtrRank->var_subTask
         << "\ntime_combine1: " << std::setprecision(5) << mpiPtrRank->time_combine
         << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
         << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
-        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->mean_subTask
+        << "\ntime_std_subTask2: " << std::setprecision(5) << mpiPtrIndex->var_subTask
         << "\ntime_combine2: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs.close();
@@ -935,6 +968,7 @@ int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   start = clock();
   // evaluate the task.
   mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
@@ -972,6 +1006,7 @@ int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   // cout << "No." << rank << ": before next step evaluation" << endl;
   start = clock();
   mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
@@ -986,11 +1021,13 @@ int test_cipher_min_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
-        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->mean_subTask
+        << "\ntime_std_subTask1: " << std::setprecision(5) << mpiPtrRank->var_subTask
         << "\ntime_combine1: " << std::setprecision(5) << mpiPtrRank->time_combine
         << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
         << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
-        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->mean_subTask
+        << "\ntime_std_subTask2: " << std::setprecision(5) << mpiPtrIndex->var_subTask
         << "\ntime_combine2: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs.close();
@@ -1095,6 +1132,7 @@ int test_cipher_medium_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   start = clock();
   // evaluate the task.
   mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
@@ -1132,6 +1170,7 @@ int test_cipher_medium_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   end = clock();
   double time_data_sharing = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   // cout << "No." << rank << ": before next step evaluation" << endl;
   start = clock();
   mpiPtrIndex->circuit_evaluate(range_index.data(), partial_data, vecPartialM.data(), sort_res.data());
@@ -1146,11 +1185,13 @@ int test_cipher_medium_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate_first_step: " << std::setprecision(5) << time_task_first_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrRank->time_subTask
+        << "\nsubTask1: " << std::setprecision(5) << mpiPtrRank->mean_subTask
+        << "\ntime_std_subTask1: " << std::setprecision(5) << mpiPtrRank->var_subTask
         << "\ntime_combine: " << std::setprecision(5) << mpiPtrRank->time_combine
         << "\ntime_data_sharing: " << std::setprecision(5) << time_data_sharing
         << "\ntime_task_evaluate_second_step: " << std::setprecision(5) << time_task_second_step
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrIndex->time_subTask
+        << "\nsubTask2: " << std::setprecision(5) << mpiPtrIndex->mean_subTask
+        << "\ntime_std_subTask2: " << std::setprecision(5) << mpiPtrIndex->var_subTask
         << "\ntime_combine: " << std::setprecision(5) << mpiPtrIndex->time_combine << "\n"
         << std::endl;
     ofs.close();
@@ -1211,25 +1252,45 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
   end = clock();  // time for task init.
   double time_task_init = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  // cout << "BEFORE DATA GENERATION " << endl;
   start = clock();
   size_t m_start = mpiPtrTask->m_start;
   size_t m_end = mpiPtrTask->m_end;
-  size_t partial_len = m_end - m_start + 1;
+
+  size_t partial_len = (m_end >= n-1) ? mpiPtrTask->m_end - mpiPtrTask->m_start + 1 :  mpiPtrTask->m_end - mpiPtrTask->m_start + 1 + mpiPtrTask->lookahead;
+  // cout << "partial_len: " << partial_len << endl;
   vector<si64> res(m);
-  vector<si64> vecSpace(partial_len); vector_generation(role, enc, runtime, vecSpace);
-  vector<si64> vecDiff(partial_len); vector_generation(role, enc, runtime, vecDiff);
+
   vector<si64> vecKey(m); vector_generation(role, enc, runtime, vecKey);
   si64Matrix init_res;
   init_zeros(role, enc, runtime, init_res, m);
   for (int i = 0; i < m; i++) res[i] = init_res(i, 0);
+  // cout << "data ok" << endl;
 
-  // if(rank == 0) cout << "data generation" << endl;
+  vector<si64> vecSpace(partial_len);
+  vector<si64> vecDiff(partial_len);
+
+  // blockwise construct data.
+  for(size_t k=0; k<partial_len; k+=ENC_LIMIT){
+    size_t block_end = std::min(k+ENC_LIMIT, partial_len);
+    size_t block_size = block_end - k;
+
+    si64Matrix data(block_size, 1); init_ones(role, enc, runtime, data, block_size);
+    si64Matrix data_diff(block_size, 1); init_ones(role, enc, runtime, data_diff, block_size);
+
+    for(size_t t=k; t<block_end; t++) {
+      vecSpace[t] = data(t-k, 0); vecDiff[t] = data_diff(t-k, 0);
+    }
+  }
+
 
   // set the data related part.
   mpiPtrTask->set_selective_value(vecDiff.data(), 0);
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  // cout << "before circuit evaluate" << endl;
   start = clock();
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecKey.data(), vecSpace.data(), vecDiff.data(),
@@ -1238,6 +1299,7 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+
   if (rank == 0) {
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
@@ -1245,9 +1307,12 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
-        << "\nsubTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
-        << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << "\n"
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
+        << "\ntime_combine: " << std::setprecision(5) << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -1366,6 +1431,7 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, i
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   start = clock();
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecKey.data(), vecSpace.data(), vecDiff.data(),
@@ -1373,6 +1439,20 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, i
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  // if (rank == 0) {
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+  //       << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+  //       << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+  //       << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+  //       << "\n"
+  //       << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+  //       << "\ntime_combine: " << std::setprecision(5)
+  //       << mpiPtrTask->time_combine << "\n"
+  //       << std::endl;
+  //   ofs.close();
+  // }
   if (rank == 0) {
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
@@ -1381,9 +1461,12 @@ int test_cipher_search_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, i
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -1477,12 +1560,27 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   // cout << "success circuit construct" << endl;
 
+  MPI_Barrier(MPI_COMM_WORLD);
   // 3. task evaluate.
   start = clock();
   mpiPtrTask->circuit_evaluate(x.data(), vecM.data(), nullptr, res.data());
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  // if (rank == 0) {
+  //   // cout << logging_file << endl;
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+  //       << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+  //       << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+  //       << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+  //       << "\n"
+  //       << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+  //       << "\ntime_combine: " << std::setprecision(5)
+  //       << mpiPtrTask->time_combine << "\n"
+  //       << std::endl;
+  //   ofs.close();
+  // }
   if (rank == 0) {
     // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
@@ -1491,9 +1589,12 @@ int test_cipher_average_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_num, 
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -1603,6 +1704,7 @@ int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int ta
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   
+  MPI_Barrier(MPI_COMM_WORLD);
   // 3. task evaluate.
   start = clock();
   mpiPtrTask->circuit_evaluate(vecTarget.data(), vecM.data(), nullptr,
@@ -1610,16 +1712,33 @@ int test_cipher_mean_distance(oc::CLP& cmd, size_t n, size_t m, size_t k, int ta
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  // if (rank == 0) {
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+  //       << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+  //       << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+  //       << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+  //       << "\n"
+  //       << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+  //       << "\ntime_combine: " << std::setprecision(5)
+  //       << mpiPtrTask->time_combine << "\n"
+  //       << std::endl;
+  //   ofs.close();
+  // }
   if (rank == 0) {
+    // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
     ofs << "time_setup: " << std::setprecision(5) << time_task_setup
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -1730,6 +1849,7 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   // cout << "before circuit evaluation" << endl;
   
+  MPI_Barrier(MPI_COMM_WORLD);
   // 3. task evaluate.
   start = clock();
   mpiPtrTask->circuit_evaluate(vecTarget.data(), vecM.data(), nullptr,
@@ -1737,16 +1857,33 @@ int test_cipher_bio_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  // if (rank == 0) {
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+  //       << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+  //       << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+  //       << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+  //       << "\n"
+  //       << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+  //       << "\ntime_combine: " << std::setprecision(5)
+  //       << mpiPtrTask->time_combine << "\n"
+  //       << std::endl;
+  //   ofs.close();
+  // }
   if (rank == 0) {
+    // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
     ofs << "time_setup: " << std::setprecision(5) << time_task_setup
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -1873,6 +2010,7 @@ int test_cipher_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   // cout << "before circuit evaluation" << endl;
   
+  MPI_Barrier(MPI_COMM_WORLD);
   // 3. task evaluate.
   start = clock();
   mpiPtrTask->circuit_evaluate(vecTarget.data(), vecM.data(), nullptr,
@@ -1880,16 +2018,33 @@ int test_cipher_metric(oc::CLP& cmd, size_t n, size_t m, size_t k, int task_num,
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
+  // if (rank == 0) {
+  //   std::ofstream ofs(logging_file, std::ios_base::app);
+  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup
+  //       << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
+  //       << "\ntime_task_init: " << std::setprecision(5) << time_task_init
+  //       << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
+  //       << "\n"
+  //       << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+  //       << "\ntime_combine: " << std::setprecision(5)
+  //       << mpiPtrTask->time_combine << "\n"
+  //       << std::endl;
+  //   ofs.close();
+  // }
   if (rank == 0) {
+    // cout << logging_file << endl;
     std::ofstream ofs(logging_file, std::ios_base::app);
     ofs << "time_setup: " << std::setprecision(5) << time_task_setup
         << "\ntime_data_prepare: " << std::setprecision(5) << time_task_prep
         << "\ntime_task_init: " << std::setprecision(5) << time_task_init
         << "\ntime_task_evaluate: " << std::setprecision(5) << time_task_eval
         << "\n"
-        << "subTask: " << std::setprecision(5) << mpiPtrTask->time_subTask
+        << "subTask: " << std::setprecision(5) << mpiPtrTask->mean_subTask
         << "\ntime_combine: " << std::setprecision(5)
-        << mpiPtrTask->time_combine << "\n"
+        << mpiPtrTask->time_combine
+        << "\ntime_std_subTask: " << std::setprecision(5) << mpiPtrTask->var_subTask
+        << "\ntime_max_subTask: " << std::setprecision(5) << mpiPtrTask->max_subTask
+        << "\ntime_min_subTask: " << std::setprecision(5) << mpiPtrTask->min_subTask << "\n"
         << std::endl;
     ofs.close();
   }
@@ -2531,13 +2686,6 @@ int test_vectorization(oc::CLP& cmd, size_t n_, int task_num){
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  // if(rank == 0){
-  //   // cout << logging_file << endl;
-  //   std::ofstream ofs(logging_file, std::ios_base::app);
-  //   ofs << "fxp-abmul: " << dict["fxp-abmul"] << std::endl;
-  //   ofs.close();
-  // }
-  // MPI_Barrier(MPI_COMM_WORLD);
 
   // 4. sint multiplication.
   si64Matrix imul_res(iplainA.rows(), iplainB.cols());
@@ -2555,13 +2703,6 @@ int test_vectorization(oc::CLP& cmd, size_t n_, int task_num){
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  // if(rank == 0){
-  //   // cout << logging_file << endl;
-  //   std::ofstream ofs(logging_file, std::ios_base::app);
-  //   ofs << "int-mul: " << dict["int-mul"] << std::endl;
-  //   ofs.close();
-  // }
-  // MPI_Barrier(MPI_COMM_WORLD);
 
   // 5. sint addition
   start = clock();
@@ -2577,13 +2718,6 @@ int test_vectorization(oc::CLP& cmd, size_t n_, int task_num){
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  // if(rank == 0){
-  //   // cout << logging_file << endl;
-  //   std::ofstream ofs(logging_file, std::ios_base::app);
-  //   ofs << "int-add: " << dict["int-add"] << std::endl;
-  //   ofs.close();
-  // }
-  // MPI_Barrier(MPI_COMM_WORLD);
 
   // sint gt
   start = clock();
@@ -2600,13 +2734,6 @@ int test_vectorization(oc::CLP& cmd, size_t n_, int task_num){
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  // if(rank == 0){
-  //   // cout << logging_file << endl;
-  //   std::ofstream ofs(logging_file, std::ios_base::app);
-  //   ofs << "int-gt: " << dict["int-gt"] << std::endl;
-  //   ofs.close();
-  // }
-  // MPI_Barrier(MPI_COMM_WORLD);
 
   // sint eq
   start = clock();
@@ -2623,13 +2750,6 @@ int test_vectorization(oc::CLP& cmd, size_t n_, int task_num){
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  // if(rank == 0){
-  //   // cout << logging_file << endl;
-  //   std::ofstream ofs(logging_file, std::ios_base::app);
-  //   ofs << "int-eq: " << dict["int-eq"] << std::endl;
-  //   ofs.close();
-  // }
-  // MPI_Barrier(MPI_COMM_WORLD);
 
   // multiplications
   // 5. sb & si multiplication.
@@ -2648,33 +2768,5 @@ int test_vectorization(oc::CLP& cmd, size_t n_, int task_num){
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  // if(rank == 0){
-  //   // cout << logging_file << endl;
-  //   std::ofstream ofs(logging_file, std::ios_base::app);
-  //   ofs << "int-abmul: " << dict["int-abmul"] << std::endl;
-  //   ofs.close();
-  // }
-  // MPI_Barrier(MPI_COMM_WORLD);
-
-  // if(rank == 0){
-  //   // cout << logging_file << endl;
-  //   std::ofstream ofs(logging_file, std::ios_base::app);
-  //   ofs << "time_setup: " << std::setprecision(5) << time_task_setup <<
-  //   "\ntime data prep: " << std::setprecision(5) << time_data_prepare <<
-  //   std::endl;
-
-  //   std::map<std::string, double>::iterator iter;
-  //   iter = dict.begin();
-  //   while(iter != dict.end()){
-  //     ofs << iter->first << " " << iter->second << std::endl;
-  //     iter ++;
-  //   }
-  //   ofs.close();
-  // }
-
-  // MPI_Barrier(MPI_COMM_WORLD);
-
-  // }
-
   return 0;
 }

@@ -10,6 +10,8 @@ using namespace oc;
 using namespace aby3;
 using namespace std;
 
+int profile_task_setup(oc::CLP& cmd);
+
 int profile_cipher_index(oc::CLP& cmd, size_t n, size_t m,
                          int vector_size_start, double epsilon, size_t gap);
 
@@ -389,4 +391,7 @@ int abs_profile(oc::CLP& cmd, size_t n, size_t m, size_t k,
 }
 
 int profile_new_search_mpi(oc::CLP& cmd, size_t n, size_t m,
+                           int vector_size_start, double epsilon, size_t gap);
+
+int profile_metric_mpi(oc::CLP& cmd, size_t n, size_t m, size_t k,
                            int vector_size_start, double epsilon, size_t gap);

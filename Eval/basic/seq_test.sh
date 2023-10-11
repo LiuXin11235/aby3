@@ -20,7 +20,7 @@ for log_folder in ${log_folder_list[@]}; do
   if [ ! -d ${log_folder} ]; then
     mkdir ${log_folder}
   else
-    rm -r ${log_folder};
+    # rm -r ${log_folder};
     mkdir ${log_folder};
   fi
 done

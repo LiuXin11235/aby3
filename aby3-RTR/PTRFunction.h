@@ -110,12 +110,8 @@ class SubIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     }
 #endif
 
-    // clock_t start, end;
-    // start = clock();
     vector_cipher_eq(this->pIdx, expandX, expandY, partTable, *(this->eval),
                      *(this->runtime));
-    // end = clock();
-    // cout << "eq time: " << ((end-start)*1000) / CLOCKS_PER_SEC;
 
 #ifdef DEBUG
     std::ofstream ofs(debugFile, std::ios_base::app);
@@ -403,65 +399,8 @@ class SecretIndex : public PTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
     this->subTasks.emplace_back(subTask);
   }
 
-  // void circuit_evaluate(NUMX* dataX, NUMY* dataY, NUMR* selectV, NUMR* res){
-
-  //     // prepare data structures.
-  //     this->inputX = fake_repeat(dataX, this->shapeX, this->m, 0);
-  //     this->inputY = fake_repeat(dataY, this->shapeY, this->n, 1);
-  //     this->res = res;
-
-  //     // compute functions => currently, using sequential.
-  //     for(int i=0; i<this->total_tasks; i++){
-  //         // call the corresponding functions on different machines.
-  //         this->subTasks[i]->circuit_evaluate(this->inputX, this->inputY,
-  //         this->selectV);
-  //     }
-
-  //     #ifdef DEBUG
-  //     // debug -> aby3 eq has sometimes errorness
-  //     for(int i=0; i<this->total_tasks; i++){
-  //       if(std::is_same<NUMR, aby3::si64>::value){
-  //         std::ofstream ofs(debugFile, std::ios_base::app);
-  //         ofs << "subTask-" << i << "res: " << std::endl;
-  //         ofs.close();
-  //         debug_output_vector(this->subTasks[i]->res, this->runtime,
-  //         this->enc);
-
-  //         // ofs.open(debugFile, std::ios_base::app);
-  //         // ofs << "expandY: " << binfo->t_start << std::endl;
-  //         // for(int i=0; i<expandY.size(); i++) ofs << expandY[i] << " ";
-  //         // ofs << std::endl;
-  //         // ofs.close();
-  //         // debug_output_vector(expandY, *(this->runtime), *(this->enc));
-
-  //         // aby3::si64Matrix expandXM(block_length);
-  //         // for(int i=0; i<block_length; i++) expandXM(i, 0, expandX[i]);
-  //       }
-  //     }
-  //     #endif
-
-  //     // simulate
-  //     for(int i=this->total_tasks-1; i>=0; i--){
-  //         size_t left_tasks = this->total_tasks;
-  //         size_t send_start = (left_tasks + 1) / 2;
-  //         while(i < send_start && left_tasks > 1){
-  //             size_t receive_target = i + send_start;
-  //             if(receive_target < left_tasks){
-  //                 std::vector<NUMR> receive_res =
-  //                 this->subTasks[receive_target]->res;
-  //                 this->subTasks[i]->partical_reduction(receive_res,
-  //                 this->subTasks[i]->res, this->subTasks[i]->res, nullptr);
-  //             }
-
-  //             left_tasks = send_start;
-  //             send_start = (left_tasks + 1) / 2;
-  //         }
-  //         if(i >= send_start) size_t end_target = i - send_start;
-  //     }
-  //     std::copy(this->subTasks[0]->res.begin(), this->subTasks[0]->res.end(),
-  //     res);
-  // }
 };
+
 
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
           template <typename, typename, typename, typename> class TASK>

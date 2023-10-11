@@ -4,6 +4,7 @@
 #include <aby3/sh3/Sh3Evaluator.h>
 #include <aby3/sh3/Sh3Runtime.h>
 #include <aby3/sh3/Sh3Types.h>
+#include "debug.h"
 
 #ifndef _A_H_
 #define _A_H_
@@ -30,9 +31,17 @@ int pi_cb_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sha
 
 int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
 
+int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::si64Matrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
+
 template <aby3::Decimal D>
 int cipher_mul_seq(int pIdx, const aby3::sf64Matrix<D> &sharedA, const aby3::sbMatrix &sharedB, aby3::sf64Matrix<D> &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
     return cipher_mul_seq(pIdx, sharedA.i64Cast(), sharedB, res.i64Cast(), eval, enc, runtime);
+}
+
+template <aby3::Decimal D>
+int cipher_mul_seq(int pIdx, aby3::sf64Matrix<D> &sharedA, aby3::sf64Matrix<D> &sharedB, aby3::sf64Matrix<D> &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+    eval.asyncMul(runtime, sharedA, sharedB, res).get();
+    return 0;
 }
 
 inline int cipher_mul_seq(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime){
@@ -89,10 +98,77 @@ int init_ones(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3
 
 int init_zeros(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix &res, int n);
 
+
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<aby3::si64>& vecRes);
 
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<int>& vecRes);
 
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<std::vector<aby3::si64>>& vecRes);
+
+int plain_mat_to_cipher_mat(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::i64Matrix& plain_mat, aby3::si64Matrix& cipher_mat);
+
+// basic encryption methods.
+int vector_to_matrix(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<int>& plain_vec, aby3::si64Matrix& enc_mat);
+
+template <aby3::Decimal D>
+int vector_to_matrix(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<double>& plain_vec, aby3::sf64Matrix<D>& enc_mat){
+    aby3::u64 vec_len = plain_vec.size();
+    aby3::f64Matrix<D> plain_mat; plain_mat.resize(vec_len, 1);
+    for(int i=0; i<vec_len; i++) plain_mat(i, 0) = plain_vec[i];
+    plain_mat_to_cipher_mat(pIdx, enc, runtime, plain_mat.i64Cast(), enc_mat.i64Cast());
+    return 0;
+}
+
+int cipher_matrix_to_vector(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix& cipher_mat, std::vector<aby3::si64>& cipher_vec);
+
+template <aby3::Decimal D>
+int cipher_matrix_to_vector(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::sf64Matrix<D>& cipher_mat, std::vector<aby3::sf64<D>>& cipher_vec){
+    size_t rows = cipher_mat.rows();
+    size_t vec_len = cipher_vec.size();
+    if(vec_len == rows){
+        for(int i=0; i<vec_len; i++) cipher_vec[i] = cipher_mat(i, 0);
+    }
+    else if (vec_len == 0){
+        for(int i=0; i<rows; i++) cipher_vec.push_back(cipher_mat(i, 0));
+    }
+    else{
+        std::cerr << "not null vector" << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
+int vector_to_cipher_vector(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<int>& plain_vec, std::vector<aby3::si64>& enc_vec);
+
+template <aby3::Decimal D>
+int vector_to_cipher_vector(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<double>& plain_vec, std::vector<aby3::sf64<D>>& enc_vec){
+    aby3::sf64Matrix<D> enc_mat;
+    vector_to_matrix<D>(pIdx, enc, runtime, plain_vec, enc_mat);
+    return cipher_matrix_to_vector<D>(pIdx, enc, runtime, enc_mat, enc_vec);
+}
+
+template <aby3::Decimal D>
+int init_zeros(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::sf64Matrix<D> &res, int n){
+    aby3::f64Matrix<D> plain_mat; plain_mat.resize(n, 1);
+    for(int i=0; i<n; i++) plain_mat(i, 0) = 0;
+    aby3::sf64Matrix<D> enc_mat;
+    plain_mat_to_cipher_mat(pIdx, enc, runtime, plain_mat.i64Cast(), enc_mat.i64Cast());
+}
+
+template <aby3::Decimal D>
+int init_zeros(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<aby3::sf64<D>> &res, int n){
+    aby3::f64Matrix<D> plain_mat; plain_mat.resize(n, 1);
+    for(int i=0; i<n; i++) plain_mat(i, 0) = 0;
+    aby3::sf64Matrix<D> enc_mat;
+    plain_mat_to_cipher_mat(pIdx, enc, runtime, plain_mat.i64Cast(), enc_mat.i64Cast());
+    if(res.size() == n){
+        for(int i=0; i<n; i++) res[i] = enc_mat(i, 0);
+    }
+    else if(res.size() == 0){
+        for(int i=0; i<n; i++) res.push_back(enc_mat(i, 0));
+    }
+    return 0;
+}
+
 
 #endif

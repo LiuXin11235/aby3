@@ -283,6 +283,13 @@ int cipher_mul_seq(int pIdx, const si64Matrix &sharedA, const sbMatrix &sharedB,
   return 0;
 }
 
+int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::si64Matrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+  aby3::u64 rows, cols;
+  rows = sharedA.rows(); cols = sharedA.cols();
+  eval.asyncMul(runtime, sharedA, sharedB, res).get();
+  return 0;
+}
+
 
 // sequential multiplication between plain i64 and secret bits.
 int pi_cb_mul(int pIdx, const i64Matrix &plainA, const sbMatrix &sharedB, si64Matrix &res, Sh3Evaluator &eval, Sh3Encryptor& enc, Sh3Runtime &runtime){
@@ -773,9 +780,11 @@ int init_ones(int pIdx, Sh3Encryptor &enc, Sh3Runtime &runtime, si64Matrix &res,
 
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<si64>& vecRes){
   size_t length = vecRes.size();
+  // cout << "length: " << length << endl;
   si64Matrix sharedM(length, 1);
   init_ones(pIdx, enc, runtime, sharedM, length);
   for(int i=0; i<length; i++) vecRes[i] = sharedM(i, 0);
+  // cout << "then return" << endl;
   return 0;
 }
 
@@ -795,5 +804,54 @@ int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runti
       vecRes[i][j] = sharedM(i*inner_len + j);
     }
   }
+  return 0;
+}
+
+int vector_to_cipher_vector(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<int>& plain_vec, std::vector<aby3::si64>& enc_vec){
+  aby3::si64Matrix enc_mat;
+  vector_to_matrix(pIdx, enc, runtime, plain_vec, enc_mat);
+  return cipher_matrix_to_vector(pIdx, enc, runtime, enc_mat, enc_vec);
+}
+
+int plain_mat_to_cipher_mat(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::i64Matrix& plain_mat, aby3::si64Matrix& cipher_mat){
+  aby3::u64 rows = plain_mat.rows();
+  aby3::u64 cols = plain_mat.cols();
+  // cout << "rows: " << rows << "cols: " << cols <<endl;
+  cipher_mat.resize(rows, cols);
+
+  if(pIdx == 0) {
+      enc.localIntMatrix(runtime, plain_mat, cipher_mat).get();
+    }
+    else{
+      enc.remoteIntMatrix(runtime, cipher_mat).get();
+  }
+
+  return 0;
+}
+
+int vector_to_matrix(int pIdx, Sh3Encryptor &enc, Sh3Runtime &runtime, std::vector<int>& plain_vec, aby3::si64Matrix& enc_mat){
+  aby3::u64 vec_len = plain_vec.size();
+  i64Matrix plain_mat; plain_mat.resize(vec_len, 1);
+  for(int i=0; i<vec_len; i++) plain_mat(i, 0) = plain_vec[i];
+
+  plain_mat_to_cipher_mat(pIdx, enc, runtime, plain_mat, enc_mat);
+  
+  return 0;
+}
+
+int cipher_matrix_to_vector(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, si64Matrix& cipher_mat, std::vector<si64>& cipher_vec){
+  size_t rows = cipher_mat.rows();
+  size_t vec_len = cipher_vec.size();
+  if(vec_len == rows){
+    for(int i=0; i<vec_len; i++) cipher_vec[i] = cipher_mat(i, 0);
+  }
+  else if (vec_len == 0){
+    for(int i=0; i<rows; i++) cipher_vec.push_back(cipher_mat(i, 0));
+  }
+  else{
+    std::cerr << "not null vector" << std::endl;
+    return 1;
+  }
+
   return 0;
 }
