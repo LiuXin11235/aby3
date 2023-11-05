@@ -1,5 +1,7 @@
-task_list=("prof_metric_mpi" "prof_cipher_index_mpi" "prof_average_mpi" "prof_max_mpi" "prof_new_search_mpi")
-log_folder_list=(./Record/Prof_mpi_metric ./Record/Prof_mpi_cipher_index ./Record/Prof_mpi_average ./Record/Prof_mpi_max ./Record/Prof_mpi_new_search)
+# task_list=("prof_metric_mpi" "prof_cipher_index_mpi" "prof_average_mpi" "prof_max_mpi" "prof_new_search_mpi")
+# log_folder_list=(./Record/Prof_mpi_metric ./Record/Prof_mpi_cipher_index ./Record/Prof_mpi_average ./Record/Prof_mpi_max ./Record/Prof_mpi_new_search)
+task_list=("prof_cipher_index_mpi")
+log_folder_list=(./Record/Prof_mpi_cipher_index)
 
 
 # cleanup the old folder and create a clean one.
@@ -21,16 +23,16 @@ else
   mkdir ${res_folder};
 fi
 
-available_cores_list=(1 16)
+available_cores_list=(16 128 256)
 repeat_list=(1 1)
 
-# compile.
-python build.py
+# # compile.
+# python build.py
 
-# synchronize with others.
-scp ./bin/frontend aby31:~/aby3/bin &
-scp ./bin/frontend aby32:~/aby3/bin &
-wait;
+# # synchronize with others.
+# scp ./bin/frontend aby31:~/aby3/bin &
+# scp ./bin/frontend aby32:~/aby3/bin &
+# wait;
 
 retry_threshold=5;
 

@@ -484,7 +484,7 @@ int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
   si64Matrix diffAB(sintA.size(), 1);
   // sbMatrix tmpRes(sintA.size(), 1);
   for(int i=0; i<sintA.size(); i++){
-    diffAB(i, 0, sintA[i] - sintB[1]);
+    diffAB(i, 0, sintA[i] - sintB[i]);
   }
   Sh3Task task = runtime.noDependencies();
   fetch_msb(pIdx, diffAB, res, eval, runtime, task);
@@ -524,13 +524,17 @@ int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
   for(int i=0; i<sintA.size(); i++){
     diffAB(i, 0, sintA[i] - sintB[i]);
   }
-  // Sh3Task task = runtime.noDependencies();
-  fetch_msb(pIdx, diffAB, res, eval, runtime);
+  // if(sintA.size() != res.rows()) cout << "PROBLEM IN GE: ab size = " << sintA.size() << " res size: " << res.rows() << endl;
+  // cout << "A: " << sintA.size() << endl;
+  // cout << "B: " << sintB.size() << endl;
+  // cout << "res: " << res.rows() << endl;
+  Sh3Task task = runtime.noDependencies();
+  fetch_msb(pIdx, diffAB, res, eval, runtime, task);
   for(int i=0; i<sintA.size(); i++){
     res.mShares[0](i) ^= true;
     res.mShares[1](i) ^= true;
   }
-
+  // if(sintA.size() == 16384) cout << "here success???" << endl;
   return 0;
 }
 

@@ -1,9 +1,12 @@
-task_list=("cipher_index" "new_search" "average" "metric")
-log_folder_list=(./Record/Record_cipher_index ./Record/Record_new_search ./Record/Record_average ./Record/Record_metric)
-N_list=(1048576 16777216 134217728 1073741824)
-M_list=(1 1 1 1)
-c_list=(4 32 64 128 256)
-optB_list=(16384 65536 262144 1048576 4194304)
+# task_list=("cipher_index" "new_search" "average" "metric")
+task_list=("new_search" "metric")
+log_folder_list=(./Record/Record_new_search ./Record/Record_metric)
+# task_list=("cipher_index")
+# log_folder_list=(./Record/Record_cipher_index)
+N_list=(1073741824)
+M_list=(1)
+c_list=(255)
+optB_list=(16384 65536 4194304)
 K=1
 
 # cleanup the old folder and create a clean one.
@@ -24,10 +27,9 @@ scp ./bin/frontend aby31:~/aby3/bin &
 scp ./bin/frontend aby32:~/aby3/bin &
 wait;
 
-test_times=3;
+test_times=2;
 retry_threshold=5;
-outLimit=30;
-
+outLimit=15;
 
 for (( i=0; i<${#task_list[@]}; i++ )); do
 
@@ -53,7 +55,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
               break; 
             fi
 
-            ./Eval/kill_all.sh frontend;
+            ./Eval/kill_all.sh frontend 3; sleep 10;
             j=$(expr $j + 1);
             if [ $j -eq $retry_threshold ]; then
               echo "Max retry: "${N}-${taskN} >> ${log_folder}/error.log;
@@ -67,13 +69,13 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
 done;
 
 
-
 task_list=("max")
 log_folder_list=(./Record/Record_max)
-N_list=(1024 4096 16384 32768)
-M_list=(1024 4096 16384 32768)
-c_list=(4 32 64 128 256)
-optB_list=(16384 65536 262144 1048576 4194304)
+N_list=(32768)
+M_list=(32768)
+c_list=(255)
+# optB_list=(262144 1048576 4194304)
+optB_list=(16384 65536)
 
 # cleanup the old folder and create a clean one.
 for log_folder in ${log_folder_list[@]}; do
@@ -85,15 +87,15 @@ for log_folder in ${log_folder_list[@]}; do
   fi
 done
 
-# compile
-python build.py
+# # compile
+# python build.py
 
-# synchroonize with others
-scp ./bin/frontend aby31:~/aby3/bin &
-scp ./bin/frontend aby32:~/aby3/bin &
-wait;
+# # synchroonize with others
+# scp ./bin/frontend aby31:~/aby3/bin &
+# scp ./bin/frontend aby32:~/aby3/bin &
+# wait;
 
-test_times=3;
+test_times=2;
 retry_threshold=5;
 
 
@@ -118,7 +120,7 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
             if [ $? -eq 0 ]; then
               break; 
             fi
-            ./Eval/kill_all.sh frontend; sleep 10;
+            ./Eval/kill_all.sh frontend 3; sleep 10;
             j=$(expr $j + 1);
             if [ $j -eq $retry_threshold ]; then
               echo "Max retry: "${n}-${taskN} >> ${log_folder}/error.log;

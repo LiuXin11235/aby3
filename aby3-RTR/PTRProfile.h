@@ -108,6 +108,7 @@ int abs_profile(oc::CLP& cmd, size_t n, size_t m, size_t k,
                    SubNewSearch<NUMX, NUMY, NUMT, NUMR>>::value) {
     mpiPtrTask->set_lookahead(1);
   }
+  // cout << "in this funct" << endl;
   // data construct.
   m = vector_size_start;
   NUMR dval;

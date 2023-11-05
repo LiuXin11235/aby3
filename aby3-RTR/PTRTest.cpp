@@ -146,9 +146,6 @@ int test_cipher_index_ptr_mpi(CLP& cmd, size_t n, size_t m, int task_num, int op
   size_t m_end = mpiPtrTask->m_end;
   size_t partial_len = m_end - m_start + 1;
 
-  // cout << "in cipher index: " << endl;
-  // cout << "m_start: " << m_start << " m_end: " << m_end << endl;;
-  // cout << "partial_len: " << partial_len << endl;
 
   vector<si64> res(m);
   vector<si64> vecM(partial_len);
@@ -788,7 +785,6 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   }
   si64Matrix init_res;
   init_zeros(role, enc, runtime, init_res, n);
-  // cout << "No." << rank << ": success after data construct" << endl;
 
   vector<si64> res(n);
   vector<si64> vecM(n);
@@ -800,18 +796,21 @@ int test_cipher_max_ptr_mpi(oc::CLP& cmd, size_t n, int task_num, int opt_B){
   range_index[0] = n-1;
   mpiPtrIndex->set_selective_value(vecPartialM.data(), 0);
 
+  // cout << "n = " << n << endl;
+  // cout << "partial_len = " << partial_len << endl;
+
   end = clock();
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
   MPI_Barrier(MPI_COMM_WORLD);
 
+  // cout << "before eval" << endl;
   start = clock();
   // evaluate the task.
   mpiPtrRank->circuit_evaluate(vecM.data(), vecPartialM.data(), nullptr,
                                res.data());
-  // cout << "No." << rank << ": success after mpiPtrRank computation" << endl;
   end = clock();
   double time_task_first_step = double((end - start) * 1000) / (CLOCKS_PER_SEC);
-
+  // cout << "rank eval" << endl;
 
   // 1. firstly distribute the data to each subtask.
   start = clock();
@@ -1258,7 +1257,6 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
   size_t m_end = mpiPtrTask->m_end;
 
   size_t partial_len = (m_end >= n-1) ? mpiPtrTask->m_end - mpiPtrTask->m_start + 1 :  mpiPtrTask->m_end - mpiPtrTask->m_start + 1 + mpiPtrTask->lookahead;
-  // cout << "partial_len: " << partial_len << endl;
   vector<si64> res(m);
 
   vector<si64> vecKey(m); vector_generation(role, enc, runtime, vecKey);
@@ -1281,6 +1279,8 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
     for(size_t t=k; t<block_end; t++) {
       vecSpace[t] = data(t-k, 0); vecDiff[t] = data_diff(t-k, 0);
     }
+    // cout << "block start: " << k << endl;
+    // cout << "block end: " << block_end << endl;
   }
 
 
@@ -1290,12 +1290,11 @@ int test_cipher_search_new_ptr_mpi(oc::CLP& cmd, size_t n, size_t m, int task_nu
   double time_task_prep = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
   MPI_Barrier(MPI_COMM_WORLD);
-  // cout << "before circuit evaluate" << endl;
   start = clock();
+  // cout << "start evaluate" << endl;
   // evaluate the task.
   mpiPtrTask->circuit_evaluate(vecKey.data(), vecSpace.data(), vecDiff.data(),
                                res.data());
-  // if(rank == 0) cout << "circuit evaluate" << endl;
   end = clock();
   double time_task_eval = double((end - start) * 1000) / (CLOCKS_PER_SEC);
 
