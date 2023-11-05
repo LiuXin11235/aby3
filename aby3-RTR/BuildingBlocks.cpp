@@ -352,6 +352,17 @@ int pi_cb_mul(int pIdx, const i64Matrix &plainA, const sbMatrix &sharedB, si64Ma
   return 0;
 }
 
+int cipher_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime){
+  return pi_cb_mul(pIdx, plainA, sharedB, res, eval, enc, runtime);
+}
+
+int cipher_mul(int pIdx, const aby3::si64Matrix &sharedA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+  return cipher_mul_seq(pIdx, sharedA, sharedB, res, eval, enc, runtime);
+}
+
+int cipher_mul(int pIdx, const aby3::si64Matrix &sharedA, const aby3::si64Matrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+  return cipher_mul_seq(pIdx, sharedA, sharedB, res, eval, enc, runtime);
+}
 
 // synchronized version of fetch_msb.
 int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime, Sh3Task& task){

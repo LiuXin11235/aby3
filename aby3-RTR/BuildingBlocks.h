@@ -16,7 +16,7 @@
 /// @return 
 double synchronized_time(int pIdx, double& time_slot, aby3::Sh3Runtime &runtime);
 
-// setup function.
+/// setup functions.
 void distribute_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
            aby3::Sh3Runtime &runtime);
 
@@ -26,17 +26,26 @@ void basic_setup(aby3::u64 partyIdx, oc::IOService &ios, aby3::Sh3Encryptor &enc
 
 void multi_processor_setup(aby3::u64 partyIdx, int rank, oc::IOService &ios, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
+
+/// basic building block functions.
+/// all functions for aby3 data structures are : cipher_func
+/// all functions for vectors are : vector_cipher_func
+
+/// 1. multiplitcations, totally, we support: 1) plain_a and shared_b;) 2_shared_a and shared_b; 3) shared_a and shared_a; 4) shared_f and shared_b; 5) shared_f and shared_f.
 int pi_cb_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
 
 
 int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
 
+
 int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::si64Matrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
+
 
 template <aby3::Decimal D>
 int cipher_mul_seq(int pIdx, const aby3::sf64Matrix<D> &sharedA, const aby3::sbMatrix &sharedB, aby3::sf64Matrix<D> &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
     return cipher_mul_seq(pIdx, sharedA.i64Cast(), sharedB, res.i64Cast(), eval, enc, runtime);
 }
+
 
 template <aby3::Decimal D>
 int cipher_mul_seq(int pIdx, aby3::sf64Matrix<D> &sharedA, aby3::sf64Matrix<D> &sharedB, aby3::sf64Matrix<D> &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
@@ -47,6 +56,30 @@ int cipher_mul_seq(int pIdx, aby3::sf64Matrix<D> &sharedA, aby3::sf64Matrix<D> &
 inline int cipher_mul_seq(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime){
     return pi_cb_mul(pIdx, plainA, sharedB, res, eval, enc, runtime);
 }
+
+// standard interfaces of ciphertext multiplications.
+int cipher_mul(int pIdx, const aby3::i64Matrix &plainA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime &runtime);
+
+
+int cipher_mul(int pIdx, const aby3::si64Matrix &sharedA, const aby3::sbMatrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
+
+
+int cipher_mul(int pIdx, const aby3::si64Matrix &sharedA, const aby3::si64Matrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
+
+
+template <aby3::Decimal D>
+int cipher_mul(int pIdx, const aby3::sf64Matrix<D> &sharedA, const aby3::sbMatrix &sharedB, aby3::sf64Matrix<D> &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+    return cipher_mul(pIdx, sharedA.i64Cast(), sharedB, res.i64Cast(), eval, enc, runtime);
+}
+
+
+template <aby3::Decimal D>
+int cipher_mul(int pIdx, aby3::sf64Matrix<D> &sharedA, aby3::sf64Matrix<D> &sharedB, aby3::sf64Matrix<D> &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+    eval.asyncMul(runtime, sharedA, sharedB, res).get();
+    return 0;
+}
+
+
 
 // synchronized version of fetch_msb.
 int fetch_msb(int pIdx, aby3::si64Matrix &diffAB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Task &task);
@@ -99,7 +132,6 @@ int vector_mean_square(int pIdx, const std::vector<aby3::si64>&sharedA, const st
 int init_ones(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix &res, int n);
 
 int init_zeros(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, aby3::si64Matrix &res, int n);
-
 
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<aby3::si64>& vecRes);
 

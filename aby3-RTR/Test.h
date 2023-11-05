@@ -9,3 +9,8 @@
 
 int basic_test(oc::CLP& cmd);
 bool check_result(const std::string& func_name, aby3::i64Matrix& test, aby3::i64Matrix& res);
+
+template <aby3::Decimal D>
+bool check_result(const std::string& func_name, aby3::f64Matrix<D>& test, aby3::f64Matrix<D>& res){
+    return check_result(func_name, test.i64Cast(), res.i64Cast());
+}

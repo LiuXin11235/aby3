@@ -534,10 +534,8 @@ namespace aby3
 
             //oc::lout << self.mRuntime->mPartyIdx << " mult Send" << std::endl;
 
-            i64Matrix abMinusR
-                = A.mShares[0] * B.mShares[0]
-                + A.mShares[0] * B.mShares[1]
-                + A.mShares[1] * B.mShares[0];
+            i64Matrix abMinusR(A.size(), 1);
+            for (u64 i=0; i<A.size(); ++i) abMinusR(i) = A.mShares[0](i) * B.mShares[0](i) + A.mShares[0](i) * B.mShares[1](i) + A.mShares[1](i) * B.mShares[0](i);
 
             auto truncationTuple = getTruncationTuple(abMinusR.rows(), abMinusR.cols(), shift);
 
