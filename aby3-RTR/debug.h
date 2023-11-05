@@ -9,7 +9,7 @@
 #define _DEBUG_H_
 
 static std::string debugFile = "/root/aby3/debug.txt";
-static std::string debugFolder= "/root/aby3/";
+static std::string debugFolder= "/root/aby3/DEBUG/";
 
 extern void debug_mpi(int rank, int pIdx, std::string info);
 

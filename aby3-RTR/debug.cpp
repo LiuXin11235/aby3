@@ -79,7 +79,7 @@ void debug_output_matrix(aby3::i64Matrix& problem_mat){
 void debug_mpi(int rank, int pIdx, std::string info){
   std::string debugFile_mpi = debugFolder + "DEBUG-role:" + std::to_string(pIdx) + "-rank:" + std::to_string(rank) + ".txt";
 
-  std::ofstream ofs(debugFile, std::ios_base::app);
+  std::ofstream ofs(debugFile_mpi, std::ios_base::app);
   ofs << info << std::endl;
   ofs.close();
 }

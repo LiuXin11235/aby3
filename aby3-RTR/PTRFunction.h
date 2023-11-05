@@ -90,36 +90,9 @@ class SubIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     // pairwise vector equal test.
     aby3::sbMatrix partTable;
 
-#ifdef DEBUG
-    // debug -> aby3 eq has sometimes errorness
-    if (std::is_same<NUMR, aby3::si64>::value) {
-      std::ofstream ofs(debugFile, std::ios_base::app);
-      ofs << "expandX: " << binfo->t_start << std::endl;
-      ofs.close();
-      debug_output_vector(expandX, *(this->runtime), *(this->enc));
-
-      ofs.open(debugFile, std::ios_base::app);
-      ofs << "expandY: " << binfo->t_start << std::endl;
-      for (int i = 0; i < expandY.size(); i++) ofs << expandY[i] << " ";
-      ofs << std::endl;
-      ofs.close();
-      // debug_output_vector(expandY, *(this->runtime), *(this->enc));
-
-      // aby3::si64Matrix expandXM(block_length);
-      // for(int i=0; i<block_length; i++) expandXM(i, 0, expandX[i]);
-    }
-#endif
-
     vector_cipher_eq(this->pIdx, expandX, expandY, partTable, *(this->eval),
                      *(this->runtime));
 
-#ifdef DEBUG
-    std::ofstream ofs(debugFile, std::ios_base::app);
-    ofs << "partTable: " << binfo->t_start << std::endl;
-    ofs.close();
-    debug_output_matrix(partTable, *(this->runtime), *(this->enc), this->pIdx,
-                        *(this->eval));
-#endif
 
     // pairwise vector abmul.
     aby3::si64Matrix expandV;
@@ -130,14 +103,6 @@ class SubIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> {
     cipher_mul_seq(this->pIdx, expandV, partTable, expandV, *(this->eval),
                    *(this->enc), *(this->runtime));
 
-#ifdef DEBUG
-    if (std::is_same<NUMR, aby3::si64>::value) {
-      std::ofstream ofs(debugFile, std::ios_base::app);
-      ofs << "table_start: " << binfo->t_start << std::endl;
-      ofs.close();
-      debug_output_matrix(expandV, *(this->runtime), *(this->enc));
-    }
-#endif
 
     // transfor to the local_table
     for (size_t i = 0; i < block_length; i++) local_table[i] = expandV(i, 0);
@@ -182,8 +147,11 @@ class SubRank : public SubTask<NUMX, NUMY, NUMT, NUMR> {
                                    std::vector<NUMT>& local_table,
                                    BlockInfo* binfo) {
     aby3::u64 block_length = binfo->block_len;
+    // debug_mpi(this->task_id, this->pIdx, "block start: " + to_string(binfo->t_start) + " end: " + to_string(binfo->t_end) + " comp size: " + to_string(binfo->t_end - binfo->t_start) + " block len: " + to_string(binfo->block_len) + "X size: " + to_string(expandX.size()));
+
     vector_cipher_gt(this->pIdx, expandX, expandY, local_table, *(this->eval),
                      *(this->enc), *(this->runtime));
+    // debug_mpi(this->task_id, this->pIdx, "success single round");
   }
 };
 
@@ -312,7 +280,6 @@ class SubNewSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
                                   std::vector<NUMR>& resRight,
                                   std::vector<NUMR>& local_res,
                                   BlockInfo* binfo) override {
-
     for (int i = 0; i < resLeft.size(); i++)
       local_res[i] = resLeft[i] + resRight[i];
     return;
@@ -323,15 +290,22 @@ class SubNewSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
                                    std::vector<NUMY>& expandY,
                                    std::vector<NUMT>& local_table,
                                    BlockInfo* binfo) {
+
     aby3::u64 block_length = binfo->block_len;
     aby3::u64 expand_length = binfo->block_len + this->lookahead * this->n;
     if(binfo->t_start + expand_length >= (this->n * this->m)) expand_length = (this->n * this->m) - binfo->t_start;
     aby3::sbMatrix partTable(binfo->block_len, 1); 
     aby3::sbMatrix expandTable(expand_length, 1);
 
+    // if(expandY.size() != expand_length) cout << "Y PROBLEM!!!" << " Y size = " << expandY.size() << " != " << expand_length << endl;
+    // if(expandX.size() != expand_length) cout << "X PROBLEM!!!" << " X size = " << expandX.size() << " != " << expand_length <<endl;
+
+    // debug_mpi(this->task_id, pIdx, "block start: " + to_string(binfo->t_start) + " end: " + to_string(binfo->t_end) + " comp size: " + to_string(binfo->t_end - binfo->t_start) + " block len: " + to_string(binfo->block_len) + " expand len: " + to_string(expand_length) + "X size: " + to_string(expandX.size()));
+
     vector_cipher_ge(this->pIdx, expandX, expandY, expandTable, *(this->eval),
                      *(this->enc), *(this->runtime));
-    
+    // debug_mpi(this->task_id, pIdx, "finish GE");
+
     // shift & substraction.
     if(binfo->t_start < (this->m - 1) * this->n){ // only when the table is not started in the last column, perform the shift & substraction. 
       for(int i=0; i<expand_length - this->n; i++){
@@ -343,16 +317,23 @@ class SubNewSearch : public SubTask<NUMX, NUMY, NUMT, NUMR> {
         partTable.mShares[1](i) = expandTable.mShares[1](i);
       }
     }
-    
+    else{
+      for(int i=0; i<binfo->block_len; i++){
+        partTable.mShares[0](i) = expandTable.mShares[0](i);
+        partTable.mShares[1](i) = expandTable.mShares[1](i);
+      }
+    }
     // pairwise vector abmul.
-    aby3::si64Matrix expandV;
-    expandV.resize(block_length, 1);
+    aby3::si64Matrix expandV(block_length, 1);
     for (size_t i = 0; i < block_length; i++) expandV(i, 0, this->selectV[binfo->t_start + i]);
 
     cipher_mul_seq(this->pIdx, expandV, partTable, expandV, *(this->eval),
                    *(this->enc), *(this->runtime));
     
     for (size_t i = 0; i < block_length; i++) local_table[i] = expandV(i, 0);
+
+    // debug_mpi(this->task_id, pIdx, "block start: " + to_string(binfo->t_start) + " end: " + to_string(binfo->t_end) + " comp size: " + to_string(binfo->t_end - binfo->t_start) + " block len: " + to_string(binfo->block_len));
+    // debug_mpi(this->task_id, pIdx, "finish one round");
   }
 };
 

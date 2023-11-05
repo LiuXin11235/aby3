@@ -1,9 +1,18 @@
-log_folder_list=(./Record/Record_average ./Record/Record_cipher_index ./Record/Record_new_search ./Record/Record_max ./Record/Record_metric)
-task_list=("average" "cipher_index" "new_search" "max" "metric")
-M_list=(1 1 1 1024 1)
-N_list=(65536 65536 65536 1024 65536)
-c_list=(64 64 64 64 64)
-optB_list=(256 256 256 256 256)
+log_folder_list=(./Record/Record_new_search)
+task_list=("new_search")
+M_list=(1)
+N_list=(1073741824)
+c_list=(256)
+optB_list=(72025)
+
+# log_folder_list=(./Record/Record_metric)
+# task_list=("metric")
+# M_list=(1)
+# N_list=(1073741824)
+# c_list=(256)
+# optB_list=(4194304)
+
+rm -r ./DEBUG/*
 
 test_times=1;outLimit=10;retry_threshold=5;K=1;
 
