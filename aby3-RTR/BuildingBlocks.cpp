@@ -536,10 +536,10 @@ int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
 }
 
 int cipher_ge(int pIdx, aby3::si64Matrix& sintA, aby3::si64Matrix& sintB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
-  si64Matrix diffAB = sintB - sintA;
-  // Sh3Task task = runtime.noDependencies();
-  fetch_msb(pIdx, diffAB, res, eval, runtime);
-  for(int i=0; i<sintA.size(); i++){
+  si64Matrix diffAB = sintA - sintB;
+  Sh3Task task = runtime.noDependencies();
+  fetch_msb(pIdx, diffAB, res, eval, runtime, task);
+  for(int i=0; i<res.rows(); i++){
     res.mShares[0](i) ^= true;
     res.mShares[1](i) ^= true;
   }

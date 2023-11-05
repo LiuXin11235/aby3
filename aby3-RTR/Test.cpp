@@ -9,7 +9,7 @@ using namespace oc;
 using namespace aby3;
 using namespace std;
 
-const int TEST_SIZE = 50;
+const int TEST_SIZE = 32768;
 
 bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res){
     int size = test.rows();
@@ -55,6 +55,7 @@ int basic_test(CLP& cmd){
     i64Matrix res_ge(TEST_SIZE, 1);
     i64Matrix res_eq(TEST_SIZE, 1);
     i64Matrix res_mul(TEST_SIZE, 1);
+    i64Matrix res_mul_gt(TEST_SIZE, 1);
 
     for(int i=0; i<TEST_SIZE; i++){
         input_x(i, 0) = i;
@@ -64,6 +65,7 @@ int basic_test(CLP& cmd){
         res_ge(i, 0) = i >= (TEST_SIZE - i);
         res_mul(i, 0) = i * (TEST_SIZE - i);
         res_eq(i, 0) = i == (TEST_SIZE - i);
+        res_mul_gt(i, 0) = res_gt(i, 0) * input_x(i, 0);
     }
 
     // encrypt the inputs.
@@ -82,46 +84,60 @@ int basic_test(CLP& cmd){
     sbMatrix shared_ge(TEST_SIZE, 1);
     sbMatrix shared_eq(TEST_SIZE, 1);
     si64Matrix shared_mul(TEST_SIZE, 1);
+    si64Matrix shared_mul_gt(TEST_SIZE, 1);
 
+    // i64Matrix plain_x(TEST_SIZE, 1);
+    // i64Matrix plain_y(TEST_SIZE, 1);
+    // enc.revealAll(runtime, sharedX, plain_x).get();
+    // enc.revealAll(runtime, sharedY, plain_y).get();
     // if(role == 0){
     //     debug_info("inputs");
     //     debug_info("sharedX: ");
-    //     debug_output_matrix(sharedX, runtime, enc);
+    //     debug_output_matrix(plain_x);
     //     debug_info("sharedY: ");
-    //     debug_output_matrix(sharedY, runtime, enc);
+    //     debug_output_matrix(plain_y);
     // }
-    i64Matrix plain_x(TEST_SIZE, 1);
-    i64Matrix plain_y(TEST_SIZE, 1);
-    enc.revealAll(runtime, sharedX, plain_x).get();
-    enc.revealAll(runtime, sharedY, plain_y).get();
-    if(role == 0){
-        debug_info("inputs");
-        debug_info("sharedX: ");
-        debug_output_matrix(plain_x);
-        debug_info("sharedY: ");
-        debug_output_matrix(plain_y);
-    }
 
-    eval.asyncMul(runtime, sharedY, sharedX, shared_mul).get();
+    // eval.asyncMul(runtime, sharedY, sharedX, shared_mul).get();
+    cipher_mul_seq(role, sharedX, sharedY, shared_mul, eval, enc, runtime);
     cipher_gt(role, sharedX, sharedY, shared_gt, eval, runtime);
     circuit_cipher_eq(role, sharedX, sharedY, shared_eq, eval, runtime);
-    // cipher_mul_seq(role, sharedX, sharedY, shared_mul, eval, enc, runtime);
-    cipher_ge(role, sharedX, sharedY, shared_eq, eval, enc, runtime);
+    cipher_mul_seq(role, sharedX, shared_gt, shared_mul_gt, eval, enc, runtime);
+    cipher_ge(role, sharedX, sharedY, shared_ge, eval, enc, runtime);
 
     // check the result.
     i64Matrix test_gt(TEST_SIZE, 1); i64Matrix test_ge(TEST_SIZE, 1);
     i64Matrix test_eq(TEST_SIZE, 1); i64Matrix test_mul(TEST_SIZE, 1);
+    i64Matrix test_mul_gt(TEST_SIZE, 1);
 
     enc.revealAll(runtime, shared_gt, test_gt).get();
     enc.revealAll(runtime, shared_ge, test_ge).get();
     enc.revealAll(runtime, shared_eq, test_eq).get();
     enc.revealAll(runtime, shared_mul, test_mul).get();
+    enc.revealAll(runtime, shared_mul_gt, test_mul_gt).get();
 
+    // cipher_gt(role, sharedY, sharedX, shared_gt, eval, runtime);
+    // enc.revealAll(runtime, shared_gt, test_gt).get();
+    // if(role == 0){
+    //     debug_info("less than");
+    //     debug_output_matrix(test_gt);
+    // }
+    // for(int i=0; i<shared_gt.rows(); i++){
+    //     shared_gt.mShares[0](i) ^= true;
+    //     shared_gt.mShares[1](i) ^= true;
+    // }
+    // // debug_output_matrix(shared_gt);
+    // enc.revealAll(runtime, shared_gt, test_gt).get();
+    // if(role == 0){
+    //     debug_info("get not");
+    //     debug_output_matrix(test_gt);
+    // }
     if(role == 0){
         check_result("gt", test_gt, res_gt);
         check_result("ge", test_ge, res_ge);
         check_result("eq", test_eq, res_eq);
         check_result("mul", test_mul, res_mul);
+        check_result("mul_gt", test_mul_gt, res_mul_gt);
     }
     return 0;
 }
