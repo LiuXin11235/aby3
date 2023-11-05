@@ -45,6 +45,14 @@ void debug_output_matrix(aby3::sbMatrix& problem_mat, aby3::Sh3Runtime& runtime,
   ofs.close();
 }
 
+void debug_output_matrix(aby3::i64Matrix& problem_mat){
+  std::ofstream ofs(debugFile, std::ios_base::app);
+  int length = problem_mat.rows();
+  for(int i=0; i<length; i++) ofs << problem_mat(i, 0) << " ";
+  ofs << std::endl;
+  ofs.close();
+}
+
 
 // template <aby3::Decimal D>
 // void debug_output_matrix(aby3::sf64Matrix<D>& problem_mat, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc){

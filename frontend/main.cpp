@@ -10,6 +10,7 @@
 #include "aby3-RTR/RTRTest.h"
 #include "aby3-RTR/PTRProfile.h"
 #include "aby3-RTR/GASTest.h"
+#include "aby3-RTR/Test.h"
 #include "eric.h"
 
 #define MPI
@@ -23,6 +24,12 @@ int main(int argc, char** argv) {
   oc::CLP cmd(argc, argv);
   // reinit the environment and then finalize the environment.
   MPI_Init(&argc, &argv);
+
+
+  if (cmd.isSet("Test")){
+    basic_test(cmd);
+    return 0;
+  }
 
   size_t N, M, TASK_NUM, OPT_BLOCK;
   std::string FUNC;
@@ -50,6 +57,7 @@ int main(int argc, char** argv) {
   } else {
     throw std::runtime_error("No OPT_BLOCK defined");
   }
+
   if(cmd.isSet("FUNC")) {
     auto keys = cmd.getMany<std::string>("FUNC");
     if(keys.size() != 0) FUNC = keys[0];
@@ -57,6 +65,7 @@ int main(int argc, char** argv) {
   } else {
     FUNC = "index";
   }
+
   // cout << "in the main " << endl;
   // std::cout << "FUNC: " << FUNC << std::endl;
   // check the config task_num is the same as the MPI task num

@@ -73,6 +73,8 @@ int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
 
 int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
 
+int cipher_ge(int pIdx, aby3::si64Matrix& sintA, aby3::si64Matrix& sintB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
+
 // eq implemeneted through two fetch_msb and an Nor gate.
 int cipher_eq(int pIdx, aby3::si64Matrix &intA, aby3::si64Matrix &intB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 

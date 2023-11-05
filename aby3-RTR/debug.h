@@ -21,6 +21,8 @@ extern void debug_output_vector(std::vector<aby3::si64>& problem_vec, aby3::Sh3R
 
 extern void debug_output_matrix(aby3::si64Matrix& problem_mat, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc);
 
+extern void debug_output_matrix(aby3::i64Matrix& problem_mat);
+
 extern void debug_output_matrix(aby3::sbMatrix& problem_mat, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc, int pIdx, aby3::Sh3Evaluator& eval);
 
 template <aby3::Decimal D>

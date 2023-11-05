@@ -40,21 +40,21 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
   CommPkg comm;
   switch (partyIdx) {
     case 0:
-      comm.mNext = Session(ios, "10.0.3.8:1419", SessionMode::Server, "01")
+      comm.mNext = Session(ios, "127.0.0.1:1419", SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.3.8:1420", SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "127.0.0.1:1420", SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
-      comm.mNext = Session(ios, "10.0.3.4:1421", SessionMode::Server, "12")
+      comm.mNext = Session(ios, "127.0.0.1:1421", SessionMode::Server, "12")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.3.8:1419", SessionMode::Client, "01")
+      comm.mPrev = Session(ios, "127.0.0.1:1419", SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
-      comm.mNext = Session(ios, "10.0.3.8:1420", SessionMode::Client, "02")
+      comm.mNext = Session(ios, "127.0.0.1:1420", SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.3.4:1421", SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "127.0.0.1:1421", SessionMode::Client, "12")
                        .addChannel();
       break;
   }
@@ -282,6 +282,7 @@ int cipher_mul_seq(int pIdx, const si64Matrix &sharedA, const sbMatrix &sharedB,
   }
   return 0;
 }
+
 
 int cipher_mul_seq(int pIdx, const aby3::si64Matrix &sharedA, const aby3::si64Matrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
   aby3::u64 rows, cols;
@@ -535,6 +536,17 @@ int vector_cipher_ge(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
     res.mShares[1](i) ^= true;
   }
   // if(sintA.size() == 16384) cout << "here success???" << endl;
+  return 0;
+}
+
+int cipher_ge(int pIdx, aby3::si64Matrix& sintA, aby3::si64Matrix& sintB, aby3::sbMatrix& res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+  si64Matrix diffAB = sintB - sintA;
+  // Sh3Task task = runtime.noDependencies();
+  fetch_msb(pIdx, diffAB, res, eval, runtime);
+  for(int i=0; i<sintA.size(); i++){
+    res.mShares[0](i) ^= true;
+    res.mShares[1](i) ^= true;
+  }
   return 0;
 }
 
