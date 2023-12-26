@@ -26,7 +26,10 @@ for log_folder in ${log_folder_list[@]}; do
 done
 
 # compile
+./Eval/monitor/utilization_monitor.sh ./Monitor/compile.log &
+monitor_id=$!
 python build.py
+kill ${monitor_id}
 
 # synchroonize with others
 scp ./bin/frontend aby31:~/aby3/bin &
@@ -41,7 +44,11 @@ for (( i=0; i<${#task_list[@]}; i++ )); do
   for (( z=0; z<${test_times}; z++ )); do
     j=0;
     while [ $j -lt $retry_threshold ]; do
+      monitor_log=./Monitor/log-${task}-N=${N}-M=${M}-K=${K}-c=${task}-B=${optB}
+      ./Eval/monitor/utilization_monitor.sh ${monitor_log} &
+      exec_monitor_id=$!
       timeout ${outLimit}m ./Eval/basic/mpi_subtask.sh taskN=${taskN} n=$N m=$M k=$K task=$task optB=$optB log_folder=$log_folder/;
+      kill ${exec_monitor_id};
       if [ $? -eq 0 ]; then
         break; 
       fi
