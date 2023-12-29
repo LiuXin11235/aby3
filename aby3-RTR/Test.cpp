@@ -9,7 +9,7 @@ using namespace oc;
 using namespace aby3;
 using namespace std;
 
-const int TEST_SIZE = 10;
+const int TEST_SIZE = 10000;
 
 bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res){
     int size = test.rows();
@@ -19,11 +19,15 @@ bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res)
     }
 
     if(!check_flag){
-        debug_info(func_name + " ERROR !");
-        debug_info("test: ");
-        debug_output_matrix(test);
-        debug_info("result: ");
-        debug_output_matrix(res);
+        debug_info("\033[31m" + func_name + " ERROR !" + "\033[0m\n");
+        // debug_info("test: ");
+        // debug_output_matrix(test);
+        // debug_info("result: ");
+        // debug_output_matrix(res);
+        // debug_info("\n\n\n");
+    }
+    else{
+        debug_info("\033[32m" + func_name + " SUCCESS!" + "\033[0m\n");
     }
 
     return check_flag;
@@ -128,9 +132,6 @@ int basic_test(CLP& cmd){
     enc.revealAll(runtime, shared_ib_mul, test_ib_mul).get();
     enc.revealAll(runtime, shared_f_mul, test_f_mul).get();
     enc.revealAll(runtime, shared_fb_mul, test_fb_mul).get();
-
-    debug_output_matrix<D8>(fsharedX, runtime, enc);
-    debug_output_matrix<D8>(shared_f_mul, runtime, enc);
 
 
     if(role == 0){

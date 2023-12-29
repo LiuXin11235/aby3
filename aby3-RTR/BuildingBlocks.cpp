@@ -40,21 +40,21 @@ void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evalua
   CommPkg comm;
   switch (partyIdx) {
     case 0:
-      comm.mNext = Session(ios, "127.0.0.1:1419", SessionMode::Server, "01")
+      comm.mNext = Session(ios, "10.0.1.15:1419", SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "127.0.0.1:1420", SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "10.0.1.15:1420", SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
-      comm.mNext = Session(ios, "127.0.0.1:1421", SessionMode::Server, "12")
+      comm.mNext = Session(ios, "10.0.1.4:1421", SessionMode::Server, "12")
                        .addChannel();
-      comm.mPrev = Session(ios, "127.0.0.1:1419", SessionMode::Client, "01")
+      comm.mPrev = Session(ios, "10.0.1.15:1419", SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
-      comm.mNext = Session(ios, "127.0.0.1:1420", SessionMode::Client, "02")
+      comm.mNext = Session(ios, "10.0.1.15:1420", SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "127.0.0.1:1421", SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "10.0.1.4:1421", SessionMode::Client, "12")
                        .addChannel();
       break;
   }

@@ -30,7 +30,6 @@ extern void debug_output_matrix(aby3::sf64Matrix<D>& problem_mat, aby3::Sh3Runti
     aby3::u64 length = problem_mat.rows();    
     aby3::f64Matrix<D> plaininfo(length, 1);
     enc.revealAll(runtime, problem_mat, plaininfo).get();
-    // runtime.runUntilTaskCompletes(runtime);
 
     std::ofstream ofs(debugFile, std::ios_base::app);
     ofs << "length: " << length << std::endl;

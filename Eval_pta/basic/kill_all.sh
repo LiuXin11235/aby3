@@ -1,3 +1,5 @@
+#!/bin/bash
+
 if [ ! -n "$1" ]; then
     echo "offer keyword: "
     read keyword
@@ -23,6 +25,7 @@ for pid in $pids; do
 done
 
 targets=(aby31 aby32);
-for target_machine in ${targets[*]}; do
-    ssh $target_machine "sh ./aby3/Eval/basic/kill_all.sh "${keyword};
+for target_machine in ${targets[@]}; do
+    echo "in here"
+    ssh $target_machine "sh ./aby3/Eval/basic/kill_all.sh ${keyword}";
 done
