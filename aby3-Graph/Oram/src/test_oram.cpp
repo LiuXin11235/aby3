@@ -39,6 +39,11 @@ void test_pos_map(){
             std::cout << "position map error" << std::endl;
         }
     }
+    for(int i=len-1; i>-1; i--){
+        if(data[pos_map.access(i, false)] != i){
+            std::cout << "position map error" << std::endl;
+        }
+    }
 }
 
 int main(){

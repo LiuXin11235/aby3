@@ -9,7 +9,7 @@
 #include "test.h"
 
 
-#define DEBUG
+// #define DEBUG
 
 template <typename T>
 class StashElement{
@@ -191,19 +191,24 @@ public:
             }
 
 #ifdef DEBUG
-    std::cerr << "found in stash -  " << true << std::endl;
+    std::cerr << "found in stash -  " << found << std::endl;
     std::cerr << "l = " << l << std::endl;
-#endif
-            physical_index = this->subPosMap->access(h, fake || !found);
+    std::cerr << "physical_index in stash = " << physical_index << std::endl;
+#endif      
+            // select the (maybe) random physical index from the next-level index map.
+            size_t tmp_physical_index = this->subPosMap->access(h, fake || found);
 
             // update the stash.
-            this->stash.push_back(this->packed_index[physical_index]);
+            this->stash.push_back(this->packed_index[tmp_physical_index]);
             this->t++;
             if(fake || !found){ // the hit happened beforehead, aggregassively return the first element in the stash.
-                PackedIndex<T> tmp = this->stash[0];
+                PackedIndex<T> tmp = this->stash[this->t - 1];
                 physical_index = tmp.packedIndices[l];
             }
         }
+#ifdef DEBUG
+    std::cerr << "physical_index = " << physical_index << std::endl;
+#endif
         return physical_index;
     }
 };
@@ -243,8 +248,17 @@ public:
                 return this->stash[i].data;
             }
         }
+
+#ifdef DEBUG
+    std::cerr << "found in oram stash -  " << found << std::endl;
+#endif
+
         // then look at the main memory.
         size_t physical_index = this->posMap->access(index, found);
+
+#ifdef DEBUG
+    std::cerr << "translated physical index -  " << physical_index << std::endl;
+#endif
         T data = this->shuffle_mem[physical_index];
 
         // update the stash.
