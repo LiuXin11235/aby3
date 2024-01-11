@@ -379,7 +379,7 @@ int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, S
   switch(pIdx){
     case 0: {
       for(u64 j=0; j<diffAB.size(); j++){
-        circuitInput0.mShares[0](j) = diffAB.mShares[0](j)+ diffAB.mShares[1](j);
+        circuitInput0.mShares[0](j) = diffAB.mShares[0](j) + diffAB.mShares[1](j);
       }
       circuitInput1.mShares[0].setZero();
       circuitInput1.mShares[1].setZero();
@@ -436,7 +436,7 @@ int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, S
   switch(pIdx){
     case 0: {
       for(u64 j=0; j<diffAB.size(); j++){
-        circuitInput0.mShares[0](j) = diffAB.mShares[0](j)+ diffAB.mShares[1](j);
+        circuitInput0.mShares[0](j) = diffAB.mShares[0](j) + diffAB.mShares[1](j);
       }
       circuitInput1.mShares[0].setZero();
       circuitInput1.mShares[1].setZero();
@@ -807,11 +807,9 @@ int init_ones(int pIdx, Sh3Encryptor &enc, Sh3Runtime &runtime, si64Matrix &res,
 
 int vector_generation(int pIdx, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime, std::vector<si64>& vecRes){
   size_t length = vecRes.size();
-  // cout << "length: " << length << endl;
   si64Matrix sharedM(length, 1);
   init_ones(pIdx, enc, runtime, sharedM, length);
   for(int i=0; i<length; i++) vecRes[i] = sharedM(i, 0);
-  // cout << "then return" << endl;
   return 0;
 }
 

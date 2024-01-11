@@ -32,18 +32,20 @@ void debug_output_matrix(aby3::si64Matrix& problem_mat, aby3::Sh3Runtime& runtim
 
 void debug_output_matrix(aby3::sbMatrix& problem_mat, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc, int pIdx, aby3::Sh3Evaluator& eval){
   aby3::u64 length = problem_mat.rows();
-  aby3::si64Matrix ones(length, 1);
-  init_ones(pIdx, enc, runtime, ones, length);
-  eval.asyncMul(runtime, ones, problem_mat, ones).get();
+  // aby3::si64Matrix ones(length, 1);
+  // init_ones(pIdx, enc, runtime, ones, length);
+  // eval.asyncMul(runtime, ones, problem_mat, ones).get();
 
   aby3::i64Matrix plaininfo(length, 1);
-  enc.revealAll(runtime, ones, plaininfo).get();
+  enc.revealAll(runtime, problem_mat, plaininfo).get();
 
   std::ofstream ofs(debugFile, std::ios_base::app);
   for(int i=0; i<length; i++) ofs << plaininfo(i, 0) << " ";
   ofs << std::endl;
   ofs.close();
 }
+
+
 
 void debug_output_matrix(aby3::i64Matrix& problem_mat){
   std::ofstream ofs(debugFile, std::ios_base::app);
@@ -94,4 +96,20 @@ void write_log(std::string log_file, std::string info){
   std::ofstream ofs(log_file, std::ios_base::app);
   ofs << info << std::endl;
   ofs.close();
+}
+
+
+void debug_secret_matrix(aby3::sbMatrix& problem_mat){
+  std::ofstream ofs(debugFile, std::ios_base::app);
+  int length = problem_mat.rows();
+
+  ofs << "secret 0: " << std::endl;
+  for(int i=0; i<length; i++){
+    printBits(problem_mat.mShares[0](i), ofs);
+  }
+  ofs << "secret 1: " << std::endl;
+  for(int i=0; i<length; i++){
+    printBits(problem_mat.mShares[1](i), ofs);
+  }
+  ofs << std::endl;
 }

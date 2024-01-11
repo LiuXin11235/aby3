@@ -11,6 +11,13 @@
 static std::string debugFile = "/root/aby3/debug.txt";
 static std::string debugFolder= "/root/aby3/DEBUG/";
 
+inline void printBits(int64_t num, std::ostream& stream){
+    for(int i=63; i>=0; i--){
+        stream << ((num >> i) & 1) << " ";
+    }
+    stream << std::endl;
+}
+
 extern void debug_mpi(int rank, int pIdx, std::string info);
 
 extern void debug_info(std::string info);
@@ -45,5 +52,7 @@ extern void debug_output_vector(std::vector<aby3::sf64<D>>& problem_vec, aby3::S
     for(int i=0; i<length; i++) problem_mat(i, 0, problem_vec[i]);
     return debug_output_matrix<D>(problem_mat, runtime, enc); 
 }
+
+extern void debug_secret_matrix(aby3::sbMatrix& problem_mat);
 
 #endif
