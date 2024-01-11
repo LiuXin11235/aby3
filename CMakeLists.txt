@@ -84,6 +84,7 @@ add_subdirectory(aby3-ML)
 include_directories("/usr/include/jsoncpp")  
 include_directories("/usr/include/mpich")
 add_subdirectory(aby3-RTR)
+add_subdirectory(aby3-Basic)
 add_subdirectory(aby3-DB_tests)
 add_subdirectory(aby3_tests)
 
