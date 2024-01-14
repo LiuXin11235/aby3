@@ -38,7 +38,7 @@ public:
 		};
 
 		std::shared_ptr<State> mState;
-
+		std::future<void> share() { return mState->mProm.get_future(); }
 		void get() const { mState->mProm.get_future().get(); }
 	};
 	static AsyncRecv asyncRecv(

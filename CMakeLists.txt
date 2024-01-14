@@ -18,6 +18,8 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
 		SET(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG") 
 		SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO " -O2 -g -ggdb -rdynamic")
 		SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g -ggdb -rdynamic")
+		SET(CMAKE_C_FLAGS_DEBUG "-g -DDEBUG")
+		SET(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG")
 
 	endif()
 
@@ -72,11 +74,14 @@ add_subdirectory(aby3)
 add_subdirectory(aby3-DB)
 
 add_subdirectory(aby3-ML)
+include_directories("/usr/include/jsoncpp")  
+include_directories("/usr/include/mpich")
+add_subdirectory(aby3-RTR)
+add_subdirectory(aby3-Basic)
 add_subdirectory(aby3-DB_tests)
 
 add_subdirectory(aby3_tests)
 
 
 add_subdirectory(frontend)
-
 

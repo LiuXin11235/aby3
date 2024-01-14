@@ -1,0 +1,3 @@
+[submodule "aby3-RTR/Pair_then_Reduce"]
+	path = aby3-RTR/Pair_then_Reduce
+	url = git@github.com:Fannxy/Pair_then_Reduce.git

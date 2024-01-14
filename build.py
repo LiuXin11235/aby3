@@ -71,6 +71,7 @@ def Build(mainArgs, cmakeArgs,install, prefix, par):
     argStr = ""
     for a in cmakeArgs:
         argStr = argStr + " " + a
+    argStr = argStr + " " + "-DUSE_MPI=ON"
 
     parallel = ""
     if par != 1:
