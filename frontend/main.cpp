@@ -23,5 +23,16 @@ int main(int argc, char** argv) {
 		arith_basic_test(cmd);
 	}
 
+	if (cmd.isSet("Init")){
+		initialization_test(cmd);
+	}
+
+	if(cmd.isSet("Correlation")){
+		correlation_test(cmd);
+	}
+
+	if(cmd.isSet("Shuffle")){
+		shuffle_test(cmd);
+	}
   return 0;
 }

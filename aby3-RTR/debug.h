@@ -22,6 +22,8 @@ extern void debug_mpi(int rank, int pIdx, std::string info);
 
 extern void debug_info(std::string info);
 
+extern void debug_info(Eigen::internal::Packet4i &info);
+
 extern void write_log(std::string log_file, std::string info);
 
 extern void debug_output_vector(std::vector<aby3::si64>& problem_vec, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc);
@@ -61,6 +63,22 @@ extern void debug_output_vector(std::vector<aby3::sf64<D>>& problem_vec, aby3::S
     aby3::sf64Matrix<D> problem_mat; problem_mat.resize(length, 1);
     for(int i=0; i<length; i++) problem_mat(i, 0, problem_vec[i]);
     return debug_output_matrix<D>(problem_mat, runtime, enc); 
+}
+
+template<typename T>
+extern void debug_output_vector(std::vector<T> &problem_vec){
+    std::ofstream ofs(debugFile, std::ios_base::app);
+    ofs << "length: " << problem_vec.size() << std::endl;
+    for(int i=0; i<problem_vec.size(); i++) ofs << problem_vec[i] << " ";
+    ofs << std::endl;
+    ofs.close();
+}
+
+template<typename T>
+extern void debug_output_vector(std::vector<T> &problem_vec, std::ofstream& ofs){
+    ofs << "length: " << problem_vec.size() << std::endl;
+    for(int i=0; i<problem_vec.size(); i++) ofs << problem_vec[i] << " ";
+    ofs << std::endl;
 }
 
 extern void debug_secret_matrix(aby3::sbMatrix& problem_mat);

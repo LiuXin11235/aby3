@@ -9,6 +9,9 @@
 
 int arith_basic_test(oc::CLP& cmd);
 int bool_basic_test(oc::CLP& cmd);
+int initialization_test(oc::CLP& cmd);
+int shuffle_test(oc::CLP& cmd);
+int correlation_test(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test, aby3::i64Matrix& res);
 template <aby3::Decimal D>

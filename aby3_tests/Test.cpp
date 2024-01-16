@@ -5,12 +5,14 @@
 #include "../aby3-RTR/BuildingBlocks.h"
 #include "../aby3-RTR/debug.h"
 #include "../aby3-Basic/Basics.h"
+#include "../aby3-Basic/Shuffle.h"
 
 using namespace oc;
 using namespace aby3;
 using namespace std;
 
 const int TEST_SIZE = 5;
+const int TEST_UNIT_SIZE = 5;
 
 bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res){
     int size = test.rows();
@@ -278,5 +280,262 @@ int arith_basic_test(CLP& cmd){
         check_result("mul_f", test_f_mul, res_f_mul);
         check_result("mul_fb", test_fb_mul, res_fb_mul);
     }
+    return 0;
+}
+
+
+int initialization_test(CLP& cmd){
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if(role == 0) {
+        debug_info("RUN INIT TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    // 1. test the correlated randomness.
+    oc::block nextSeed = enc.mShareGen.mNextCommon.getSeed();
+    oc::block prevSeed = enc.mShareGen.mPrevCommon.getSeed();
+
+    // send the nextSeed to the nextParty.  
+    runtime.mComm.mNext.asyncSendCopy(nextSeed);
+
+    // send the prevSeed to the prevParty.
+    runtime.mComm.mPrev.asyncSendCopy(prevSeed);
+
+    // get the nextParty's prev seed.
+    oc::block nextP_seed;
+    runtime.mComm.mNext.recv(nextP_seed);
+
+    // get the prevParty's next seed.
+    oc::block prevP_seed;
+    runtime.mComm.mPrev.recv(prevP_seed);
+
+    // if(role == 0){
+    //     debug_info("next seed: ");
+    //     debug_info(nextSeed);
+    //     debug_info(nextP_seed);
+    //     debug_info("prev seed: ");
+    //     debug_info(prevSeed);
+    //     debug_info(prevP_seed);
+    // }
+
+    // check the seeds.
+    if(nextSeed != nextP_seed){
+        debug_info("\033[31m P" + to_string(role) + " check: nextSeed ERROR!" + "\033[0m\n");
+    }
+    else{
+        debug_info("\033[32m P" + to_string(role) + " check: nextSeed SUCCESS!" + "\033[0m\n");
+    }
+
+    if(prevSeed != prevP_seed){
+        debug_info("\033[31m P" + to_string(role) + " check: prevSeed ERROR!" + "\033[0m\n");
+    }
+    else{
+        debug_info("\033[32m P" + to_string(role) + " check: prevSeed SUCCESS!" + "\033[0m\n");
+    }
+
+    return 0;
+}
+
+
+int shuffle_test(oc::CLP& cmd){
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if(role == 0) {
+        debug_info("RUN SHUFFLE TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    // generate the test data.
+    std::vector<i64Matrix> input_x(TEST_SIZE);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        input_x[i].resize(TEST_UNIT_SIZE, 1);
+        for(size_t j=0; j<TEST_UNIT_SIZE; j++){
+            input_x[i](j, 0) = i;
+        }
+    }
+
+    // encrypt the inputs.
+    std::vector<sbMatrix> bsharedX(TEST_SIZE);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        bsharedX[i].resize(TEST_UNIT_SIZE, 1);
+        if(role == 0){
+            enc.localBinMatrix(runtime, input_x[i], bsharedX[i]).get();
+        }
+        else{
+            enc.remoteBinMatrix(runtime, bsharedX[i]).get();
+        }
+    }
+
+    // generate the permutation.
+    block prevSeed = enc.mShareGen.mPrevCommon.getSeed();
+    block nextSeed = enc.mShareGen.mNextCommon.getSeed();
+    size_t len = TEST_SIZE;
+    std::vector<size_t> prev_permutation;
+    std::vector<size_t> next_permutation;
+    get_permutation(len, prev_permutation, prevSeed);
+    get_permutation(len, next_permutation, nextSeed);
+
+    std::vector<size_t> other_permutation(len);
+    runtime.mComm.mPrev.asyncSendCopy(next_permutation.data(), next_permutation.size());
+    runtime.mComm.mNext.recv(other_permutation.data(), other_permutation.size());
+
+    std::vector<size_t> final_permutation;  
+    std::vector<std::vector<size_t>> permutation_list;
+    if(role == 0){
+        permutation_list = {next_permutation, prev_permutation, other_permutation};
+    }
+    if(role == 1){
+        permutation_list = {prev_permutation, other_permutation, next_permutation};
+    }
+    if(role == 2){
+        permutation_list = {other_permutation, next_permutation, prev_permutation};
+    }
+    combine_permutation(permutation_list, final_permutation);
+
+    std::vector<i64Matrix> shuffle_res(TEST_SIZE);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        shuffle_res[i].resize(TEST_UNIT_SIZE, 1);
+        shuffle_res[i] = input_x[i];
+    }
+    plain_permutate(final_permutation, shuffle_res);
+
+    efficient_shuffle(bsharedX, role, bsharedX, enc, eval, runtime);
+
+    std::vector<i64Matrix> test_res(TEST_SIZE);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        test_res[i].resize(TEST_UNIT_SIZE, 1);
+        enc.revealAll(runtime, bsharedX[i], test_res[i]).get();
+    }
+
+    // check the shuffle result.
+    if(role == 0){
+        bool check_flag = true;
+        for(size_t i=0; i<TEST_SIZE; i++){
+            for(size_t j=0; j<TEST_UNIT_SIZE; j++){
+                if(test_res[i](j, 0) != shuffle_res[i](j, 0)){
+                    check_flag = false;
+                }
+            }
+        }
+        if(check_flag){
+            debug_info("\033[32m CHECK SUCCESS ! \033[0m\n");
+        }
+        else{
+            debug_info("\033[31m CHECK ERROR ! \033[0m\n");
+            debug_info("True result: \n");
+            for(size_t i=0; i<TEST_SIZE; i++){
+                debug_output_matrix(shuffle_res[i]);
+            }
+            debug_info("Func result: \n");
+            for(size_t i=0; i<TEST_SIZE; i++){
+                debug_output_matrix(test_res[i]);
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+int correlation_test(oc::CLP& cmd){
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if(role == 0) {
+        debug_info("RUN CORRELATION TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    i64Matrix prevMask(TEST_SIZE, 1);
+    i64Matrix nextMask(TEST_SIZE, 1);
+
+    // generate the permutation.
+    block prevSeed = enc.mShareGen.mPrevCommon.getSeed();
+    block nextSeed = enc.mShareGen.mNextCommon.getSeed();
+
+    get_random_mask(role, prevMask, prevSeed);
+    get_random_mask(role, nextMask, nextSeed);
+
+    // check.
+    i64Matrix nextP_mask(TEST_SIZE, 1);
+    i64Matrix prevP_mask(TEST_SIZE, 1);
+
+    runtime.mComm.mNext.asyncSendCopy(nextMask.data(), nextMask.size());
+    runtime.mComm.mPrev.asyncSendCopy(prevMask.data(), prevMask.size());
+
+    runtime.mComm.mNext.recv(nextP_mask.data(), nextP_mask.size());
+    runtime.mComm.mPrev.recv(prevP_mask.data(), prevP_mask.size());
+
+    bool next_check = true;
+    bool prev_check = true;
+
+        
+    for(size_t i=0; i<TEST_SIZE; i++){
+        if(nextMask(i, 0) != nextP_mask(i, 0)){
+            debug_info(to_string(nextMask(i, 0)) + " " + to_string(nextP_mask(i, 0)) + "\n");
+            next_check = false;
+        }
+        if(prevMask(i, 0) != prevP_mask(i, 0)){
+            debug_info(to_string(prevMask(i, 0)) + " " + to_string(prevP_mask(i, 0)) + "\n");
+            prev_check = false;
+        }
+    }
+
+    if(!next_check){
+        debug_info("\033[31m P" + to_string(role) + " check: next randomness ERROR!" + "\033[0m\n");
+    }
+    else{
+        debug_info("\033[32m P" + to_string(role) + " check: next randomness SUCCESS!" + "\033[0m\n");
+    }
+
+    if(!prev_check){
+        debug_info("\033[31m P" + to_string(role) + " check: prev randomness ERROR!" + "\033[0m\n");
+    }
+    else{
+        debug_info("\033[32m P" + to_string(role) + " check: prev randomness SUCCESS!" + "\033[0m\n");
+    }
+
     return 0;
 }
