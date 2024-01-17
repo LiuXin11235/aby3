@@ -13,7 +13,7 @@ void test_permutation(){
 
     for(int i=0; i<len; i++){
         if(data[permutation[i]] != i){
-            std::cout << "permutation error" << std::endl;
+            std::cout << "\033[31m PERMUTATION ERROR \033[0m" << std::endl;
             std::cout << "permutation: " << std::endl;
             print_vector(permutation);
             std::cout << "data: " << std::endl;
@@ -21,6 +21,7 @@ void test_permutation(){
             exit(1);
         }
     }
+    std::cout << "\033[32m PERMUTATION CHECK SUCCESS ! \033[0m\n" << std::endl;
 }
 
 void test_pos_map(){
@@ -34,16 +35,20 @@ void test_pos_map(){
     print_vector(data);
 
     PosMap<size_t> pos_map(len, pack, S, permutation);
+    bool check_flag = true;
     for(int i=0; i<len; i++){
         if(data[pos_map.access(i, false)] != i){
-            std::cout << "position map error" << std::endl;
+            std::cout << "\033[31m POS MAP ERROR ! \033[0m" << std::endl;
+            check_flag = false;
         }
     }
     for(int i=len-1; i>-1; i--){
         if(data[pos_map.access(i, false)] != i){
-            std::cout << "position map error" << std::endl;
+            std::cout << "\033[31m POS MAP ERROR ! \033[0m" << std::endl;
+            check_flag = false;
         }
     }
+    if(check_flag) std::cout << "\033[32m POS MAP CHECK SUCCESS ! \033[0m\n" << std::endl;
 }
 
 int main(){
