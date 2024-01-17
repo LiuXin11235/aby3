@@ -11,8 +11,8 @@ using namespace oc;
 using namespace aby3;
 using namespace std;
 
-const int TEST_SIZE = 5;
-const int TEST_UNIT_SIZE = 5;
+const int TEST_SIZE = 100;
+const int TEST_UNIT_SIZE = 10;
 
 bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res){
     int size = test.rows();
@@ -428,12 +428,14 @@ int shuffle_test(oc::CLP& cmd){
     }
     plain_permutate(final_permutation, shuffle_res);
 
-    efficient_shuffle(bsharedX, role, bsharedX, enc, eval, runtime);
+    std::vector<sbMatrix> bsharedShuffle(TEST_SIZE);
+
+    efficient_shuffle(bsharedX, role, bsharedShuffle, enc, eval, runtime);
 
     std::vector<i64Matrix> test_res(TEST_SIZE);
     for(size_t i=0; i<TEST_SIZE; i++){
         test_res[i].resize(TEST_UNIT_SIZE, 1);
-        enc.revealAll(runtime, bsharedX[i], test_res[i]).get();
+        enc.revealAll(runtime, bsharedShuffle[i], test_res[i]).get();
     }
 
     // check the shuffle result.
@@ -447,10 +449,10 @@ int shuffle_test(oc::CLP& cmd){
             }
         }
         if(check_flag){
-            debug_info("\033[32m CHECK SUCCESS ! \033[0m\n");
+            debug_info("\033[32m SHUFFLE CHECK SUCCESS ! \033[0m\n");
         }
         else{
-            debug_info("\033[31m CHECK ERROR ! \033[0m\n");
+            debug_info("\033[31m SHUFFLE CHECK ERROR ! \033[0m\n");
             debug_info("True result: \n");
             for(size_t i=0; i<TEST_SIZE; i++){
                 debug_output_matrix(shuffle_res[i]);
@@ -462,6 +464,67 @@ int shuffle_test(oc::CLP& cmd){
         }
     }
 
+
+    // shuffle with permutation test.
+    std::vector<si64> shared_permutation(TEST_SIZE);
+    efficient_shuffle_with_random_permutation(bsharedX, role, bsharedShuffle, shared_permutation, enc, eval, runtime);
+
+    std::vector<i64Matrix> test_res2(TEST_SIZE);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        test_res2[i].resize(TEST_UNIT_SIZE, 1);
+        enc.revealAll(runtime, bsharedShuffle[i], test_res2[i]).get();
+    }
+    sbMatrix shared_permutation_matrix(TEST_SIZE, 1);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        shared_permutation_matrix.mShares[0](i) = shared_permutation[i].mData[0];
+        shared_permutation_matrix.mShares[1](i) = shared_permutation[i].mData[1];
+    }
+    i64Matrix test_permutation(TEST_SIZE, 1);
+    enc.revealAll(runtime, shared_permutation_matrix, test_permutation).get();
+
+    bool check_shuffle = true;
+    bool check_permutation = true;
+
+    for(size_t i=0; i<TEST_SIZE; i++){
+        if(test_permutation(i, 0) != final_permutation[i]){
+            check_permutation = false;
+        }
+        for(size_t j=0; j<TEST_UNIT_SIZE; j++){
+            if(test_res2[i](j, 0) != shuffle_res[i](j, 0)){
+                check_shuffle = false;
+            }
+        }
+    }
+
+    // check the final result.
+    if(role == 0){
+        if(check_shuffle){
+            debug_info("\033[32m SHUFFLE in shuffle and permutation CHECK SUCCESS ! \033[0m\n");
+        }
+        else{
+            debug_info("\033[31m SHUFFLE in in shuffle and permutation CHECK ERROR ! \033[0m\n");
+            debug_info("True result: \n");
+            for(size_t i=0; i<TEST_SIZE; i++){
+                debug_output_matrix(shuffle_res[i]);
+            }
+            debug_info("Func result: \n");
+            for(size_t i=0; i<TEST_SIZE; i++){
+                debug_output_matrix(test_res2[i]);
+            }
+        }
+
+        if(check_permutation){
+            debug_info("\033[32m PERMUTATION in shuffle and permutation CHECK SUCCESS ! \033[0m\n");
+        }
+        else{
+            debug_info("\033[31m PERMUTATION in in shuffle and permutation CHECK ERROR ! \033[0m\n");
+            debug_info("True result: \n");
+            debug_output_vector(final_permutation);
+
+            debug_info("Func result: \n");
+            debug_output_matrix(test_permutation);
+        }
+    }
     return 0;
 }
 
