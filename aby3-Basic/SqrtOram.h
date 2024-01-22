@@ -3,18 +3,6 @@
 #include "Shuffle.h"
 #include "Basics.h"
 
-// struct boolShare{
-//     std::array<bool, 2> bshares;
-
-//     void set_false(){
-//         bshares[0] = 1; bshares[1] = 1;
-//     }
-//     bool reveal(){
-//         return bshares[0] ^ bshares[1];
-//     }
-
-// };
-
 class ABY3PosMap : PosMap<aby3::si64>{
     public:
         std::vector<boolShare> usage_map;

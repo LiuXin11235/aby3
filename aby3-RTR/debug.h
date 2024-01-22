@@ -22,6 +22,8 @@ extern void debug_mpi(int rank, int pIdx, std::string info);
 
 extern void debug_info(std::string info);
 
+extern void debug_info(std::string info, std::ofstream& ofs);
+
 extern void debug_info(Eigen::internal::Packet4i &info);
 
 extern void write_log(std::string log_file, std::string info);

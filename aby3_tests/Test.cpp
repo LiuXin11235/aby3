@@ -31,6 +31,21 @@ bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res)
     return check_flag;
 }
 
+bool check_result(const std::string& func_name, aby3::i64 test, aby3::i64 res){
+    bool check_flag = true;
+    if(test != res) check_flag = false;
+
+    if(!check_flag){
+        debug_info("\033[31m" + func_name + " ERROR !" + "\033[0m\n");
+        debug_info("test res = " + to_string(test) + "\n");
+        debug_info("expected res = " + to_string(res) + "\n");
+    }
+    else{
+        debug_info("\033[32m" + func_name + " SUCCESS!" + "\033[0m\n");
+    }
+
+    return check_flag;
+}
 
 int bool_basic_test(CLP& cmd){
 
@@ -96,15 +111,6 @@ int bool_basic_test(CLP& cmd){
         enc.remoteBinMatrix(runtime, bsharedZ).get();
     }
 
-    // std::ofstream ofs(debugFile, std::ios_base::app);
-    // ofs << "z: " << std::endl;
-    // for(int i=0; i<input_z.rows(); i++){
-    //     printBits(input_z(i), ofs);
-    // }
-    // ofs << "x: " << std::endl;
-    // for(int i=0; i<input_z.rows(); i++){
-    //     printBits(input_x(i), ofs);
-    // }
 
     // xor
     sbMatrix shared_xor(TEST_SIZE, 1);
@@ -120,13 +126,6 @@ int bool_basic_test(CLP& cmd){
     i64Matrix test_or(TEST_SIZE, 1);
     bool_cipher_or(role, bsharedX, bsharedY, shared_or, enc, eval, runtime);
     enc.revealAll(runtime, shared_or, test_or).get();
-
-    if(role == 0){
-        debug_info("test or result: \n");
-        debug_output_matrix(test_or);
-        debug_info("expected or result: \n");
-        debug_output_matrix(res_or);
-    }
 
     // and
     sbMatrix shared_and(TEST_SIZE, 1);
@@ -152,6 +151,46 @@ int bool_basic_test(CLP& cmd){
     bool_cipher_add(role, bsharedX, bsharedY, shared_add, enc, eval, runtime);
     enc.revealAll(runtime, shared_add, test_add).get();
 
+    // init false.
+    sbMatrix shared_false(TEST_SIZE, 1);
+    bool_init_false(role, shared_false);
+    i64Matrix res_false(TEST_SIZE, 1);
+    i64Matrix test_false(TEST_SIZE, 1);
+    for(size_t i=0; i<TEST_SIZE; i++) res_false(i, 0) = 0;
+    enc.revealAll(runtime, shared_false, test_false).get();
+
+    // init true.
+    sbMatrix shared_true(TEST_SIZE, 1);
+    bool_init_true(role, shared_true);
+    i64Matrix res_true(TEST_SIZE, 1);
+    i64Matrix test_true(TEST_SIZE, 1);
+    for(size_t i=0; i<TEST_SIZE; i++) res_true(i, 0) = 1;
+    enc.revealAll(runtime, shared_true, test_true).get();
+
+    // bool shift and left.
+    sbMatrix shared_shift(TEST_SIZE, 1);
+    sbMatrix shared_left(TEST_SIZE, 1);
+    bool_shift_and_left(role, bsharedX, 5, shared_shift, shared_left);
+    i64Matrix res_shift(TEST_SIZE, 1);
+    i64Matrix res_left(TEST_SIZE, 1);
+
+    for(size_t i=0; i<TEST_SIZE; i++){
+        res_shift(i, 0) = input_x(i, 0) >> 5;
+        res_left(i, 0) = input_x(i, 0) & ((1 << 5) - 1);
+    }
+    i64Matrix test_shift(TEST_SIZE, 1);
+    i64Matrix test_left(TEST_SIZE, 1);
+    enc.revealAll(runtime, shared_shift, test_shift).get();
+    enc.revealAll(runtime, shared_left, test_left).get();
+
+    // check the back2plain.
+    i64Matrix test_back2plain(TEST_SIZE, 1);
+    test_back2plain = back2plain(role, shared_xor, enc, eval, runtime);
+
+    boolIndex sharedIndex(shared_xor.mShares[0](0), shared_xor.mShares[1](0));
+    i64 test_0 = back2plain(role, sharedIndex, enc, eval, runtime);
+
+
     // check the result.
     if(role == 0){
         check_result("xor", test_xor, res_xor);
@@ -160,6 +199,12 @@ int bool_basic_test(CLP& cmd){
         check_result("eq", test_eq, res_eq);
         check_result("add", test_add, res_add);
         check_result("and", test_and, res_and);
+        check_result("init false", test_false, res_false);
+        check_result("init true", test_true, res_true);
+        check_result("shift", test_shift, res_shift);
+        check_result("left", test_left, res_left);
+        check_result("back2plain matrix", test_back2plain, res_xor);
+        check_result("back2plain index", test_0, res_xor(0, 0));
     }
 
     return 0;

@@ -10,6 +10,9 @@
 
 #include "../aby3-RTR/debug.h"
 
+// #define DEBUG_BASIC
+static std::string PARTY_FILE = "/root/aby3/party-";
+
 using namespace oc;
 using namespace aby3;
 
@@ -115,6 +118,191 @@ void bool_cipher_and(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
     });
     dep.get();
 }
+
+void bool_init_false(int pIdx, aby3::sbMatrix &res){
+    int bitSize = res.bitCount();
+    int i64Size = res.i64Size();
+
+    for(int i=0; i<i64Size; i++){
+        switch(pIdx){
+            case 0:
+                res.mShares[0](i, 0) = 1;
+                res.mShares[1](i, 0) = 0;
+                break;
+            case 1:
+                res.mShares[0](i, 0) = 1;
+                res.mShares[1](i, 0) = 1;
+                break;
+            case 2:
+                res.mShares[0](i, 0) = 0;
+                res.mShares[1](i, 0) = 1;
+                break;
+            default:
+                throw std::runtime_error("bool_init_false: pIdx out of range.");
+        }
+    }
+    return;
+}
+
+void bool_init_true(int pIdx, aby3::sbMatrix &res){
+    int bitSize = res.bitCount();
+    int i64Size = res.i64Size();
+
+    for(int i=0; i<i64Size; i++){
+        switch(pIdx){
+            case 0:
+                res.mShares[0](i, 0) = 0;
+                res.mShares[1](i, 0) = 0;
+                break;
+            case 1:
+                res.mShares[0](i, 0) = 1;
+                res.mShares[1](i, 0) = 0;
+                break;
+            case 2:
+                res.mShares[0](i, 0) = 0;
+                res.mShares[1](i, 0) = 1;
+                break;
+            default:
+                throw std::runtime_error("bool_init_true: pIdx out of range.");
+        }
+    }
+    return;
+}
+
+void bool_init_false(int pIdx, boolShare &res){
+    switch(pIdx){
+        case 0:
+            res.bshares[0] = 1;
+            res.bshares[1] = 0;
+            break;
+        case 1:
+            res.bshares[0] = 1;
+            res.bshares[1] = 1;
+            break;
+        case 2:
+            res.bshares[0] = 0;
+            res.bshares[1] = 1;
+            break;
+        default:
+            throw std::runtime_error("bool_init_false: pIdx out of range.");
+    }
+    return;
+}
+
+void bool_init_true(int pIdx, boolShare &res){
+    switch(pIdx){
+        case 0:
+            res.bshares[0] = 0;
+            res.bshares[1] = 0;
+            break;
+        case 1:
+            res.bshares[0] = 1;
+            res.bshares[1] = 0;
+            break;
+        case 2:
+            res.bshares[0] = 0;
+            res.bshares[1] = 1;
+            break;
+        default:
+            throw std::runtime_error("bool_init_true: pIdx out of range.");
+    }
+    return;
+}
+
+
+void bool_shift_and_left(int pIdx, aby3::sbMatrix &sharedA, size_t shift_len, aby3::sbMatrix &res_shift, aby3::sbMatrix &res_left){
+    // shift the input.
+    int bitSize = sharedA.bitCount();
+    int i64Size = sharedA.i64Size();
+    std::cout << "bitSize: " << bitSize << std::endl;
+    int left_size = bitSize - shift_len;
+
+    // right shift each input to shift_len bits.
+    for(size_t i=0; i<i64Size; i++){
+        res_shift.mShares[0](i, 0) = sharedA.mShares[0](i, 0) >> shift_len;
+        res_shift.mShares[1](i, 0) = sharedA.mShares[1](i, 0) >> shift_len;
+    }
+
+    // left shift each input to bitSize - shift_len bits.
+    for(size_t i=0; i<i64Size; i++){
+        res_left.mShares[0](i, 0) = sharedA.mShares[0](i, 0) & ((1 << shift_len) - 1);
+        res_left.mShares[1](i, 0) = sharedA.mShares[1](i, 0) & ((1 << shift_len) - 1);
+    }
+
+    // fulfill the leading bits to logical 0.
+    switch(pIdx) {
+        case 0:
+            for(size_t i=0; i<i64Size; i++){
+                res_shift.mShares[0](i, 0) = res_shift.mShares[0](i, 0) | (~0 << shift_len);
+                res_shift.mShares[1](i, 0) = res_shift.mShares[1](i, 0) & ~(~0 << shift_len);
+                res_left.mShares[0](i, 0) = res_left.mShares[0](i, 0) | (~0 << left_size);
+                res_left.mShares[1](i, 0) = res_left.mShares[1](i, 0) & ~(~0 << left_size);
+            }
+            break;
+        case 1:
+            for(size_t i=0; i<i64Size; i++){
+                res_shift.mShares[0](i, 0) = res_shift.mShares[0](i, 0) | (~0 << shift_len);
+                res_shift.mShares[1](i, 0) = res_shift.mShares[1](i, 0) | (~0 << shift_len);
+                res_left.mShares[0](i, 0) = res_left.mShares[0](i, 0) | (~0 << left_size);
+                res_left.mShares[1](i, 0) = res_left.mShares[1](i, 0) | (~0 << left_size);
+            }
+            break;
+        case 2:
+            for(size_t i=0; i<i64Size; i++){
+                res_shift.mShares[0](i, 0) = res_shift.mShares[0](i, 0) & ~(~0 << shift_len);
+                res_shift.mShares[1](i, 0) = res_shift.mShares[1](i, 0) | (~0 << shift_len);
+                res_left.mShares[0](i, 0) = res_left.mShares[0](i, 0) & ~(~0 << left_size);
+                res_left.mShares[1](i, 0) = res_left.mShares[1](i, 0) | (~0 << left_size);
+            }
+            break;
+        default:
+            throw std::runtime_error("bool_shift_and_left: pIdx out of range.");
+    }
+}
+
+aby3::i64Matrix back2plain(int pIdx, aby3::sbMatrix &cipher_val, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+    // send the shares to the prevParty.
+    runtime.mComm.mPrev.asyncSendCopy(cipher_val.mShares[0]);
+
+    // rece from the nextParty.
+    aby3::i64Matrix other_share(cipher_val.i64Size(), 1);
+    runtime.mComm.mNext.recv(other_share.data(), other_share.size());
+
+    // get the shares.
+    for(size_t i=0; i<cipher_val.i64Size(); i++){
+        other_share(i, 0) = other_share(i, 0) ^ cipher_val.mShares[1](i, 0) ^ cipher_val.mShares[0](i, 0);
+    }
+    return other_share;
+}
+
+
+bool back2plain(int pIdx, boolShare &cipher_val, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+    runtime.mComm.mPrev.asyncSendCopy(cipher_val.bshares[0]);
+    bool other_share;
+    runtime.mComm.mNext.recv(other_share);
+    other_share = other_share ^ cipher_val.bshares[1] ^ cipher_val.bshares[0];
+    return other_share;
+}
+
+
+aby3::i64 back2plain(int pIdx, boolIndex &cipher_val, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+#ifdef DEBUG_BASIC
+    std::string debug_party_file = PARTY_FILE + std::to_string(pIdx);
+    std::ofstream ofs(debug_party_file, std::ios::app);
+    debug_info("share0: " + std::to_string(cipher_val.indexShares[0]), ofs);
+    debug_info("share1: " + std::to_string(cipher_val.indexShares[1]), ofs);
+#endif
+    runtime.mComm.mPrev.asyncSendCopy(cipher_val.indexShares[0]);
+    aby3::i64 other_share = 0;
+    runtime.mComm.mNext.recv(other_share);
+
+#ifdef DEBUG_BASIC
+    debug_info("other share: " + std::to_string(other_share), ofs);
+#endif
+    other_share = other_share ^ cipher_val.indexShares[1] ^ cipher_val.indexShares[0];
+    return other_share;
+}
+
 
 void get_permutation(size_t len, std::vector<size_t> &permutation, block &seed){
     permutation.resize(len);
