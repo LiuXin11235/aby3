@@ -10,6 +10,7 @@
 
 
 // #define DEBUG
+#define TEST
 
 template <typename T>
 class StashElement{
@@ -104,7 +105,7 @@ public:
 
     bool linear; // if linear, then we can use a simple array to store the posmap.
     std::vector<bool> usage_map;
-    PosMap<size_t>* subPosMap; // if not linear, then we need to construct a subPosMap.
+    PosMap<T>* subPosMap; // if not linear, then we need to construct a subPosMap.
     std::vector< PackedIndex<T> > stash; // stash, init to empty vector.
 
     PosMap(size_t n, size_t pack, size_t S, std::vector<T> permutation): 
@@ -141,7 +142,7 @@ public:
             std::vector<T>().swap(permutation);
 
             // construct the posMap.
-            this->subPosMap = new PosMap<size_t>(map_len, pack, S, sub_permutation);
+            this->subPosMap = new PosMap<T>(map_len, pack, S, sub_permutation);
         }
     }
 
@@ -157,11 +158,11 @@ public:
 #ifdef DEBUG
     std::cerr << "linear" << std::endl;
 #endif
-
             bool done = false;
             for(int i=0; i<this->n; i++){
                 bool s1 = !fake && (i == index);
-                bool s2 = fake && (!this->usage_map[i]) && (!done);
+                // bool s2 = fake && (!this->usage_map[i]) && (!done);
+                bool s2 = fake && (!done);
                 if(s1 || s2){
                     this->usage_map[i] = true;
                     done = true;

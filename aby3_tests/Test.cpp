@@ -122,7 +122,9 @@ int bool_basic_test(CLP& cmd){
     enc.revealAll(runtime, shared_or, test_or).get();
 
     if(role == 0){
+        debug_info("test or result: \n");
         debug_output_matrix(test_or);
+        debug_info("expected or result: \n");
         debug_output_matrix(res_or);
     }
 

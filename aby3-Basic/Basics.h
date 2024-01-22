@@ -8,6 +8,21 @@
 #ifndef _ABY3_BASICS_H_
 #define _ABY3_BASICS_H_
 
+struct boolShare{
+    std::array<bool, 2> bshares;
+
+    void set_false(){
+        bshares[0] = 1; bshares[1] = 1;
+    }
+    bool reveal(){
+        return bshares[0] ^ bshares[1];
+    }
+};
+
+struct boolIndex{
+    std::array<aby3::i64, 2> indexShares;
+};
+
 void bool_cipher_lt(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB, aby3::sbMatrix &res, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime);
 
 void bool_cipher_eq(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB, aby3::sbMatrix &res, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime);

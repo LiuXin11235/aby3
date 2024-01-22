@@ -6,8 +6,8 @@ python build.py
 # scp ./bin/frontend aby32:~/aby3/bin
 # wait;
 
-# test_args=" -Bool -Arith -Init"
-test_args="-Init -Shuffle -Correlation"
+test_args=" -Bool -Arith"
+# test_args="-Init -Shuffle -Correlation"
 # test_args="-u " # origional aby3 test, failed everywhere.
 ./Eval/dis_exec.sh "${test_args}"
 wait;
