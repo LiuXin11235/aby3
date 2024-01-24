@@ -3,32 +3,26 @@
 #include "Shuffle.h"
 #include "Basics.h"
 
-class ABY3PosMap : PosMap<aby3::si64>{
+class ABY3PosMap : PosMap<boolIndex>{
     public:
         std::vector<boolShare> usage_map;
-        ABY3PosMap(size_t len, size_t pack, size_t S, std::vector<aby3::si64>& permutation)
-            : PosMap<aby3::si64>(len, pack, S, permutation) {}
-
-        aby3::si64 access(aby3::si64 index, boolShare fake){
-            aby3::si64 physical_index; 
-            if(linear){
-                // bool done = false;
-                boolShare done;
-                done.set_false();
-
-                for(int i=0; i<this->n; i++){
-                    // bool s1 = !fake && (i == index);
-                    // bool s2 = fake && (!this->usage_map[i]) && (!done);
-                    // if(s1 || s2){
-                    //     this->usage_map[i] = true;
-                    //     done = true;
-                    //     physical_index = this->permutation[i];
-                    // }
-                    boolShare s1, s2;
+        ABY3PosMap(size_t len, size_t pack, size_t S, std::vector<boolIndex>& permutation)
+            : PosMap<boolIndex>(len, pack, S, permutation) {
+                this->usage_map = std::vector<boolShare>(S);
+                for(int i=0; i<S; i++){
+                    bool_init_false(0, this->usage_map[i]);
                 }
             }
+
+        boolIndex access(boolIndex index, boolShare fake){
+            boolIndex physical_index; 
+            if(linear){
+                
+                throw std::runtime_error("Not implemented yet.");
+                
+            }
             else{
-                // first look into the stash.
+            // first look into the stash.
             //     bool found = false;
             //     size_t h = index / pack;
             //     size_t l = index % pack;
@@ -43,7 +37,8 @@ class ABY3PosMap : PosMap<aby3::si64>{
             //         physical_index = this->subPosMap->access(h, fake);
             //     }
             // }
+                throw std::runtime_error("Not implemented yet.");
+            }
             return physical_index;
         }
-    }
 };

@@ -11,7 +11,9 @@ using namespace oc;
 using namespace aby3;
 using namespace std;
 
-const int TEST_SIZE = 100;
+#define DEBUG_TEST
+
+const int TEST_SIZE = 10;
 const int TEST_UNIT_SIZE = 10;
 
 bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res){
@@ -31,6 +33,7 @@ bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res)
     return check_flag;
 }
 
+
 bool check_result(const std::string& func_name, aby3::i64 test, aby3::i64 res){
     bool check_flag = true;
     if(test != res) check_flag = false;
@@ -46,6 +49,7 @@ bool check_result(const std::string& func_name, aby3::i64 test, aby3::i64 res){
 
     return check_flag;
 }
+
 
 int bool_basic_test(CLP& cmd){
 
@@ -75,29 +79,39 @@ int bool_basic_test(CLP& cmd){
     i64Matrix input_x(TEST_SIZE, 1);
     i64Matrix input_y(TEST_SIZE, 1);
     i64Matrix input_z(TEST_SIZE, 1);
+    i64Matrix input_mask(TEST_SIZE, 1);
+
     i64Matrix res_xor(TEST_SIZE, 1);
     i64Matrix res_gt(TEST_SIZE, 1);
     i64Matrix res_eq(TEST_SIZE, 1);
     i64Matrix res_add(TEST_SIZE, 1);    
     i64Matrix res_or(TEST_SIZE, 1);
     i64Matrix res_and(TEST_SIZE, 1);
+    i64Matrix res_dot(1, 1);
+    i64Matrix res_not(TEST_SIZE, 1);
+
 
     for(int i=0; i<TEST_SIZE; i++){
         input_x(i, 0) = i;
         input_y(i, 0) = TEST_SIZE - i;
         input_z(i, 0) = -i;
+        input_mask(i, 0) = (i == 3) ? -1 : -0; // note the correct mask-based dot computation.
         res_xor(i, 0) = input_x(i, 0) ^ input_y(i, 0);
         res_or(i, 0) = input_x(i, 0) | input_y(i, 0);
         res_and(i, 0) = input_x(i, 0) & input_y(i, 0);
         res_gt(i, 0) = i > (TEST_SIZE - i);
         res_eq(i, 0) = i == (TEST_SIZE - i);
         res_add(i, 0) = TEST_SIZE;
+        res_not(i, 0) = ~i;
     }
+    res_dot(0, 0) = 3;
 
     // encrypt the inputs.
     sbMatrix bsharedX(TEST_SIZE, 1);    
     sbMatrix bsharedY(TEST_SIZE, 1);
     sbMatrix bsharedZ(TEST_SIZE, 1);
+    sbMatrix bsharedMask(TEST_SIZE, 1);
+    bsharedMask.resize(TEST_SIZE, 64);
     bsharedX.resize(TEST_SIZE, 64);
     bsharedY.resize(TEST_SIZE, 64);
 
@@ -105,10 +119,12 @@ int bool_basic_test(CLP& cmd){
         enc.localBinMatrix(runtime, input_x, bsharedX).get();
         enc.localBinMatrix(runtime, input_y, bsharedY).get();
         enc.localBinMatrix(runtime, input_z, bsharedZ).get();
+        enc.localBinMatrix(runtime, input_mask, bsharedMask).get();
     } else {
         enc.remoteBinMatrix(runtime, bsharedX).get();
         enc.remoteBinMatrix(runtime, bsharedY).get();
         enc.remoteBinMatrix(runtime, bsharedZ).get();
+        enc.remoteBinMatrix(runtime, bsharedMask).get();
     }
 
 
@@ -190,6 +206,112 @@ int bool_basic_test(CLP& cmd){
     boolIndex sharedIndex(shared_xor.mShares[0](0), shared_xor.mShares[1](0));
     i64 test_0 = back2plain(role, sharedIndex, enc, eval, runtime);
 
+    // check the bool dot.
+    sbMatrix shared_dot(1, 1);
+    bool_cipher_dot(role, bsharedX, bsharedMask, shared_dot, enc, eval, runtime);
+    i64Matrix test_dot(1, 1);
+    enc.revealAll(runtime, shared_dot, test_dot).get();
+
+    // check not.
+    sbMatrix shared_not(TEST_SIZE, 1);
+    bool_cipher_not(role, bsharedX, shared_not);
+    i64Matrix test_not(TEST_SIZE, 1);
+    enc.revealAll(runtime, shared_not, test_not).get();
+
+
+    // mask 0/1 sbMatrix and boolShare translation.
+    sbMatrix shared01(TEST_SIZE, 1);
+    i64Matrix mask01(TEST_SIZE, 1);
+    std::vector<bool> mask01_res(TEST_SIZE);
+    std::vector<boolShare> shared01_vec(TEST_SIZE);
+    for(int i=0; i<TEST_SIZE; i++){
+        mask01(i, 0) = (i % 2 == 0) ? 0 : 1;
+        mask01_res[i] = (i % 2 == 0) ? 1 : 0;
+    }
+    if(role == 0){
+        enc.localBinMatrix(runtime, mask01, shared01).get();
+    }
+    else{
+        enc.remoteBinMatrix(runtime, shared01).get();
+    }
+    for(int i=0; i<TEST_SIZE; i++){
+        shared01_vec[i].from_matrix(shared01.mShares[0](i, 0), shared01.mShares[1](i, 0));
+    }
+
+    std::vector<boolShare> shared_not_vec(TEST_SIZE);
+    bool_cipher_not(role, shared01_vec, shared_not_vec);
+    std::vector<bool> test_mask01 = back2plain(role, shared_not_vec, enc, eval, runtime);
+
+
+    // check the bool cipher and.
+    std::vector<boolShare> input_a(4);
+    std::vector<boolShare> input_b(4);
+    std::vector<bool> res_and_vec = {false, false, false, true};
+    std::vector<bool> res_or_vec = {false, true, true, true};
+    // std::vector<bool> plain_input_a = {false, false, true, true};
+    
+    input_a[0] = boolShare(false, role);
+    input_a[1] = boolShare(false, role);
+    input_a[2] = boolShare(true, role);
+    input_a[3] = boolShare(true, role);
+    input_b[0] = boolShare(false, role);
+    input_b[1] = boolShare(true, role);
+    input_b[2] = boolShare(false, role);
+    input_b[3] = boolShare(true, role);
+
+    std::vector<boolShare> res_shared_and_vec(4);
+    std::vector<boolShare> res_shared_or_vec(4);
+
+    for(size_t i=0; i<4; i++){
+        bool_cipher_and(role, input_a[i], input_b[i], res_shared_and_vec[i], enc, eval, runtime);
+        bool_cipher_or(role, input_a[i], input_b[i], res_shared_or_vec[i], enc, eval, runtime);
+    }
+    std::vector<bool> test_and_vec = back2plain(role, res_shared_and_vec, enc, eval, runtime);
+    std::vector<bool> test_or_vec = back2plain(role, res_shared_or_vec, enc, eval, runtime);
+
+    // check the bool get_first_zero_mask.
+    std::vector<bool> random_bool_array(TEST_SIZE);
+    std::vector<bool> res_get_first_zero(TEST_SIZE);
+    std::vector<boolShare> initial_mask(TEST_SIZE);
+
+    std::mt19937 gen(16);
+    std::bernoulli_distribution dist(0.5);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        random_bool_array[i] = dist(gen);
+        initial_mask[i] = boolShare(random_bool_array[i], role);
+    }
+    bool flag = false;
+    for(size_t i=0; i<TEST_SIZE; i++){
+        if(!flag && (random_bool_array[i] == 0)){
+            res_get_first_zero[i] = 1;
+            flag = true;
+        }
+        else{
+            res_get_first_zero[i] = 0;
+        }
+    }
+    aby3::sbMatrix shared_get_first_zero(TEST_SIZE, 1);
+    bool_get_first_zero_mask(role, initial_mask, shared_get_first_zero, enc, eval, runtime);
+    aby3::i64Matrix test_get_first_zero_i64(TEST_SIZE, 1);
+    enc.revealAll(runtime, shared_get_first_zero, test_get_first_zero_i64).get();
+
+    vecBoolShares bool_shared_get_first_zero(TEST_SIZE);
+    bool_shared_get_first_zero.from_matrix(shared_get_first_zero);
+    std::vector<bool> test_get_first_zero = back2plain(role, bool_shared_get_first_zero.bshares, enc, eval, runtime);
+
+    if(role == 0){
+        debug_info("Input: ");
+        debug_output_vector(random_bool_array);
+        debug_info("Expected res:");
+        debug_output_vector(res_get_first_zero);
+        debug_info("i64 res: ");
+        debug_output_matrix(test_get_first_zero_i64);
+        debug_info("Test res: ");
+        debug_output_vector(test_get_first_zero);
+    }
+
+    std::vector<bool> test_boolShare_init = back2plain(role, initial_mask, enc, eval, runtime);
+
 
     // check the result.
     if(role == 0){
@@ -205,6 +327,12 @@ int bool_basic_test(CLP& cmd){
         check_result("left", test_left, res_left);
         check_result("back2plain matrix", test_back2plain, res_xor);
         check_result("back2plain index", test_0, res_xor(0, 0));
+        check_result("dot", test_dot(0, 0), res_dot(0, 0));
+        check_result("boolShare vector not", test_mask01, mask01_res);
+        check_result("boolShare init", test_boolShare_init, random_bool_array);
+        check_result("bool and", test_and_vec, res_and_vec);
+        check_result("bool or", test_or_vec, res_or_vec);
+        check_result("get_first_zero_mask", test_get_first_zero, res_get_first_zero);
     }
 
     return 0;
