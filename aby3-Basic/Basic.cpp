@@ -262,8 +262,6 @@ void bool_cipher_dot(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
     });
     dep.get();
 
-    // std::cout << " after circuit eval" << std::endl;
-
     res.resize(1, bitSize);
     res.mShares[0](0, 0) = mul_res.mShares[0](0, 0);
     res.mShares[1](0, 0) = mul_res.mShares[1](0, 0);
@@ -274,28 +272,65 @@ void bool_cipher_dot(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
     }
 }
 
-
-void bool_get_first_zero_mask(int pIdx, std::vector<boolShare>& inputA, aby3::sbMatrix &res, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+// sequential computation
+// void bool_get_first_zero_mask(int pIdx, std::vector<boolShare>& inputA, aby3::sbMatrix &res, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
     
+//     size_t len = inputA.size();
+//     std::vector<boolShare> tmp_mask(len);
+
+//     bool_cipher_not(pIdx, inputA, tmp_mask);
+
+//     boolShare flag = boolShare(0, 0);
+//     boolShare nFlag;
+
+//     // TODO: avoid the sequential computation?
+//     for(size_t i=0; i<len; i++){
+//         boolShare tmp;
+//         bool_cipher_not(pIdx, flag, nFlag);
+//         bool_cipher_and(pIdx, tmp_mask[i], nFlag, tmp, enc, eval, runtime);
+//         bool_cipher_or(pIdx, tmp, flag, flag, enc, eval, runtime);
+
+//         res.mShares[0](i, 0) = (int) tmp.bshares[0];
+//         res.mShares[1](i, 0) = (int) tmp.bshares[1];
+//     }
+//     return;
+// }
+
+// log(n) rounds with o(nlogn) computation method.
+void bool_get_first_zero_mask(int pIdx, std::vector<boolShare>& inputA, aby3::sbMatrix &res, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
     size_t len = inputA.size();
-    std::vector<boolShare> tmp_mask(len);
+    size_t round = (size_t) floor(log2(len));
 
-    bool_cipher_not(pIdx, inputA, tmp_mask);
+    std::vector<boolShare> tmp_notA(len);
+    bool_cipher_not(pIdx, inputA, tmp_notA);
+    std::vector<boolShare> _init_mask(tmp_notA.begin(), tmp_notA.end());
+    std::rotate(_init_mask.rbegin(), _init_mask.rbegin() + 1, _init_mask.rend());
+    _init_mask[0] = boolShare(0, 0);
 
-    boolShare flag = boolShare(0, 0);
-    boolShare nFlag;
+    sbMatrix init_mask = vecBoolShares(_init_mask).to_matrix();
+    // log-n round prefix summation logic.
+    for(size_t i=0; i<round; i++){
+        size_t stride = (size_t) pow(2, i);
+        sbMatrix _init_maskA(len - stride, 1), _init_maskB(len - stride, 1);
 
-    // TODO: avoid the sequential computation?
-    for(size_t i=0; i<len; i++){
-        // flag = tmp_mask[i] & !flag;
-        boolShare tmp;
-        bool_cipher_not(pIdx, flag, nFlag);
-        bool_cipher_and(pIdx, tmp_mask[i], nFlag, tmp, enc, eval, runtime);
-        bool_cipher_or(pIdx, tmp, flag, flag, enc, eval, runtime);
-
-        res.mShares[0](i, 0) = (int) tmp.bshares[0];
-        res.mShares[1](i, 0) = (int) tmp.bshares[1];
+        for(size_t j=stride; j<len; j++){
+            _init_maskA.mShares[0](j-stride, 0) = init_mask.mShares[0](j, 0);
+            _init_maskA.mShares[1](j-stride, 0) = init_mask.mShares[1](j, 0);
+            _init_maskB.mShares[0](j-stride, 0) = init_mask.mShares[0](j-stride, 0);
+            _init_maskB.mShares[1](j-stride, 0) = init_mask.mShares[1](j-stride, 0);
+        }
+        bool_cipher_or(pIdx, _init_maskA, _init_maskB, _init_maskA, enc, eval, runtime);
+        for(size_t j=stride; j<len; j++){
+            init_mask.mShares[0](j, 0) = _init_maskA.mShares[0](j-stride, 0);
+            init_mask.mShares[1](j, 0) = _init_maskA.mShares[1](j-stride, 0);
+        }
     }
+    for(size_t i=0; i<len-1; i++){
+        res.mShares[0](i, 0) = init_mask.mShares[0](i, 0) ^ init_mask.mShares[0](i+1, 0);
+        res.mShares[1](i, 0) = init_mask.mShares[1](i, 0) ^ init_mask.mShares[1](i+1, 0);
+    }
+    res.mShares[0](len-1, 0) = init_mask.mShares[0](len-1, 0) ^ 1;
+    res.mShares[1](len-1, 0) = init_mask.mShares[1](len-1, 0) ^ 1;
     return;
 }
 
@@ -477,9 +512,7 @@ aby3::i64 back2plain(int pIdx, boolIndex &cipher_val, aby3::Sh3Encryptor& enc, a
 
 
 std::vector<bool> back2plain(int pIdx, std::vector<boolShare> &cipher_val, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
-    std::vector<char> sending_shares(cipher_val.size());
-    // std::vector<bool> other_shares(cipher_val.size());
-    
+    std::vector<char> sending_shares(cipher_val.size());    
     for(size_t i=0; i<cipher_val.size(); i++){
         sending_shares[i] = (char) cipher_val[i].bshares[0];
     }

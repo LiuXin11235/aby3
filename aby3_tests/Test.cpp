@@ -13,7 +13,7 @@ using namespace std;
 
 #define DEBUG_TEST
 
-const int TEST_SIZE = 10;
+const int TEST_SIZE = 16;
 const int TEST_UNIT_SIZE = 10;
 
 bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res){
@@ -298,17 +298,6 @@ int bool_basic_test(CLP& cmd){
     vecBoolShares bool_shared_get_first_zero(TEST_SIZE);
     bool_shared_get_first_zero.from_matrix(shared_get_first_zero);
     std::vector<bool> test_get_first_zero = back2plain(role, bool_shared_get_first_zero.bshares, enc, eval, runtime);
-
-    if(role == 0){
-        debug_info("Input: ");
-        debug_output_vector(random_bool_array);
-        debug_info("Expected res:");
-        debug_output_vector(res_get_first_zero);
-        debug_info("i64 res: ");
-        debug_output_matrix(test_get_first_zero_i64);
-        debug_info("Test res: ");
-        debug_output_vector(test_get_first_zero);
-    }
 
     std::vector<bool> test_boolShare_init = back2plain(role, initial_mask, enc, eval, runtime);
 

@@ -8,6 +8,11 @@
 #ifndef _DEBUG_H_
 #define _DEBUG_H_
 
+#define MAIN_PARTY_DEBUG(pIdx, debug_info) \ 
+if(pIdx == 0) { \
+    std::cout << debug_info << std::endl; \
+}
+
 static std::string debugFile = "/root/aby3/debug.txt";
 static std::string debugFolder= "/root/aby3/DEBUG/";
 

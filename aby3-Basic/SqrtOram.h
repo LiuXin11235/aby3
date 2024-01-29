@@ -17,9 +17,8 @@ class ABY3PosMap : PosMap<boolIndex>{
         boolIndex access(boolIndex index, boolShare fake){
             boolIndex physical_index; 
             if(linear){
-                
+
                 throw std::runtime_error("Not implemented yet.");
-                
             }
             else{
             // first look into the stash.
