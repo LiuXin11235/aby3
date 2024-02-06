@@ -17,6 +17,8 @@ int main(int argc, char** argv) {
   // set the role for this process.
 	if (cmd.isSet("Bool")){
 		bool_basic_test(cmd);
+		bool_basic_test2(cmd);
+		get_first_zero_test(cmd);
 	}
 
 	if (cmd.isSet("Arith")){
@@ -25,14 +27,15 @@ int main(int argc, char** argv) {
 
 	if (cmd.isSet("Init")){
 		initialization_test(cmd);
-	}
-
-	if(cmd.isSet("Correlation")){
 		correlation_test(cmd);
 	}
 
 	if(cmd.isSet("Shuffle")){
 		shuffle_test(cmd);
+	}
+
+	if(cmd.isSet("ORAM")){
+		sqrt_oram_test(cmd);
 	}
   return 0;
 }

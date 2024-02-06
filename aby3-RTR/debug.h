@@ -8,10 +8,15 @@
 #ifndef _DEBUG_H_
 #define _DEBUG_H_
 
+inline std::string PARTY_FILE = "/root/aby3/party-";
+
 #define MAIN_PARTY_DEBUG(pIdx, debug_info) \ 
 if(pIdx == 0) { \
     std::cout << debug_info << std::endl; \
 }
+
+#define THROW_RUNTIME_ERROR(msg) \
+    throw std::runtime_error("Error in file " + std::string(__FILE__) + " at line " + std::to_string(__LINE__) + ": " + msg)
 
 static std::string debugFile = "/root/aby3/debug.txt";
 static std::string debugFolder= "/root/aby3/DEBUG/";
@@ -86,6 +91,13 @@ extern void debug_output_vector(std::vector<T> &problem_vec, std::ofstream& ofs)
     ofs << "length: " << problem_vec.size() << std::endl;
     for(int i=0; i<problem_vec.size(); i++) ofs << problem_vec[i] << " ";
     ofs << std::endl;
+}
+
+template<typename T>
+extern void debug_output_value(T &problem_val){
+    std::ofstream ofs(debugFile, std::ios_base::app);
+    ofs << "value: " << problem_val << std::endl;
+    ofs.close();
 }
 
 extern void debug_secret_matrix(aby3::sbMatrix& problem_mat);

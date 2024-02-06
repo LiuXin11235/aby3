@@ -30,9 +30,9 @@ void test_pos_map(){
     for(int i=0; i<len; i++) data[i] = i;
     std::vector<size_t> permutation;
     get_permutation(len, permutation);
-    print_vector(permutation);
+    // print_vector(permutation);
     permutate(permutation, data);
-    print_vector(data);
+    // print_vector(data);
 
     PosMap<size_t> pos_map(len, pack, S, permutation);
     bool check_flag = true;

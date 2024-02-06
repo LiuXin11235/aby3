@@ -1,14 +1,24 @@
 # compile the main.
 python build.py
 
+# clean debugging files party-*.txt if exist.
+for pfile in ./party-*.txt; do
+    rm ${pfile};
+done
+
 # # synchronize with others
 # scp ./bin/frontend aby31:~/aby3/bin
 # scp ./bin/frontend aby32:~/aby3/bin
 # wait;
 
-test_args=" -Bool -Arith"
-# test_args="-Init -Shuffle -Correlation"
-# test_args="-u " # origional aby3 test, failed everywhere.
+# run the tests
+# current tests: 
+# 1) -Bool : boolean share tests; 
+# 2) -Arith : arithmetic share tests; 
+# 3) -ORAM : ORAM tests; 
+# 4) -Init : initialization tests, including the correlated shares; 
+# 5) -Shuffle : secure shuffling tests.
+test_args=" -ORAM"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

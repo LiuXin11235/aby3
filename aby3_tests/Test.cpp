@@ -1,58 +1,63 @@
 #include "Test.h"
+
 #include <chrono>
-#include <thread>
 #include <random>
-#include "../aby3-RTR/BuildingBlocks.h"
-#include "../aby3-RTR/debug.h"
+#include <thread>
+
 #include "../aby3-Basic/Basics.h"
 #include "../aby3-Basic/Shuffle.h"
+#include "../aby3-Basic/SqrtOram.h"
+#include "../aby3-RTR/BuildingBlocks.h"
+#include "../aby3-RTR/debug.h"
 
 using namespace oc;
 using namespace aby3;
 using namespace std;
 
-#define DEBUG_TEST
+// #define DEBUG_TEST
 
 const int TEST_SIZE = 16;
 const int TEST_UNIT_SIZE = 10;
 
-bool check_result(const std::string& func_name, i64Matrix& test, i64Matrix& res){
+bool check_result(const std::string &func_name, i64Matrix &test,
+                  i64Matrix &res) {
     int size = test.rows();
     bool check_flag = true;
-    for(int i=0; i<size; i++){
-        if(test(i, 0) != res(i, 0)) check_flag = false;
+    for (int i = 0; i < size; i++) {
+        if (test(i, 0) != res(i, 0)) check_flag = false;
     }
 
-    if(!check_flag){
+    if (!check_flag) {
         debug_info("\033[31m" + func_name + " ERROR !" + "\033[0m\n");
-    }
-    else{
+#ifdef SHOW_TEST_CASE
+        debug_info("test case: ");
+        debug_output_matrix(test);
+        debug_info("expected result: ");
+        debug_output_matrix(res);
+#endif
+    } else {
         debug_info("\033[32m" + func_name + " SUCCESS!" + "\033[0m\n");
     }
 
     return check_flag;
 }
 
-
-bool check_result(const std::string& func_name, aby3::i64 test, aby3::i64 res){
+bool check_result(const std::string &func_name, aby3::i64 test, aby3::i64 res) {
     bool check_flag = true;
-    if(test != res) check_flag = false;
+    if (test != res) check_flag = false;
 
-    if(!check_flag){
+    if (!check_flag) {
         debug_info("\033[31m" + func_name + " ERROR !" + "\033[0m\n");
         debug_info("test res = " + to_string(test) + "\n");
         debug_info("expected res = " + to_string(res) + "\n");
-    }
-    else{
+    } else {
         debug_info("\033[32m" + func_name + " SUCCESS!" + "\033[0m\n");
     }
 
     return check_flag;
 }
 
-
-int bool_basic_test(CLP& cmd){
-
+int bool_basic_test(CLP &cmd) {
     // get the configs.
     int role = -1;
     if (cmd.isSet("role")) {
@@ -63,7 +68,7 @@ int bool_basic_test(CLP& cmd){
         throw std::runtime_error(LOCATION);
     }
 
-    if(role == 0) {
+    if (role == 0) {
         debug_info("RUN BOOL TEST");
     }
 
@@ -84,18 +89,18 @@ int bool_basic_test(CLP& cmd){
     i64Matrix res_xor(TEST_SIZE, 1);
     i64Matrix res_gt(TEST_SIZE, 1);
     i64Matrix res_eq(TEST_SIZE, 1);
-    i64Matrix res_add(TEST_SIZE, 1);    
+    i64Matrix res_add(TEST_SIZE, 1);
     i64Matrix res_or(TEST_SIZE, 1);
     i64Matrix res_and(TEST_SIZE, 1);
     i64Matrix res_dot(1, 1);
     i64Matrix res_not(TEST_SIZE, 1);
 
-
-    for(int i=0; i<TEST_SIZE; i++){
+    for (int i = 0; i < TEST_SIZE; i++) {
         input_x(i, 0) = i;
         input_y(i, 0) = TEST_SIZE - i;
         input_z(i, 0) = -i;
-        input_mask(i, 0) = (i == 3) ? -1 : -0; // note the correct mask-based dot computation.
+        input_mask(i, 0) =
+            (i == 5) ? -1 : -0;  // note the correct mask-based dot computation.
         res_xor(i, 0) = input_x(i, 0) ^ input_y(i, 0);
         res_or(i, 0) = input_x(i, 0) | input_y(i, 0);
         res_and(i, 0) = input_x(i, 0) & input_y(i, 0);
@@ -104,10 +109,10 @@ int bool_basic_test(CLP& cmd){
         res_add(i, 0) = TEST_SIZE;
         res_not(i, 0) = ~i;
     }
-    res_dot(0, 0) = 3;
+    res_dot(0, 0) = 5;
 
     // encrypt the inputs.
-    sbMatrix bsharedX(TEST_SIZE, 1);    
+    sbMatrix bsharedX(TEST_SIZE, 1);
     sbMatrix bsharedY(TEST_SIZE, 1);
     sbMatrix bsharedZ(TEST_SIZE, 1);
     sbMatrix bsharedMask(TEST_SIZE, 1);
@@ -127,13 +132,14 @@ int bool_basic_test(CLP& cmd){
         enc.remoteBinMatrix(runtime, bsharedMask).get();
     }
 
-
     // xor
     sbMatrix shared_xor(TEST_SIZE, 1);
     i64Matrix test_xor(TEST_SIZE, 1);
-    for(int i=0; i<TEST_SIZE; i++){
-        shared_xor.mShares[0](i) = bsharedX.mShares[0](i) ^ bsharedY.mShares[0](i);
-        shared_xor.mShares[1](i) = bsharedX.mShares[1](i) ^ bsharedY.mShares[1](i);
+    for (int i = 0; i < TEST_SIZE; i++) {
+        shared_xor.mShares[0](i) =
+            bsharedX.mShares[0](i) ^ bsharedY.mShares[0](i);
+        shared_xor.mShares[1](i) =
+            bsharedX.mShares[1](i) ^ bsharedY.mShares[1](i);
     }
     enc.revealAll(runtime, shared_xor, test_xor).get();
 
@@ -155,7 +161,7 @@ int bool_basic_test(CLP& cmd){
     bool_cipher_lt(role, bsharedY, bsharedX, shared_gt, enc, eval, runtime);
     enc.revealAll(runtime, shared_gt, test_gt).get();
 
-    // eq 
+    // eq
     sbMatrix shared_eq(TEST_SIZE, 1);
     i64Matrix test_eq(TEST_SIZE, 1);
     bool_cipher_eq(role, bsharedY, bsharedX, shared_eq, enc, eval, runtime);
@@ -172,7 +178,7 @@ int bool_basic_test(CLP& cmd){
     bool_init_false(role, shared_false);
     i64Matrix res_false(TEST_SIZE, 1);
     i64Matrix test_false(TEST_SIZE, 1);
-    for(size_t i=0; i<TEST_SIZE; i++) res_false(i, 0) = 0;
+    for (size_t i = 0; i < TEST_SIZE; i++) res_false(i, 0) = 0;
     enc.revealAll(runtime, shared_false, test_false).get();
 
     // init true.
@@ -180,19 +186,20 @@ int bool_basic_test(CLP& cmd){
     bool_init_true(role, shared_true);
     i64Matrix res_true(TEST_SIZE, 1);
     i64Matrix test_true(TEST_SIZE, 1);
-    for(size_t i=0; i<TEST_SIZE; i++) res_true(i, 0) = 1;
+    for (size_t i = 0; i < TEST_SIZE; i++) res_true(i, 0) = 1;
     enc.revealAll(runtime, shared_true, test_true).get();
 
     // bool shift and left.
     sbMatrix shared_shift(TEST_SIZE, 1);
     sbMatrix shared_left(TEST_SIZE, 1);
-    bool_shift_and_left(role, bsharedX, 5, shared_shift, shared_left);
+    int shift_val = 5;
+    bool_shift_and_left(role, bsharedX, shift_val, shared_shift, shared_left);
     i64Matrix res_shift(TEST_SIZE, 1);
     i64Matrix res_left(TEST_SIZE, 1);
 
-    for(size_t i=0; i<TEST_SIZE; i++){
-        res_shift(i, 0) = input_x(i, 0) >> 5;
-        res_left(i, 0) = input_x(i, 0) & ((1 << 5) - 1);
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        res_shift(i, 0) = input_x(i, 0) >> shift_val;
+        res_left(i, 0) = input_x(i, 0) & ((1 << shift_val) - 1);
     }
     i64Matrix test_shift(TEST_SIZE, 1);
     i64Matrix test_left(TEST_SIZE, 1);
@@ -208,7 +215,8 @@ int bool_basic_test(CLP& cmd){
 
     // check the bool dot.
     sbMatrix shared_dot(1, 1);
-    bool_cipher_dot(role, bsharedX, bsharedMask, shared_dot, enc, eval, runtime);
+    bool_cipher_dot(role, bsharedX, bsharedMask, shared_dot, enc, eval,
+                    runtime);
     i64Matrix test_dot(1, 1);
     enc.revealAll(runtime, shared_dot, test_dot).get();
 
@@ -218,30 +226,29 @@ int bool_basic_test(CLP& cmd){
     i64Matrix test_not(TEST_SIZE, 1);
     enc.revealAll(runtime, shared_not, test_not).get();
 
-
     // mask 0/1 sbMatrix and boolShare translation.
     sbMatrix shared01(TEST_SIZE, 1);
     i64Matrix mask01(TEST_SIZE, 1);
     std::vector<bool> mask01_res(TEST_SIZE);
     std::vector<boolShare> shared01_vec(TEST_SIZE);
-    for(int i=0; i<TEST_SIZE; i++){
+    for (int i = 0; i < TEST_SIZE; i++) {
         mask01(i, 0) = (i % 2 == 0) ? 0 : 1;
         mask01_res[i] = (i % 2 == 0) ? 1 : 0;
     }
-    if(role == 0){
+    if (role == 0) {
         enc.localBinMatrix(runtime, mask01, shared01).get();
-    }
-    else{
+    } else {
         enc.remoteBinMatrix(runtime, shared01).get();
     }
-    for(int i=0; i<TEST_SIZE; i++){
-        shared01_vec[i].from_matrix(shared01.mShares[0](i, 0), shared01.mShares[1](i, 0));
+    for (int i = 0; i < TEST_SIZE; i++) {
+        shared01_vec[i].from_matrix(shared01.mShares[0](i, 0),
+                                    shared01.mShares[1](i, 0));
     }
 
     std::vector<boolShare> shared_not_vec(TEST_SIZE);
     bool_cipher_not(role, shared01_vec, shared_not_vec);
-    std::vector<bool> test_mask01 = back2plain(role, shared_not_vec, enc, eval, runtime);
-
+    std::vector<bool> test_mask01 =
+        back2plain(role, shared_not_vec, enc, eval, runtime);
 
     // check the bool cipher and.
     std::vector<boolShare> input_a(4);
@@ -249,7 +256,7 @@ int bool_basic_test(CLP& cmd){
     std::vector<bool> res_and_vec = {false, false, false, true};
     std::vector<bool> res_or_vec = {false, true, true, true};
     // std::vector<bool> plain_input_a = {false, false, true, true};
-    
+
     input_a[0] = boolShare(false, role);
     input_a[1] = boolShare(false, role);
     input_a[2] = boolShare(true, role);
@@ -262,12 +269,16 @@ int bool_basic_test(CLP& cmd){
     std::vector<boolShare> res_shared_and_vec(4);
     std::vector<boolShare> res_shared_or_vec(4);
 
-    for(size_t i=0; i<4; i++){
-        bool_cipher_and(role, input_a[i], input_b[i], res_shared_and_vec[i], enc, eval, runtime);
-        bool_cipher_or(role, input_a[i], input_b[i], res_shared_or_vec[i], enc, eval, runtime);
+    for (size_t i = 0; i < 4; i++) {
+        bool_cipher_and(role, input_a[i], input_b[i], res_shared_and_vec[i],
+                        enc, eval, runtime);
+        bool_cipher_or(role, input_a[i], input_b[i], res_shared_or_vec[i], enc,
+                       eval, runtime);
     }
-    std::vector<bool> test_and_vec = back2plain(role, res_shared_and_vec, enc, eval, runtime);
-    std::vector<bool> test_or_vec = back2plain(role, res_shared_or_vec, enc, eval, runtime);
+    std::vector<bool> test_and_vec =
+        back2plain(role, res_shared_and_vec, enc, eval, runtime);
+    std::vector<bool> test_or_vec =
+        back2plain(role, res_shared_or_vec, enc, eval, runtime);
 
     // check the bool get_first_zero_mask.
     std::vector<bool> random_bool_array(TEST_SIZE);
@@ -276,34 +287,36 @@ int bool_basic_test(CLP& cmd){
 
     std::mt19937 gen(16);
     std::bernoulli_distribution dist(0.5);
-    for(size_t i=0; i<TEST_SIZE; i++){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
         random_bool_array[i] = dist(gen);
         initial_mask[i] = boolShare(random_bool_array[i], role);
     }
     bool flag = false;
-    for(size_t i=0; i<TEST_SIZE; i++){
-        if(!flag && (random_bool_array[i] == 0)){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        if (!flag && (random_bool_array[i] == 0)) {
             res_get_first_zero[i] = 1;
             flag = true;
-        }
-        else{
+        } else {
             res_get_first_zero[i] = 0;
         }
     }
     aby3::sbMatrix shared_get_first_zero(TEST_SIZE, 1);
-    bool_get_first_zero_mask(role, initial_mask, shared_get_first_zero, enc, eval, runtime);
+    bool_get_first_zero_mask(role, initial_mask, shared_get_first_zero, enc,
+                             eval, runtime);
     aby3::i64Matrix test_get_first_zero_i64(TEST_SIZE, 1);
-    enc.revealAll(runtime, shared_get_first_zero, test_get_first_zero_i64).get();
+    enc.revealAll(runtime, shared_get_first_zero, test_get_first_zero_i64)
+        .get();
 
     vecBoolShares bool_shared_get_first_zero(TEST_SIZE);
     bool_shared_get_first_zero.from_matrix(shared_get_first_zero);
-    std::vector<bool> test_get_first_zero = back2plain(role, bool_shared_get_first_zero.bshares, enc, eval, runtime);
+    std::vector<bool> test_get_first_zero = back2plain(
+        role, bool_shared_get_first_zero.bshares, enc, eval, runtime);
 
-    std::vector<bool> test_boolShare_init = back2plain(role, initial_mask, enc, eval, runtime);
-
+    std::vector<bool> test_boolShare_init =
+        back2plain(role, initial_mask, enc, eval, runtime);
 
     // check the result.
-    if(role == 0){
+    if (role == 0) {
         check_result("xor", test_xor, res_xor);
         check_result("or", test_or, res_or);
         check_result("gt", test_gt, res_gt);
@@ -321,15 +334,12 @@ int bool_basic_test(CLP& cmd){
         check_result("boolShare init", test_boolShare_init, random_bool_array);
         check_result("bool and", test_and_vec, res_and_vec);
         check_result("bool or", test_or_vec, res_or_vec);
-        check_result("get_first_zero_mask", test_get_first_zero, res_get_first_zero);
     }
 
     return 0;
 }
 
-
-int arith_basic_test(CLP& cmd){
-
+int bool_basic_test2(oc::CLP &cmd) {
     // get the configs.
     int role = -1;
     if (cmd.isSet("role")) {
@@ -340,7 +350,151 @@ int arith_basic_test(CLP& cmd){
         throw std::runtime_error(LOCATION);
     }
 
-    if(role == 0) {
+    if (role == 0) {
+        debug_info("RUN BOOL TEST2");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    // distribute_setup((u64)role, ios, enc, eval, runtime);
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    aby3::i64Matrix trueVal(TEST_SIZE, 1);
+    aby3::i64Matrix falseVal(TEST_SIZE, 1);
+
+    for (int i = 0; i < TEST_SIZE; i++) {
+        trueVal(i, 0) = 5;
+        falseVal(i, 0) = 16;
+    }
+
+    boolShare tflag(true, role);
+    boolShare fflag(false, role);
+
+    aby3::sbMatrix shared_true(TEST_SIZE, 1);
+    aby3::sbMatrix shared_false(TEST_SIZE, 1);
+    shared_true.resize(TEST_SIZE, 64);
+    shared_false.resize(TEST_SIZE, 64);
+
+    if (role == 0) {
+        enc.localBinMatrix(runtime, trueVal, shared_true).get();
+        enc.localBinMatrix(runtime, falseVal, shared_false).get();
+    } else {
+        enc.remoteBinMatrix(runtime, shared_true).get();
+        enc.remoteBinMatrix(runtime, shared_false).get();
+    }
+
+    aby3::sbMatrix test_true(TEST_SIZE, 1);
+    aby3::sbMatrix test_false(TEST_SIZE, 1);
+
+    bool_cipher_selector(role, tflag, shared_true, shared_false, test_true, enc,
+                         eval, runtime);
+    bool_cipher_selector(role, fflag, shared_true, shared_false, test_false,
+                         enc, eval, runtime);
+
+    aby3::i64Matrix res_true(TEST_SIZE, 1);
+    aby3::i64Matrix res_false(TEST_SIZE, 1);
+    enc.revealAll(runtime, test_true, res_true).get();
+    enc.revealAll(runtime, test_false, res_false).get();
+
+    if (role == 0) {
+        check_result("bool selector true", res_true, trueVal);
+        check_result("bool selector false", res_false, falseVal);
+    }
+
+    return 0;
+}
+
+int get_first_zero_test(CLP &cmd) {
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if (role == 0) {
+        debug_info("RUN GET_FIRST_ZERO TEST!");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    // distribute_setup((u64)role, ios, enc, eval, runtime);
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    // check the bool get_first_zero_mask.
+    std::vector<bool> random_bool_array(TEST_SIZE);
+    std::vector<bool> res_get_first_zero(TEST_SIZE);
+    std::vector<boolShare> initial_mask(TEST_SIZE);
+
+    std::mt19937 gen(16);
+    std::bernoulli_distribution dist(0.5);
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        random_bool_array[i] = dist(gen);
+        initial_mask[i] = boolShare(random_bool_array[i], role);
+    }
+    bool flag = false;
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        if (!flag && (random_bool_array[i] == 0)) {
+            res_get_first_zero[i] = 1;
+            flag = true;
+        } else {
+            res_get_first_zero[i] = 0;
+        }
+    }
+    aby3::sbMatrix shared_get_first_zero(TEST_SIZE, 1);
+    bool_get_first_zero_mask(role, initial_mask, shared_get_first_zero, enc,
+                             eval, runtime);
+    aby3::i64Matrix test_get_first_zero_i64(TEST_SIZE, 1);
+    enc.revealAll(runtime, shared_get_first_zero, test_get_first_zero_i64)
+        .get();
+    vecBoolShares bool_shared_get_first_zero(TEST_SIZE);
+    bool_shared_get_first_zero.from_matrix(shared_get_first_zero);
+    std::vector<bool> test_get_first_zero = back2plain(
+        role, bool_shared_get_first_zero.bshares, enc, eval, runtime);
+
+    // all-zero test case.
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        initial_mask[i] = boolShare(false, role);
+    }
+    std::vector<bool> res_get_first_zero_all_zero(TEST_SIZE, false);
+    res_get_first_zero_all_zero[0] = true;
+    bool_get_first_zero_mask(role, initial_mask, shared_get_first_zero, enc,
+                             eval, runtime);
+    bool_shared_get_first_zero.from_matrix(shared_get_first_zero);
+    std::vector<bool> test_get_first_zero_all_zero = back2plain(
+        role, bool_shared_get_first_zero.bshares, enc, eval, runtime);
+
+    if (role == 0) {
+        check_result("get_first_zero_mask random test", test_get_first_zero,
+                     res_get_first_zero);
+        check_result("get_first_zero_mask all-zero test",
+                     test_get_first_zero_all_zero, res_get_first_zero_all_zero);
+    }
+
+    return 0;
+}
+
+int arith_basic_test(CLP &cmd) {
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if (role == 0) {
         debug_info("RUN ARITH TEST");
     }
 
@@ -365,8 +519,7 @@ int arith_basic_test(CLP& cmd){
     f64Matrix<D8> res_f_mul(TEST_SIZE, 1);
     f64Matrix<D8> res_fb_mul(TEST_SIZE, 1);
 
-
-    for(int i=0; i<TEST_SIZE; i++){
+    for (int i = 0; i < TEST_SIZE; i++) {
         input_x(i, 0) = i;
         finput_x(i, 0) = i;
         input_y(i, 0) = TEST_SIZE - i;
@@ -415,14 +568,18 @@ int arith_basic_test(CLP& cmd){
     cipher_mul(role, input_x, shared_gt, shared_ib_mul, eval, enc, runtime);
     // std::cout << "mul3" << std::endl;
     cipher_mul<D8>(role, fsharedX, fsharedX, shared_f_mul, eval, enc, runtime);
-    cipher_mul<D8>(role, fsharedX, shared_gt, shared_fb_mul, eval, enc, runtime);
+    cipher_mul<D8>(role, fsharedX, shared_gt, shared_fb_mul, eval, enc,
+                   runtime);
 
     // check the result.
-    i64Matrix test_gt(TEST_SIZE, 1); i64Matrix test_ge(TEST_SIZE, 1);   
-    i64Matrix test_eq(TEST_SIZE, 1); i64Matrix test_mul(TEST_SIZE, 1);
-    i64Matrix test_ab_mul(TEST_SIZE, 1); i64Matrix test_ib_mul(TEST_SIZE, 1);
-    f64Matrix<D8> test_f_mul(TEST_SIZE, 1); f64Matrix<D8> test_fb_mul(TEST_SIZE, 1); 
-
+    i64Matrix test_gt(TEST_SIZE, 1);
+    i64Matrix test_ge(TEST_SIZE, 1);
+    i64Matrix test_eq(TEST_SIZE, 1);
+    i64Matrix test_mul(TEST_SIZE, 1);
+    i64Matrix test_ab_mul(TEST_SIZE, 1);
+    i64Matrix test_ib_mul(TEST_SIZE, 1);
+    f64Matrix<D8> test_f_mul(TEST_SIZE, 1);
+    f64Matrix<D8> test_fb_mul(TEST_SIZE, 1);
 
     enc.revealAll(runtime, shared_gt, test_gt).get();
     enc.revealAll(runtime, shared_ge, test_ge).get();
@@ -433,8 +590,7 @@ int arith_basic_test(CLP& cmd){
     enc.revealAll(runtime, shared_f_mul, test_f_mul).get();
     enc.revealAll(runtime, shared_fb_mul, test_fb_mul).get();
 
-
-    if(role == 0){
+    if (role == 0) {
         check_result("gt", test_gt, res_gt);
         check_result("ge", test_ge, res_ge);
         check_result("eq", test_eq, res_eq);
@@ -447,8 +603,7 @@ int arith_basic_test(CLP& cmd){
     return 0;
 }
 
-
-int initialization_test(CLP& cmd){
+int initialization_test(CLP &cmd) {
     // get the configs.
     int role = -1;
     if (cmd.isSet("role")) {
@@ -459,7 +614,7 @@ int initialization_test(CLP& cmd){
         throw std::runtime_error(LOCATION);
     }
 
-    if(role == 0) {
+    if (role == 0) {
         debug_info("RUN INIT TEST");
     }
 
@@ -474,7 +629,7 @@ int initialization_test(CLP& cmd){
     oc::block nextSeed = enc.mShareGen.mNextCommon.getSeed();
     oc::block prevSeed = enc.mShareGen.mPrevCommon.getSeed();
 
-    // send the nextSeed to the nextParty.  
+    // send the nextSeed to the nextParty.
     runtime.mComm.mNext.asyncSendCopy(nextSeed);
 
     // send the prevSeed to the prevParty.
@@ -498,25 +653,26 @@ int initialization_test(CLP& cmd){
     // }
 
     // check the seeds.
-    if(nextSeed != nextP_seed){
-        debug_info("\033[31m P" + to_string(role) + " check: nextSeed ERROR!" + "\033[0m\n");
-    }
-    else{
-        debug_info("\033[32m P" + to_string(role) + " check: nextSeed SUCCESS!" + "\033[0m\n");
+    if (nextSeed != nextP_seed) {
+        debug_info("\033[31m P" + to_string(role) + " check: nextSeed ERROR!" +
+                   "\033[0m\n");
+    } else {
+        debug_info("\033[32m P" + to_string(role) +
+                   " check: nextSeed SUCCESS!" + "\033[0m\n");
     }
 
-    if(prevSeed != prevP_seed){
-        debug_info("\033[31m P" + to_string(role) + " check: prevSeed ERROR!" + "\033[0m\n");
-    }
-    else{
-        debug_info("\033[32m P" + to_string(role) + " check: prevSeed SUCCESS!" + "\033[0m\n");
+    if (prevSeed != prevP_seed) {
+        debug_info("\033[31m P" + to_string(role) + " check: prevSeed ERROR!" +
+                   "\033[0m\n");
+    } else {
+        debug_info("\033[32m P" + to_string(role) +
+                   " check: prevSeed SUCCESS!" + "\033[0m\n");
     }
 
     return 0;
 }
 
-
-int shuffle_test(oc::CLP& cmd){
+int shuffle_test(oc::CLP &cmd) {
     // get the configs.
     int role = -1;
     if (cmd.isSet("role")) {
@@ -527,7 +683,7 @@ int shuffle_test(oc::CLP& cmd){
         throw std::runtime_error(LOCATION);
     }
 
-    if(role == 0) {
+    if (role == 0) {
         debug_info("RUN SHUFFLE TEST");
     }
 
@@ -540,21 +696,20 @@ int shuffle_test(oc::CLP& cmd){
 
     // generate the test data.
     std::vector<i64Matrix> input_x(TEST_SIZE);
-    for(size_t i=0; i<TEST_SIZE; i++){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
         input_x[i].resize(TEST_UNIT_SIZE, 1);
-        for(size_t j=0; j<TEST_UNIT_SIZE; j++){
+        for (size_t j = 0; j < TEST_UNIT_SIZE; j++) {
             input_x[i](j, 0) = i;
         }
     }
 
     // encrypt the inputs.
     std::vector<sbMatrix> bsharedX(TEST_SIZE);
-    for(size_t i=0; i<TEST_SIZE; i++){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
         bsharedX[i].resize(TEST_UNIT_SIZE, 1);
-        if(role == 0){
+        if (role == 0) {
             enc.localBinMatrix(runtime, input_x[i], bsharedX[i]).get();
-        }
-        else{
+        } else {
             enc.remoteBinMatrix(runtime, bsharedX[i]).get();
         }
     }
@@ -569,24 +724,29 @@ int shuffle_test(oc::CLP& cmd){
     get_permutation(len, next_permutation, nextSeed);
 
     std::vector<size_t> other_permutation(len);
-    runtime.mComm.mPrev.asyncSendCopy(next_permutation.data(), next_permutation.size());
-    runtime.mComm.mNext.recv(other_permutation.data(), other_permutation.size());
+    runtime.mComm.mPrev.asyncSendCopy(next_permutation.data(),
+                                      next_permutation.size());
+    runtime.mComm.mNext.recv(other_permutation.data(),
+                             other_permutation.size());
 
-    std::vector<size_t> final_permutation;  
+    std::vector<size_t> final_permutation;
     std::vector<std::vector<size_t>> permutation_list;
-    if(role == 0){
-        permutation_list = {next_permutation, prev_permutation, other_permutation};
+    if (role == 0) {
+        permutation_list = {next_permutation, prev_permutation,
+                            other_permutation};
     }
-    if(role == 1){
-        permutation_list = {prev_permutation, other_permutation, next_permutation};
+    if (role == 1) {
+        permutation_list = {prev_permutation, other_permutation,
+                            next_permutation};
     }
-    if(role == 2){
-        permutation_list = {other_permutation, next_permutation, prev_permutation};
+    if (role == 2) {
+        permutation_list = {other_permutation, next_permutation,
+                            prev_permutation};
     }
     combine_permutation(permutation_list, final_permutation);
 
     std::vector<i64Matrix> shuffle_res(TEST_SIZE);
-    for(size_t i=0; i<TEST_SIZE; i++){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
         shuffle_res[i].resize(TEST_UNIT_SIZE, 1);
         shuffle_res[i] = input_x[i];
     }
@@ -597,51 +757,52 @@ int shuffle_test(oc::CLP& cmd){
     efficient_shuffle(bsharedX, role, bsharedShuffle, enc, eval, runtime);
 
     std::vector<i64Matrix> test_res(TEST_SIZE);
-    for(size_t i=0; i<TEST_SIZE; i++){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
         test_res[i].resize(TEST_UNIT_SIZE, 1);
         enc.revealAll(runtime, bsharedShuffle[i], test_res[i]).get();
     }
 
     // check the shuffle result.
-    if(role == 0){
+    if (role == 0) {
         bool check_flag = true;
-        for(size_t i=0; i<TEST_SIZE; i++){
-            for(size_t j=0; j<TEST_UNIT_SIZE; j++){
-                if(test_res[i](j, 0) != shuffle_res[i](j, 0)){
+        for (size_t i = 0; i < TEST_SIZE; i++) {
+            for (size_t j = 0; j < TEST_UNIT_SIZE; j++) {
+                if (test_res[i](j, 0) != shuffle_res[i](j, 0)) {
                     check_flag = false;
                 }
             }
         }
-        if(check_flag){
+        if (check_flag) {
             debug_info("\033[32m SHUFFLE CHECK SUCCESS ! \033[0m\n");
-        }
-        else{
+        } else {
             debug_info("\033[31m SHUFFLE CHECK ERROR ! \033[0m\n");
             debug_info("True result: \n");
-            for(size_t i=0; i<TEST_SIZE; i++){
+            for (size_t i = 0; i < TEST_SIZE; i++) {
                 debug_output_matrix(shuffle_res[i]);
             }
             debug_info("Func result: \n");
-            for(size_t i=0; i<TEST_SIZE; i++){
+            for (size_t i = 0; i < TEST_SIZE; i++) {
                 debug_output_matrix(test_res[i]);
             }
         }
     }
 
-
     // shuffle with permutation test.
     std::vector<si64> shared_permutation(TEST_SIZE);
-    efficient_shuffle_with_random_permutation(bsharedX, role, bsharedShuffle, shared_permutation, enc, eval, runtime);
+    efficient_shuffle_with_random_permutation(
+        bsharedX, role, bsharedShuffle, shared_permutation, enc, eval, runtime);
 
     std::vector<i64Matrix> test_res2(TEST_SIZE);
-    for(size_t i=0; i<TEST_SIZE; i++){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
         test_res2[i].resize(TEST_UNIT_SIZE, 1);
         enc.revealAll(runtime, bsharedShuffle[i], test_res2[i]).get();
     }
     sbMatrix shared_permutation_matrix(TEST_SIZE, 1);
-    for(size_t i=0; i<TEST_SIZE; i++){
-        shared_permutation_matrix.mShares[0](i) = shared_permutation[i].mData[0];
-        shared_permutation_matrix.mShares[1](i) = shared_permutation[i].mData[1];
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        shared_permutation_matrix.mShares[0](i) =
+            shared_permutation[i].mData[0];
+        shared_permutation_matrix.mShares[1](i) =
+            shared_permutation[i].mData[1];
     }
     i64Matrix test_permutation(TEST_SIZE, 1);
     enc.revealAll(runtime, shared_permutation_matrix, test_permutation).get();
@@ -649,39 +810,47 @@ int shuffle_test(oc::CLP& cmd){
     bool check_shuffle = true;
     bool check_permutation = true;
 
-    for(size_t i=0; i<TEST_SIZE; i++){
-        if(test_permutation(i, 0) != final_permutation[i]){
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        if (test_permutation(i, 0) != final_permutation[i]) {
             check_permutation = false;
         }
-        for(size_t j=0; j<TEST_UNIT_SIZE; j++){
-            if(test_res2[i](j, 0) != shuffle_res[i](j, 0)){
+        for (size_t j = 0; j < TEST_UNIT_SIZE; j++) {
+            if (test_res2[i](j, 0) != shuffle_res[i](j, 0)) {
                 check_shuffle = false;
             }
         }
     }
 
     // check the final result.
-    if(role == 0){
-        if(check_shuffle){
-            debug_info("\033[32m SHUFFLE in shuffle and permutation CHECK SUCCESS ! \033[0m\n");
-        }
-        else{
-            debug_info("\033[31m SHUFFLE in in shuffle and permutation CHECK ERROR ! \033[0m\n");
+    if (role == 0) {
+        if (check_shuffle) {
+            debug_info(
+                "\033[32m SHUFFLE in shuffle and permutation CHECK SUCCESS ! "
+                "\033[0m\n");
+        } else {
+            debug_info(
+                "\033[31m SHUFFLE in in shuffle and permutation CHECK ERROR ! "
+                "\033[0m\n");
             debug_info("True result: \n");
-            for(size_t i=0; i<TEST_SIZE; i++){
+            for (size_t i = 0; i < TEST_SIZE; i++) {
                 debug_output_matrix(shuffle_res[i]);
             }
             debug_info("Func result: \n");
-            for(size_t i=0; i<TEST_SIZE; i++){
+            for (size_t i = 0; i < TEST_SIZE; i++) {
                 debug_output_matrix(test_res2[i]);
             }
         }
 
-        if(check_permutation){
-            debug_info("\033[32m PERMUTATION in shuffle and permutation CHECK SUCCESS ! \033[0m\n");
-        }
-        else{
-            debug_info("\033[31m PERMUTATION in in shuffle and permutation CHECK ERROR ! \033[0m\n");
+        if (check_permutation) {
+            debug_info(
+                "\033[32m PERMUTATION in shuffle and permutation CHECK SUCCESS "
+                "! "
+                "\033[0m\n");
+        } else {
+            debug_info(
+                "\033[31m PERMUTATION in in shuffle and permutation CHECK "
+                "ERROR ! "
+                "\033[0m\n");
             debug_info("True result: \n");
             debug_output_vector(final_permutation);
 
@@ -692,8 +861,7 @@ int shuffle_test(oc::CLP& cmd){
     return 0;
 }
 
-
-int correlation_test(oc::CLP& cmd){
+int correlation_test(oc::CLP &cmd) {
     // get the configs.
     int role = -1;
     if (cmd.isSet("role")) {
@@ -704,7 +872,7 @@ int correlation_test(oc::CLP& cmd){
         throw std::runtime_error(LOCATION);
     }
 
-    if(role == 0) {
+    if (role == 0) {
         debug_info("RUN CORRELATION TEST");
     }
 
@@ -738,30 +906,170 @@ int correlation_test(oc::CLP& cmd){
     bool next_check = true;
     bool prev_check = true;
 
-        
-    for(size_t i=0; i<TEST_SIZE; i++){
-        if(nextMask(i, 0) != nextP_mask(i, 0)){
-            debug_info(to_string(nextMask(i, 0)) + " " + to_string(nextP_mask(i, 0)) + "\n");
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        if (nextMask(i, 0) != nextP_mask(i, 0)) {
+            debug_info(to_string(nextMask(i, 0)) + " " +
+                       to_string(nextP_mask(i, 0)) + "\n");
             next_check = false;
         }
-        if(prevMask(i, 0) != prevP_mask(i, 0)){
-            debug_info(to_string(prevMask(i, 0)) + " " + to_string(prevP_mask(i, 0)) + "\n");
+        if (prevMask(i, 0) != prevP_mask(i, 0)) {
+            debug_info(to_string(prevMask(i, 0)) + " " +
+                       to_string(prevP_mask(i, 0)) + "\n");
             prev_check = false;
         }
     }
 
-    if(!next_check){
-        debug_info("\033[31m P" + to_string(role) + " check: next randomness ERROR!" + "\033[0m\n");
-    }
-    else{
-        debug_info("\033[32m P" + to_string(role) + " check: next randomness SUCCESS!" + "\033[0m\n");
+    if (!next_check) {
+        debug_info("\033[31m P" + to_string(role) +
+                   " check: next randomness ERROR!" + "\033[0m\n");
+    } else {
+        debug_info("\033[32m P" + to_string(role) +
+                   " check: next randomness SUCCESS!" + "\033[0m\n");
     }
 
-    if(!prev_check){
-        debug_info("\033[31m P" + to_string(role) + " check: prev randomness ERROR!" + "\033[0m\n");
+    if (!prev_check) {
+        debug_info("\033[31m P" + to_string(role) +
+                   " check: prev randomness ERROR!" + "\033[0m\n");
+    } else {
+        debug_info("\033[32m P" + to_string(role) +
+                   " check: prev randomness SUCCESS!" + "\033[0m\n");
     }
-    else{
-        debug_info("\033[32m P" + to_string(role) + " check: prev randomness SUCCESS!" + "\033[0m\n");
+
+    return 0;
+}
+
+int sqrt_oram_test(oc::CLP &cmd) {
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if (role == 0) {
+        debug_info("RUN SQRT-ORAM TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    // generate the test data.
+    size_t LINER_TEST_SIZE = 16;
+
+    std::vector<i64Matrix> input_x(LINER_TEST_SIZE);
+    for (size_t i = 0; i < LINER_TEST_SIZE; i++) {
+        input_x[i].resize(1, 1);
+        input_x[i](0, 0) = i;
+    }
+
+    // // TEST1 posMap linear.
+    size_t pack = 2, S = 32;
+
+    std::vector<sbMatrix> enc_x(LINER_TEST_SIZE);
+    for (size_t i = 0; i < LINER_TEST_SIZE; i++) {
+        enc_x[i].resize(1, 1);
+        if (role == 0) {
+            enc.localBinMatrix(runtime, input_x[i], enc_x[i]).get();
+        } else {
+            enc.remoteBinMatrix(runtime, enc_x[i]).get();
+        }
+    }
+    std::vector<si64> _shared_permutation(LINER_TEST_SIZE);
+    efficient_shuffle_with_random_permutation(
+        enc_x, role, enc_x, _shared_permutation, enc, eval, runtime);
+
+    std::vector<boolIndex> shared_permutation(LINER_TEST_SIZE);
+    for (size_t i = 0; i < LINER_TEST_SIZE; i++)
+        shared_permutation[i] = boolIndex(_shared_permutation[i].mData[0],
+                                          _shared_permutation[i].mData[1]);
+
+    ABY3PosMap posMap((size_t)LINER_TEST_SIZE, pack, S, shared_permutation,
+                      role, enc, eval, runtime);
+
+    // // access each element.
+    boolIndex test_index = boolIndex((int)LINER_TEST_SIZE / 3, role);
+    boolShare init_fake = boolShare(false, role);
+    aby3::i64 phy_index;
+    phy_index = posMap.access(test_index, init_fake);
+
+    if (phy_index >= LINER_TEST_SIZE || phy_index < 0) {
+        THROW_RUNTIME_ERROR("ERROR: phy_index >= LINER_TEST_SIZE!");
+    }
+    aby3::sbMatrix test_data;
+    test_data = enc_x[phy_index];
+
+    // check the result.
+    i64Matrix test_res(1, 1);
+    enc.revealAll(runtime, test_data, test_res).get();
+
+    // posMap - recursive branch test.
+    size_t RECURSIVE_TEST_SIZE = 64;
+    pack = 8;
+    S = 16;
+
+    std::vector<i64Matrix> input_x2(RECURSIVE_TEST_SIZE);
+    for (size_t i = 0; i < RECURSIVE_TEST_SIZE; i++) {
+        input_x2[i].resize(1, 1);
+        input_x2[i](0, 0) = i;
+    }
+    std::vector<sbMatrix> enc_x2(RECURSIVE_TEST_SIZE);
+    for (size_t i = 0; i < RECURSIVE_TEST_SIZE; i++) {
+        enc_x2[i].resize(1, 1);
+        if (role == 0) {
+            enc.localBinMatrix(runtime, input_x2[i], enc_x2[i]).get();
+        } else {
+            enc.remoteBinMatrix(runtime, enc_x2[i]).get();
+        }
+    }
+    std::vector<si64> _shared_permutation2(RECURSIVE_TEST_SIZE);
+    efficient_shuffle_with_random_permutation(
+        enc_x2, role, enc_x2, _shared_permutation2, enc, eval, runtime);
+
+    std::vector<boolIndex> shared_permutation2(RECURSIVE_TEST_SIZE);
+    for (size_t i = 0; i < RECURSIVE_TEST_SIZE; i++)
+        shared_permutation2[i] = boolIndex(_shared_permutation2[i].mData[0],
+                                           _shared_permutation2[i].mData[1]);
+
+    ABY3PosMap posMap2((size_t)RECURSIVE_TEST_SIZE, pack, S,
+                       shared_permutation2, role, enc, eval, runtime);
+
+    boolIndex test_index2 = boolIndex((int)1, role);
+    phy_index = posMap2.access(test_index2, init_fake);
+
+    boolIndex test_index3 = boolIndex((int)5, role);
+    aby3::i64 phy_index2 = posMap2.access(test_index3, init_fake);
+
+    boolIndex test_index4 = boolIndex((int)1, role);
+    aby3::i64 phy_index3 = posMap2.access(test_index4, init_fake);
+
+    if (phy_index >= RECURSIVE_TEST_SIZE || phy_index < 0) {
+        THROW_RUNTIME_ERROR("ERROR: phy_index >= RECURSIVE_TEST_SIZE!");
+    }
+    test_data = enc_x2[phy_index];
+
+    // check the result.
+    i64Matrix test_res2(1, 1);
+    enc.revealAll(runtime, test_data, test_res2).get();
+
+    i64Matrix test_res3(1, 1);
+    enc.revealAll(runtime, enc_x2[phy_index2], test_res3).get();
+
+    i64Matrix test_res4(1, 1);
+    enc.revealAll(runtime, enc_x2[phy_index3], test_res4).get();
+
+    if (role == 0) {
+        check_result("PosMap - linear case ", test_res(0, 0),
+                     LINER_TEST_SIZE / 3);
+        check_result("PosMap - recursive case ", test_res2(0, 0), 1);
+        check_result("PosMap - recursive case stash miss", test_res3(0, 0), 5);
+        check_result("PosMap - recursive case stash hit", test_res4(0, 0), 1);
     }
 
     return 0;
