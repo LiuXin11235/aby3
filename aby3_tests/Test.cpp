@@ -7,8 +7,10 @@
 #include "../aby3-Basic/Basics.h"
 #include "../aby3-Basic/Shuffle.h"
 #include "../aby3-Basic/SqrtOram.h"
+#include "../aby3-Basic/timer.h"
 #include "../aby3-RTR/BuildingBlocks.h"
 #include "../aby3-RTR/debug.h"
+#include "../aby3-GraphQuery/Graph.h"
 
 using namespace oc;
 using namespace aby3;
@@ -56,6 +58,22 @@ bool check_result(const std::string &func_name, aby3::i64 test, aby3::i64 res) {
 
     return check_flag;
 }
+
+bool check_result(const std::string& func_name, std::vector<aby3::i64Matrix> test, std::vector<aby3::i64Matrix> res){
+    bool check_flag = true;
+    for(size_t i=0; i<test.size(); i++){
+        for(size_t j=0; j<test[i].rows(); j++){
+            if(test[i](j, 0) != res[i](j, 0)) check_flag = false;
+        }
+    }
+    if(!check_flag){
+        debug_info("\033[31m" + func_name + " ERROR !" + "\033[0m\n");
+    }else{
+        debug_info("\033[32m" + func_name + " SUCCESS!" + "\033[0m\n");
+    
+    }
+}
+
 
 int bool_basic_test(CLP &cmd) {
     // get the configs.
@@ -938,7 +956,7 @@ int correlation_test(oc::CLP &cmd) {
     return 0;
 }
 
-int sqrt_oram_test(oc::CLP &cmd) {
+int pos_map_test(oc::CLP &cmd) {
     // get the configs.
     int role = -1;
     if (cmd.isSet("role")) {
@@ -950,7 +968,7 @@ int sqrt_oram_test(oc::CLP &cmd) {
     }
 
     if (role == 0) {
-        debug_info("RUN SQRT-ORAM TEST");
+        debug_info("RUN SQRT-ORAM Position Map TEST");
     }
 
     // setup communications.
@@ -1071,6 +1089,119 @@ int sqrt_oram_test(oc::CLP &cmd) {
         check_result("PosMap - recursive case stash miss", test_res3(0, 0), 5);
         check_result("PosMap - recursive case stash hit", test_res4(0, 0), 1);
     }
+
+    return 0;
+}
+
+int sqrt_oram_test(oc::CLP &cmd){
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if (role == 0) {
+        debug_info("RUN SQRT-ORAM TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    // generate the test data.
+    size_t TEST_SIZE = 1 << 5;
+
+    // currently we do not consider the stashing fulling case.
+    size_t stash_size = TEST_SIZE;
+    size_t pack_size = 4;
+    size_t block_size = 4;
+
+    std::vector<i64Matrix> input_x(TEST_SIZE);
+    std::vector<sbMatrix> enc_x(TEST_SIZE);
+
+    for(size_t i=0; i<TEST_SIZE; i++){
+        input_x[i].resize(block_size, 1);
+        for(size_t j=0; j<block_size; j++){
+            input_x[i](j, 0) = i;
+        }
+
+        enc_x[i].resize(block_size, 1);
+        if(role == 0){
+            enc.localBinMatrix(runtime, input_x[i], enc_x[i]).get();
+        }else{
+            enc.remoteBinMatrix(runtime, enc_x[i]).get();
+        }
+    }
+
+    // initialize the oram.
+    ABY3SqrtOram oram(TEST_SIZE, stash_size, pack_size, role, enc, eval, runtime);
+    oram.initiate(enc_x);
+
+    // access the oram.
+    std::vector<sbMatrix> accessing_res(TEST_SIZE);
+
+    for(int i=TEST_SIZE-1; i>-1; i--){
+
+        accessing_res[i].resize(block_size, 1);
+        boolIndex logical_index = boolIndex(i, role);
+        accessing_res[i] = oram.access(logical_index);
+    }
+
+    // check the result.
+    std::vector<i64Matrix> test_res(TEST_SIZE);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        test_res[i].resize(block_size, 1);
+        enc.revealAll(runtime, accessing_res[i], test_res[i]).get();
+    }
+
+    if(role == 0){
+        check_result("SQRT-ORAM test", test_res[0], input_x[0]);
+    }
+
+    return 0;
+}
+
+int graph_loading_test(oc::CLP &cmd){
+
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if (role == 0) {
+        debug_info("RUN Graph Loading TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
+    aby3Info party_info(role, enc, eval, runtime);
+
+    // filenames.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string meta_file = "tmp_graph_meta.txt";
+    std::string graph_data_file = "tmp_graph_2dpartition.txt";
+
+    // load the graph.
+    Graph2d secGraph(graph_data_folder + meta_file, graph_data_folder + graph_data_file, party_info);
+
+    // check the graph.
+    secGraph.check_graph(graph_data_folder + meta_file, graph_data_folder + graph_data_file, party_info);
 
     return 0;
 }
