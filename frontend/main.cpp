@@ -19,6 +19,7 @@ int main(int argc, char** argv) {
 		bool_basic_test(cmd);
 		bool_basic_test2(cmd);
 		get_first_zero_test(cmd);
+		bool_aggregation_test(cmd);
 	}
 
 	if (cmd.isSet("Arith")){
@@ -41,6 +42,11 @@ int main(int argc, char** argv) {
 
 	if(cmd.isSet("Graph")){
 		graph_loading_test(cmd);
+	}
+
+	if(cmd.isSet("GraphQuery")){
+		graph_block_fetch_test(cmd);
+		basic_graph_query_test(cmd);
 	}
   return 0;
 }

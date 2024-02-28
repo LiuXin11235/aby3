@@ -6,6 +6,7 @@
 #include <cryptoTools/Network/IOService.h>
 
 #include "../aby3-RTR/debug.h"
+#include "assert.h"
 
 #ifndef _ABY3_BASICS_H_
 #define _ABY3_BASICS_H_
@@ -238,11 +239,20 @@ void bool_init_false(int pIdx, boolShare &res);
 
 void bool_init_true(int pIdx, boolShare &res);
 
+void bool_shift(int pIdx, boolIndex &sharedA, size_t shift_len,
+                boolIndex &res_shift, bool right_flag = true);
+
 void bool_shift_and_left(int pIdx, aby3::sbMatrix &sharedA, size_t shift_len,
                          aby3::sbMatrix &res_shift, aby3::sbMatrix &res_left);
 
 void bool_shift_and_left(int pIdx, boolIndex &sharedA, size_t shift_len,
                          boolIndex &res_shift, boolIndex &res_left);
+
+
+// TODO: support various functions.
+void bool_aggregation(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &res,
+                         aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                         aby3::Sh3Runtime &runtime, const std::string& func);
 
 aby3::i64Matrix back2plain(int pIdx, aby3::sbMatrix &cipher_val,
                            aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,

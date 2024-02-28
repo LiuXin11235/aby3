@@ -540,6 +540,21 @@ void bool_init_true(int pIdx, boolShare &res) {
     return;
 }
 
+void bool_shift(int pIdx, boolIndex &sharedA, size_t shift_len,
+                boolIndex &res_shift, bool right_flag) {
+    int bitSize = 64;  // TODO: support more flexible bitsize.
+
+    if (right_flag) {
+        res_shift.indexShares[0] = sharedA.indexShares[0] >> shift_len;
+        res_shift.indexShares[1] = sharedA.indexShares[1] >> shift_len;
+    } else {
+        res_shift.indexShares[0] = sharedA.indexShares[0] << shift_len;
+        res_shift.indexShares[1] = sharedA.indexShares[1] << shift_len;
+    }
+
+    return;
+}
+
 void bool_shift_and_left(int pIdx, aby3::sbMatrix &sharedA, size_t shift_len,
                          aby3::sbMatrix &res_shift, aby3::sbMatrix &res_left) {
     // shift the input.
@@ -570,14 +585,79 @@ void bool_shift_and_left(int pIdx, boolIndex &sharedA, size_t shift_len,
     int bitSize = 64;  // TODO: support more flexible bitsize.
     int left_size = bitSize - shift_len;
 
-    res_shift.indexShares[0] = sharedA.indexShares[0] >> shift_len;
-    res_shift.indexShares[1] = sharedA.indexShares[1] >> shift_len;
+    bool_shift(pIdx, sharedA, shift_len, res_shift);
 
     res_left.indexShares[0] = sharedA.indexShares[0] & ((1 << shift_len) - 1);
     res_left.indexShares[1] = sharedA.indexShares[1] & ((1 << shift_len) - 1);
 
     return;
 }
+
+
+void bool_aggregation(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &res,
+                         aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                         aby3::Sh3Runtime &runtime, const std::string &func) {
+    // TODO - log round or invocation.
+    size_t len = sharedA.rows();
+    size_t bitsize = sharedA.bitCount();
+
+    if (!checkPowerOfTwo(len)) {
+        THROW_RUNTIME_ERROR("The size of sharedA must be power of 2!");
+    }
+
+    size_t round = (size_t)floor(log2(len));
+    size_t mid_len = len;
+    aby3::sbMatrix res_last(mid_len, bitsize);
+    std::copy(sharedA.mShares.begin(), sharedA.mShares.end(),
+              res_last.mShares.begin());
+
+    for (size_t i = 0; i < round; i++) {
+        mid_len /= 2;
+
+        aby3::sbMatrix _left_val(mid_len, bitsize);
+        aby3::sbMatrix _right_val(mid_len, bitsize);
+        aby3::sbMatrix _res_val(mid_len, bitsize);
+
+        std::copy(res_last.mShares[0].begin(),
+                  res_last.mShares[0].begin() + mid_len,
+                  _left_val.mShares[0].begin());
+        std::copy(res_last.mShares[1].begin(),
+                  res_last.mShares[1].begin() + mid_len,
+                  _left_val.mShares[1].begin());
+        std::copy(res_last.mShares[0].begin() + mid_len,
+                  res_last.mShares[0].end(), _right_val.mShares[0].begin());
+        std::copy(res_last.mShares[1].begin() + mid_len,
+                  res_last.mShares[1].end(), _right_val.mShares[1].begin());
+
+        // using or for aggregation.
+        if(func == "OR"){
+            bool_cipher_or(pIdx, _left_val, _right_val, _res_val, enc, eval,
+                       runtime);
+        }
+        else if(func == "AND"){
+            bool_cipher_and(pIdx, _left_val, _right_val, _res_val, enc, eval,
+                       runtime);
+        }
+        else if(func == "ADD"){
+            bool_cipher_add(pIdx, _left_val, _right_val, _res_val, enc, eval,
+                       runtime);
+        }
+        else{
+            THROW_RUNTIME_ERROR("The function " + func + " is not supported!");
+        }
+
+
+        res_last.resize(mid_len, bitsize);
+
+        std::copy(_res_val.mShares.begin(), _res_val.mShares.end(),
+                  res_last.mShares.begin());
+    }
+    res.resize(res_last.rows(), bitsize);
+    std::copy(res_last.mShares.begin(), res_last.mShares.end(),
+              res.mShares.begin());
+    return;
+}
+
 
 aby3::i64Matrix back2plain(int pIdx, aby3::sbMatrix &cipher_val,
                            aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,

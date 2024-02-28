@@ -29,7 +29,7 @@ struct Graph2d {
     // the edge_block_list is a list of sbMatrix, each sbMatrix is a list of 2*l node tags (the first l is starting nodes and the last l is ending nodes).
     std::vector<aby3::sbMatrix> edge_block_list;
 
-    // the node_edges_list is a list of sbMatrix, each sbMatrix is a list of b edge blocks, each edge block contains l pairs of node tags.
+    // the node_edges_list is a list of sbMatrix, each sbMatrix is a list of 2*b*l node tags (the first b*l is starting nodes and the last b*l is ending nodes).
     std::vector<aby3::sbMatrix> node_edges_list;
 
     Graph2d(){}; // default constructor
@@ -55,7 +55,7 @@ struct Graph2d {
             }
 
             // the sbMatrix must be initialized with the correct size.
-            edge_block_list[i].resize(2*l, 64);
+            edge_block_list[i].resize(2*l, BITSIZE);
 
             if(party_info.pIdx == 0){
                 party_info.enc->localBinMatrix(*(party_info.runtime), nodes_list, edge_block_list[i]).get();
@@ -92,11 +92,15 @@ struct Graph2d {
     void get_node_edges_list(){
         node_edges_list.resize(b);
         for(size_t i=0; i<b; i++){
-            node_edges_list[i].resize(b * 2 * l, 64);
+            node_edges_list[i].resize(b * 2 * l, BITSIZE);
             for(size_t j=0; j<b; j++){
-                for(size_t k=0; k<2*l; k++){
-                    node_edges_list[i].mShares[0](j*2*l+k, 0) = edge_block_list[i*b+j].mShares[0](k, 0);
-                    node_edges_list[i].mShares[1](j*2*l+k, 0) = edge_block_list[i*b+j].mShares[1](k, 0);
+                for(size_t k=0; k<l; k++){
+                    // starting node list.
+                    node_edges_list[i].mShares[0](j*(l)+k, 0) = edge_block_list[i*b+j].mShares[0](k, 0);
+                    node_edges_list[i].mShares[1](j*(l)+k, 0) = edge_block_list[i*b+j].mShares[1](k, 0);
+                    // ending node list.
+                    node_edges_list[i].mShares[0](j*(l)+k+ (b*l), 0) = edge_block_list[i*b+j].mShares[0](k+l, 0);
+                    node_edges_list[i].mShares[1](j*(l)+k+ (b*l), 0) = edge_block_list[i*b+j].mShares[1](k+l, 0);
                 }
             }   
         }
@@ -157,11 +161,21 @@ class GraphQueryEngine{
         ABY3SqrtOram *node_edges_oram;
         aby3Info *party_info;
 
+        size_t logb, logk;
+
         GraphQueryEngine(){}
 
         GraphQueryEngine(aby3Info &party_info, const std::string& meta_data_file, const std::string& edge_block_file){
             graph = new Graph2d(meta_data_file, edge_block_file, party_info);
             this->party_info = &party_info;
+
+            if(!checkPowerOfTwo(graph->b) || !checkPowerOfTwo(graph->k)){
+                THROW_RUNTIME_ERROR("The block size and the chunk size must be power of 2.");
+            }
+
+            logb = log2(graph->b);
+            logk = log2(graph->k);
+
             return;
         }
 
@@ -194,6 +208,38 @@ class GraphQueryEngine{
             delete node_edges_oram;
         }
 
+        boolIndex get_block_index(boolIndex node_index){
+            boolIndex block_index, left_size;
+            bool_shift(party_info->pIdx, node_index, logk, block_index, true); // right shift
+            return block_index;
+        }
+
+        boolIndex get_edge_block_index(boolIndex starting_node, boolIndex ending_node){
+            // this function should be called in plaintext phase.
+            // this function is only used for test.
+            boolIndex starting_block_index = get_block_index(starting_node);
+            boolIndex ending_block_index = get_block_index(ending_node);
+            
+            boolIndex block_index;
+            bool_shift(party_info->pIdx, block_index, logb, starting_block_index, false); // left shift
+            aby3::sbMatrix edge_block_index_mat;
+            aby3::sbMatrix starting_block_index_mat = starting_block_index.to_matrix();
+            aby3::sbMatrix ending_block_index_mat = ending_block_index.to_matrix();
+            bool_cipher_add(party_info->pIdx, starting_block_index_mat, ending_block_index_mat, edge_block_index_mat, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
+
+            block_index.from_matrix(edge_block_index_mat);
+
+            return block_index;
+        }
+
+        int get_block_index(int node_index){
+            return node_index >> logk;
+        }
+
+        int get_edge_block_index(int starting_node, int ending_node){
+            return ((starting_node >> logk) * graph->b) + (ending_node >> logk);
+        }
+
         aby3::sbMatrix get_edge_block(boolIndex edge_block_idx){
             return edge_block_oram->access(edge_block_idx);
         }
@@ -202,3 +248,9 @@ class GraphQueryEngine{
             return node_edges_oram->access(node_idx);
         }   
 };
+
+boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
+                         boolIndex logical_edge_block_index,
+                         GraphQueryEngine &GQEngine);
+
+aby3::sbMatrix outting_edge_count(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);

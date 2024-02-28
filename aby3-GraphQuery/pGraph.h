@@ -100,8 +100,8 @@ struct plainGraph2d{
         for(size_t i=0; i<b; i++){
             std::vector<int> edge_block = get_edge_block(starting_chunk, i);
             for(size_t j=0; j<l; j++){
-                node_chunk[i * l + j] = edge_block[j];
-                node_chunk[i * l + j + l] = edge_block[j + l];
+                node_chunk[i * (l) + j] = edge_block[j]; // starting nodes.
+                node_chunk[i * (l) + j + (b*l)] = edge_block[j + l]; // ending nodes.
             }
         }
 

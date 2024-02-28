@@ -406,8 +406,8 @@ class ABY3SqrtOram : public SqrtOram<aby3::sbMatrix> {
         aby3::sbMatrix _res;
 
         if (this->t > 0) {
-            aby3::sbMatrix _stash_index(this->t, 64);
-            aby3::sbMatrix expand_index(this->t, 64);
+            aby3::sbMatrix _stash_index(this->t, BITSIZE);
+            aby3::sbMatrix expand_index(this->t, BITSIZE);
             std::vector<aby3::sbMatrix> expand_val(this->t);
             for (size_t i = 0; i < this->t; i++) {
                 _stash_index.mShares[0](i, 0) =

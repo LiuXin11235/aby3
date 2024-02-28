@@ -19,7 +19,7 @@ done
 # 4) -Init : initialization tests, including the correlated shares; 
 # 5) -Shuffle : secure shuffling tests.
 # test_args=" -ORAM -Graph"
-test_args=" -ORAM -Graph"
+test_args=" -ORAM -Graph -GraphQuery"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

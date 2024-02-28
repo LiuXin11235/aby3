@@ -4,7 +4,7 @@ SRCDIR = ./src
 BINDIR = ./bin
 lIBFILE = ./oram.a
 
-SRCS = $(SRCDIR)/test_oram.cpp
+SRCS = $(wildcard $(SRCDIR)/*.cpp)
 OBJS = $(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.o,$(SRCS))
 
 all: clean lib

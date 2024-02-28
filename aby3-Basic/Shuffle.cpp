@@ -383,7 +383,7 @@ int efficient_shuffle_with_random_permutation(
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {
-            Tres[i].resize(unit_len, bit_count);
+            Tres[i].resize(unit_len, BITSIZE);
             for (size_t j = 0; j < unit_len; j++) {
                 Tres[i].mShares[1](j, 0) = maskA[i](j);
                 Tres[i].mShares[0](j, 0) = maskB[i](j);
@@ -497,7 +497,7 @@ int efficient_shuffle_with_random_permutation(
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {
-            Tres[i].resize(unit_len, bit_count);
+            Tres[i].resize(unit_len, BITSIZE);
             for (size_t j = 0; j < unit_len; j++) {
                 Tres[i].mShares[1](j, 0) = maskB[i](j);
                 Tres[i].mShares[0](j, 0) = maskedC1_matrix(i * unit_len + j) ^
@@ -592,7 +592,7 @@ int efficient_shuffle_with_random_permutation(
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {
-            Tres[i].resize(unit_len, bit_count);
+            Tres[i].resize(unit_len, BITSIZE);
             for (size_t j = 0; j < unit_len; j++) {
                 Tres[i].mShares[1](j, 0) = maskC[i](j);
                 Tres[i].mShares[0](j, 0) = maskA[i](j);

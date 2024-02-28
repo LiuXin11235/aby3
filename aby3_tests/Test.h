@@ -14,6 +14,7 @@
 int arith_basic_test(oc::CLP& cmd);
 int bool_basic_test(oc::CLP& cmd);
 int bool_basic_test2(oc::CLP& cmd);
+int bool_aggregation_test(oc::CLP& cmd);
 int get_first_zero_test(oc::CLP& cmd);
 
 int initialization_test(oc::CLP& cmd);
@@ -24,6 +25,7 @@ int pos_map_test(oc::CLP& cmd);
 int sqrt_oram_test(oc::CLP& cmd);
 
 int graph_loading_test(oc::CLP& cmd);
+int graph_block_fetch_test(oc::CLP& cmd);
 int basic_graph_query_test(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
