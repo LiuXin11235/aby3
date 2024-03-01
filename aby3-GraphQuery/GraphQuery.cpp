@@ -88,3 +88,10 @@ aby3::sbMatrix outting_edge_count(boolIndex node_index, boolIndex logical_node_b
 
     return res;
 }
+
+// TODO: neighbors finding query.
+aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine){
+    THROW_RUNTIME_ERROR("Not implemented yet.");
+
+    return aby3::sbMatrix(1, 1);
+}

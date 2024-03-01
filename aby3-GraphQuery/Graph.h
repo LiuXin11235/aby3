@@ -5,7 +5,7 @@
 #include <aby3/sh3/Sh3Runtime.h>
 #include <aby3/sh3/Sh3Types.h>
 #include "pGraph.h"
-#include "../aby3-Basic/SqrtOram.h"
+#include "aby3-Basic/SqrtOram.h"
 
 struct aby3Info{
     int pIdx;
@@ -246,7 +246,19 @@ class GraphQueryEngine{
 
         aby3::sbMatrix get_node_edges(boolIndex node_idx){
             return node_edges_oram->access(node_idx);
-        }   
+        }
+
+        void print_configs(std::ostream& stream){
+            stream << "v : " << graph->v << std::endl;
+            stream << "e : " << graph->e << std::endl;
+            stream << "b : " << graph->b << std::endl;
+            stream << "l : " << graph->l << std::endl;
+            stream << "k : " << graph->k << std::endl;
+            stream << "se : " << edge_block_oram->S << std::endl;
+            stream << "pe : " << edge_block_oram->pack << std::endl;
+            stream << "sn : " << node_edges_oram->S << std::endl;
+            stream << "pn : " << node_edges_oram->pack << std::endl;
+        }
 };
 
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
@@ -254,3 +266,5 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
                          GraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_edge_count(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
+
+aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);

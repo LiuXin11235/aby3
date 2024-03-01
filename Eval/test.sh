@@ -11,6 +11,8 @@ done
 # scp ./bin/frontend aby32:~/aby3/bin
 # wait;
 
+cp ./frontend/main.test ./frontend/main.cpp
+
 # run the tests
 # current tests: 
 # 1) -Bool : boolean share tests; 

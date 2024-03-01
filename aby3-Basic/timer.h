@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <unordered_map>
+#include <map>
 #include <string>
 #include "../aby3-RTR/debug.h"
 
@@ -27,7 +28,12 @@ public:
         durations[key] = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     }
 
-    void print(const std::string& key, const std::string& unit = "microseconds") {
+    std::string get_key(const std::string& key) {
+        int count = keycounts[key]++;
+        return key + "-" + std::to_string(count);
+    }
+
+    void print(const std::string& key, const std::string& unit = "microseconds", std::ostream& os = std::cout) {
         // check if the key exists
         if(durations.find(key) == durations.end()){
             THROW_RUNTIME_ERROR("Key: " + key + " not found in the timer");
@@ -41,17 +47,80 @@ public:
         } else if (unit == "minutes") {
             duration /= 60000000;
         }
-        std::cout << "Time taken by " << key << ": " << duration << " " << unit << std::endl;
+        os << "Time taken by " << key << ": " << duration << " " << unit << std::endl;
     }
 
-    void print(const std::string& unit = "microseconds"){
+    void print(const std::string& unit = "microseconds", std::ostream& os = std::cout) {
         for(auto& kv : durations){
-            print(kv.first, unit);
+            print(kv.first, unit, os);
         }
+    }
+
+    void print_from_total(const std::string& key, const std::string& unit = "microseconds", std::ostream& os = std::cout){
+        // check if the key exists
+        if(totalTimes.find(key) == totalTimes.end()){
+            THROW_RUNTIME_ERROR("Key: " + key + " not found in the timer");
+        }
+        
+        double duration = totalTimes[key];
+        if (unit == "milliseconds") {
+            duration /= 1000;
+        } else if (unit == "seconds") {
+            duration /= 1000000;
+        } else if (unit == "minutes") {
+            duration /= 60000000;
+        }
+        os << "Time taken by " << key << ": " << duration << " " << unit << std::endl;
+    }
+
+    void print_total(const std::string& unit = "microseconds", std::ostream& os = std::cout){
+        accumulate();
+        for(auto& kv : totalTimes){
+            print_from_total(kv.first, unit, os);
+        }
+    }
+
+    void print_records(const std::string& key_prefix, const std::string& unit = "microseconds", std::ostream& os = std::cout){
+        for(auto& kv : durations){
+            if(kv.first.substr(0, key_prefix.size()) == key_prefix){
+                print(kv.first, unit, os);
+            }
+        }
+    }
+
+    void accumulate() {
+        for(auto& kv : durations){
+            std::string time_prefix = get_prefix(kv.first);
+            if(totalTimes.find(time_prefix) == totalTimes.end()){
+                totalTimes[time_prefix] = kv.second;
+            }
+            else{
+                totalTimes[time_prefix] += kv.second;
+            }
+        }
+        return;
+    }
+
+    void clear_records(){
+        timestamps.clear();
+        durations.clear();
+        keycounts.clear();
+        totalTimes.clear();
     }
 
 private:
     Timer() {} // you can not construct Timer instance from outside.
     std::unordered_map<std::string, std::chrono::high_resolution_clock::time_point> timestamps;
-    std::unordered_map<std::string, double> durations;
+    std::map<std::string, double> durations;
+    std::unordered_map<std::string, int> keycounts;
+    std::unordered_map<std::string, double> totalTimes;
+
+    std::string get_prefix(const std::string& key) {
+        size_t pos = key.find_last_of('-');
+        if (pos != std::string::npos) {
+            return key.substr(0, pos);
+        } else {
+            return key;
+        }
+    }
 };
