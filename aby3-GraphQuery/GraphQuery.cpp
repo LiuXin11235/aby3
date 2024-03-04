@@ -59,7 +59,7 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
     return query_res;
 }
 
-aby3::sbMatrix outting_edge_count(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine){
+aby3::si64Matrix outting_edge_count(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine){
 
     // get the node block from the GraohQueryEngine, which size is b * 2l.
     aby3::sbMatrix node_block = GQEngine.get_node_edges(logical_node_block_index);
@@ -80,11 +80,18 @@ aby3::sbMatrix outting_edge_count(boolIndex node_index, boolIndex logical_node_b
     aby3::sbMatrix eq_res;
     bool_cipher_eq(GQEngine.party_info->pIdx, expanded_node_mat, starting_node_mat, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
 
-    // aggregate the eq_res for the final result.
-    eq_res.resize(eq_res.rows(), BITSIZE);
-    aby3::sbMatrix res(1, BITSIZE);
+    // trans2 A shares.
+    aby3::si64Matrix eq_a_res(eq_res.rows(), 1);
+    bool2arith(GQEngine.party_info->pIdx, eq_res, eq_a_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
 
-    bool_aggregation(GQEngine.party_info->pIdx, eq_res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
+    // aggregate the eq_res for the final result.
+    // eq_res.resize(eq_res.rows(), BITSIZE);
+    // aby3::sbMatrix res(1, BITSIZE);
+
+    // bool_aggregation(GQEngine.party_info->pIdx, eq_res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
+
+    aby3::si64Matrix res(1, 1);
+    arith_aggregation(GQEngine.party_info->pIdx, eq_a_res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
 
     return res;
 }

@@ -6,14 +6,19 @@ cp ./frontend/main.pgp ./frontend/main.cpp
 
 # config_params.
 # gtype_list=("random" "complete" "star" "powerlaw" "bipartite")
-gtype_list=("random" "star" "powerlaw" "bipartite")
+gtype_list=("random" "star" "powerlaw" "bipartite" "complete")
+folder_prefix="/root/aby3/aby3-GraphQuery/data/profiling.igraph/"
+tool="igraph"
+
+if [ ! -d ${folder_prefix} ]; then
+    mkdir -p ${folder_prefix}
+fi
 
 for gtype in ${gtype_list[@]}; do
-    nExp=10; n=`echo "2^$nExp" | bc`;
-    kExp=5; k=`echo "2^$kExp" | bc`;
+    nExp=15; n=`echo "2^$nExp" | bc`;
+    kExp=10; k=`echo "2^$kExp" | bc`;
     e=-1
 
-    folder_prefix="/root/aby3/aby3-GraphQuery/data/profiling/"
     prefix="${gtype}_n-${n}_k-${k}"
     file_prefix="${folder_prefix}${prefix}"
 
@@ -26,7 +31,7 @@ for gtype in ${gtype_list[@]}; do
         echo "Data ${prefix} already exists. Skip the data generation."
     else
         echo "Data ${prefix} does not exist. Generate the data..."
-        python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix ${file_prefix} --type ${gtype} --n ${n} --e ${e} --k ${k}
+        python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix ${file_prefix} --type ${gtype} --n ${n} --e ${e} --k ${k} --tool ${tool}
     fi
 
     echo "Data ${prefix} generation DONE."

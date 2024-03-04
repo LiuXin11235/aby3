@@ -8,6 +8,7 @@
 #include <string>
 
 #include "../aby3-RTR/debug.h"
+#include "../aby3-RTR/BuildingBlocks.h"
 #include "Basics.h"
 
 #define DEBUG_BASIC
@@ -400,6 +401,20 @@ void bool_cipher_dot(int pIdx, std::vector<aby3::sbMatrix> &sharedA,
             res.mShares[1](i, 0) ^= _expandA.mShares[1](j * block_len + i, 0);
         }
     }
+    return;
+}
+
+void bool2arith(int pIdx, aby3::sbMatrix &boolInput, aby3::si64Matrix &res,
+                aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                aby3::Sh3Runtime &runtime){
+    size_t len = boolInput.rows();
+    size_t bitSize = boolInput.bitCount();
+
+    aby3::i64Matrix plainInput(len, 1);
+    for(size_t i=0; i<len; i++) plainInput(i, 0) = 1;
+
+    pi_cb_mul(pIdx, plainInput, boolInput, res, eval, enc, runtime);
+
     return;
 }
 

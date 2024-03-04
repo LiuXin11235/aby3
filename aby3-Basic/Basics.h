@@ -226,6 +226,10 @@ void bool_cipher_selector(int pIdx, boolShare &flag, aby3::sbMatrix &trueVal,
                           aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
                           aby3::Sh3Runtime &runtime);
 
+void bool2arith(int pIdx, aby3::sbMatrix &boolInput, aby3::si64Matrix &res,
+                aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                aby3::Sh3Runtime &runtime);
+
 void bool_get_first_zero_mask(int pIdx, std::vector<boolShare> &inputA,
                               aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
                               aby3::Sh3Evaluator &eval,
@@ -288,5 +292,9 @@ void plain_permutate(std::vector<size_t> &permutation, std::vector<T> &data) {
 }
 
 void get_random_mask(int pIdx, aby3::i64Matrix &res, oc::block &seed);
+
+void arith_aggregation(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &res,
+                         aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                         aby3::Sh3Runtime &runtime, const std::string& func);
 
 #endif

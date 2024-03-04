@@ -166,7 +166,8 @@ int performance_profiling(oc::CLP& cmd){
 
     // 2) outting edges count query.
     timer.start("OuttingEdgesCountQuery");
-    aby3::sbMatrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
+    // aby3::sbMatrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
+    aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     timer.end("OuttingEdgesCountQuery");
 
     if(role == 0) debug_info("Outting edges count query success");

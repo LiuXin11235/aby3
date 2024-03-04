@@ -1,4 +1,5 @@
 # compile the main.
+cp ./frontend/main.test ./frontend/main.cpp
 python build.py
 
 # clean debugging files party-*.txt if exist.
@@ -11,8 +12,6 @@ done
 # scp ./bin/frontend aby32:~/aby3/bin
 # wait;
 
-cp ./frontend/main.test ./frontend/main.cpp
-
 # run the tests
 # current tests: 
 # 1) -Bool : boolean share tests; 
@@ -20,8 +19,10 @@ cp ./frontend/main.test ./frontend/main.cpp
 # 3) -ORAM : ORAM tests; 
 # 4) -Init : initialization tests, including the correlated shares; 
 # 5) -Shuffle : secure shuffling tests.
+# 6) -Graph : basic graph loading tests.
+# 7) -GraphQuery : basic graph query tests (block fetching, edge exist & outting edges count.)
 # test_args=" -ORAM -Graph"
-test_args=" -ORAM -Graph -GraphQuery"
+test_args=" -Graph -GraphQuery"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 
