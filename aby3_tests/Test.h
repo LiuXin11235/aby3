@@ -9,7 +9,7 @@
 
 #include "../aby3-RTR/debug.h"
 
-#define SHOW_TEST_CASE
+// #define SHOW_TEST_CASE
 
 int arith_basic_test(oc::CLP& cmd);
 int bool_basic_test(oc::CLP& cmd);
@@ -20,6 +20,7 @@ int get_first_zero_test(oc::CLP& cmd);
 int initialization_test(oc::CLP& cmd);
 int shuffle_test(oc::CLP& cmd);
 int correlation_test(oc::CLP& cmd);
+int communication_test(oc::CLP& cmd);
 
 int pos_map_test(oc::CLP& cmd);
 int sqrt_oram_test(oc::CLP& cmd);

@@ -3,7 +3,8 @@
 using namespace oc;
 using namespace aby3;
 
-// #define DEBUG_SHUFFLE2
+#define DEBUG_SHUFFLE2
+// #define DEBUG_SHUFFLE_COMM
 
 /**
  * The shuffle protocol accoring to
@@ -236,8 +237,7 @@ int efficient_shuffle_with_random_permutation(
     block nextSeed = enc.mShareGen.mNextCommon.getSeed();
     size_t len = T.size();
     size_t unit_len = T[0].i64Size();
-    size_t bit_count =
-        1;  // currently, we only support 1-64 bit element representation.
+    size_t bit_count = 1;  // currently, we only support 1-64 bit element representation.
 
 #ifdef DEBUG_SHUFFLE2
     std::ofstream party_fs(PARTY_FILE + std::to_string(pIdx) + ".txt",
@@ -341,6 +341,12 @@ int efficient_shuffle_with_random_permutation(
         // the following is for the shared permutation.
         // receive the sharedRY1 from P1.
         i64Matrix sharedRY1_matrix(len, bit_count);
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "going to receive RY1 from p1, size = " << sharedRY1_matrix.size()
+                 << std::endl;
+#endif
+
         runtime.mComm.mNext.recv(sharedRY1_matrix.data(),
                                  sharedRY1_matrix.size());
 
@@ -431,10 +437,16 @@ int efficient_shuffle_with_random_permutation(
 #endif
 
         i64Matrix sharedX2_matrix(len * unit_len, bit_count);
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "going to receive X2 from p0, size = " << sharedX2_matrix.size()
+                 << std::endl;
+#endif
+
         runtime.mComm.mPrev.recv(sharedX2_matrix.data(),
                                  sharedX2_matrix.size());
 #ifdef DEBUG_SHUFFLE2
-        party_fs << "received X2 from p1, size = " << sharedX2_matrix.size()
+        party_fs << "received X2 from p0, size = " << sharedX2_matrix.size()
                  << std::endl;
 #endif
         // compute the sharedX3.
@@ -460,9 +472,20 @@ int efficient_shuffle_with_random_permutation(
         runtime.mComm.mNext.asyncSendCopy(maskedC1_matrix.data(),
                                           maskedC1_matrix.size());
 
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "sending C1 to p2, size = " << maskedC1_matrix.size()
+                 << std::endl;
+#endif
+
         i64Matrix maskedC2_matrix(len * unit_len, bit_count);
         runtime.mComm.mNext.recv(maskedC2_matrix.data(),
                                  maskedC2_matrix.size());
+
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "received C2 from p2, size =" << maskedC2_matrix.size()
+                 << std::endl;
+#endif
 
         // the following is for shared permutation.
         // compute the sharedRY1
@@ -473,10 +496,20 @@ int efficient_shuffle_with_random_permutation(
         plain_permutate(next_inverse_permutation, sharedRY1);
         runtime.mComm.mPrev.asyncSendCopy(sharedRY1.data(), sharedRY1.size());
 
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "sending RY1 to p0, size = " << sharedRY1.size()
+                 << std::endl;
+#endif
+
         // receive the sharedRX2 from the next party.
         i64Matrix sharedRX2_matrix(len, bit_count);
         runtime.mComm.mNext.recv(sharedRX2_matrix.data(),
                                  sharedRX2_matrix.size());
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "received RX2 from p2, size = " << sharedRX2_matrix.size()
+                 << std::endl;
+#endif
 
         // compute the sharedRX3.
         std::vector<i64> sharedRX3(len);
@@ -492,8 +525,18 @@ int efficient_shuffle_with_random_permutation(
         }
         runtime.mComm.mPrev.asyncSendCopy(maskRB1.data(), maskRB1.size());
 
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "sending RB1 to p0, size = " << maskRB1.size()
+                 << std::endl;
+#endif
+
         i64Matrix maskRB2(len, bit_count);
         runtime.mComm.mPrev.recv(maskRB2.data(), maskRB2.size());
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "received RB2 from p0, size = " << maskRB2.size()
+                 << std::endl;
+#endif
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {
@@ -526,8 +569,19 @@ int efficient_shuffle_with_random_permutation(
 
         // receive the sharedY1 from the previous party.
         i64Matrix sharedY1_matrix(len * unit_len, bit_count);
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "going to receive Y1 from p1, size = " << sharedY1_matrix.size()
+                 << std::endl;
+#endif
+
         runtime.mComm.mPrev.recv(sharedY1_matrix.data(),
                                  sharedY1_matrix.size());
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "received Y1 from p1, size = " << sharedY1_matrix.size()
+                 << std::endl;
+#endif
 
         // compute the sharedY2.
         std::vector<i64Matrix> sharedY2(len);
@@ -559,9 +613,20 @@ int efficient_shuffle_with_random_permutation(
         }
         runtime.mComm.mPrev.asyncSendCopy(maskedC2_matrix.data(),
                                           maskedC2_matrix.size());
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "sending C2 to p1, size = " << maskedC2_matrix.size()
+                 << std::endl;
+#endif
+
         i64Matrix maskedC1_matrix(len * unit_len, bit_count);
         runtime.mComm.mPrev.recv(maskedC1_matrix.data(),
                                  maskedC1_matrix.size());
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "received C1 from p1, size = " << maskedC1_matrix.size()
+                 << std::endl;
+#endif
 
         std::vector<i64Matrix> maskC(len);
         for (size_t i = 0; i < len; i++) {
@@ -589,6 +654,11 @@ int efficient_shuffle_with_random_permutation(
         plain_permutate(next_inverse_permutation, sharedRX2);
 
         runtime.mComm.mPrev.asyncSendCopy(sharedRX2.data(), sharedRX2.size());
+
+#ifdef DEBUG_SHUFFLE2
+        party_fs << "sending RX2 to p1, size = " << sharedRX2.size()
+                 << std::endl;
+#endif
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {

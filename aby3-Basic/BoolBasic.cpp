@@ -617,7 +617,24 @@ void bool_aggregation(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &res,
     size_t bitsize = sharedA.bitCount();
 
     if (!checkPowerOfTwo(len)) {
-        THROW_RUNTIME_ERROR("The size of sharedA must be power of 2!");
+        // THROW_RUNTIME_ERROR("The size of sharedA must be power of 2!");
+        size_t mix_len = roundUpToPowerOfTwo(len);
+        size_t left_size = mix_len - len;
+
+        // padding the input to the power of 2.
+        aby3::sbMatrix _sharedMixUp(left_size, bitsize);
+        _sharedMixUp.mShares[0].setZero();
+        _sharedMixUp.mShares[1].setZero();
+        sharedA.resize(mix_len, bitsize);
+
+        std::copy(_sharedMixUp.mShares[0].begin(),
+                  _sharedMixUp.mShares[0].end(),
+                  sharedA.mShares[0].begin() + len);
+        std::copy(_sharedMixUp.mShares[1].begin(),
+                  _sharedMixUp.mShares[1].end(),
+                  sharedA.mShares[1].begin() + len);
+
+        len = mix_len;
     }
 
     size_t round = (size_t)floor(log2(len));

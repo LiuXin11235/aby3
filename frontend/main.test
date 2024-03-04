@@ -31,6 +31,10 @@ int main(int argc, char** argv) {
 		correlation_test(cmd);
 	}
 
+	if(cmd.isSet("Comm")){
+		communication_test(cmd);
+	}
+
 	if(cmd.isSet("Shuffle")){
 		shuffle_test(cmd);
 	}

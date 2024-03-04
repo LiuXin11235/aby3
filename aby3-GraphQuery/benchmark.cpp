@@ -16,7 +16,7 @@ int performance_profiling(oc::CLP& cmd){
     }
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/profiling/";
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/profiling.igraph/";
     std::string file_prefix = "tmp";
     std::string record_folder = "/root/aby3/aby3-GraphQuery/record/";
     int record_counter = -1;
@@ -99,18 +99,23 @@ int performance_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
+    // // check graph integrity.
+    // secGraphEngine.graph->check_graph(meta_file, graph_data_file, party_info);
+    // if(role == 0) debug_info("Graph integrity check success!!");
+
     // oram construction.
+    if(role == 0) debug_info("Eoram construction...");
     timer.start("EdgeOramInit");
     secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
     timer.end("EdgeOramInit");
 
-    if(role == 0) debug_info("eoram init success");
+    if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
     timer.start("NodeOramInit");
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size); 
     timer.end("NodeOramInit");
 
-    if(role == 0) debug_info("noram init success");
+    if(role == 0) debug_info("Noram init success");
 
     if(role == 0){
         std::ofstream ofs(debugFile, std::ios_base::app);
@@ -177,8 +182,6 @@ int performance_profiling(oc::CLP& cmd){
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        // timer.print_records("EdgeBlockFetch", "milliseconds", stream);
-        // timer.print_records("NodeEdgesBlockFetch", "milliseconds", stream);
     }
 
     return 0;

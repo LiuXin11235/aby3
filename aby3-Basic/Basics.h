@@ -1,3 +1,4 @@
+#include <cmath>
 #include <aby3/sh3/Sh3Encryptor.h>
 #include <aby3/sh3/Sh3Evaluator.h>
 #include <aby3/sh3/Sh3FixedPoint.h>
@@ -12,6 +13,17 @@
 #define _ABY3_BASICS_H_
 
 static int BITSIZE = 64;
+
+inline size_t roundUpToPowerOfTwo(size_t num) {
+    if (num == 0) {
+        return 1;
+    }
+    if (checkPowerOfTwo(num)) {
+        return num;
+    }
+    return (size_t) pow(2, ceil(log2(num)));
+}
+
 
 struct boolShare {
     std::array<bool, 2> bshares;
@@ -172,6 +184,13 @@ struct vecBoolIndices {
         }
     }
 };
+
+// if toNext is true, send to the next party, otherwise send to the previous party.
+int large_data_sending(int pIdx, aby3::i64Matrix &sharedA, aby3::Sh3Runtime &runtime, bool toNext);
+
+// if fromPrev is true, receive from the previous party, otherwise receive from the next party.
+int large_data_receiving(int pIdx, aby3::i64Matrix &res, aby3::Sh3Runtime &runtime, bool fromPrev);
+
 
 void bool_cipher_lt(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,

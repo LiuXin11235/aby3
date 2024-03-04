@@ -2,11 +2,12 @@
 cp ./frontend/main.pgp ./frontend/main.cpp
 
 # build the frontend.exe
-# python build.py
+python build.py
 
 # config_params.
 # gtype_list=("random" "complete" "star" "powerlaw" "bipartite")
-gtype_list=("random" "star" "powerlaw" "bipartite" "complete")
+# gtype_list=("random" "star" "powerlaw" "bipartite" "complete")
+gtype_list=("bipartite")
 folder_prefix="/root/aby3/aby3-GraphQuery/data/profiling.igraph/"
 tool="igraph"
 
@@ -35,6 +36,23 @@ for gtype in ${gtype_list[@]}; do
     fi
 
     echo "Data ${prefix} generation DONE."
+
+    n_stashExp=5; n_packExp=4;
+    e_stashExp=10; e_packExp=5;
+    n_stash=`echo "2^$n_stashExp" | bc`; n_pack=`echo "2^$n_packExp" | bc`;
+    e_stash=`echo "2^$e_stashExp" | bc`; e_pack=`echo "2^$e_packExp" | bc`;
+
+    # run the profiling test.
+    run_args=" -prefix ${prefix} -rcounter 0 -noram_stash_size ${n_stash} -noram_pack_size ${n_pack} -eoram_stash_size ${e_stash} -eoram_pack_size ${e_pack}"
+
+    echo "Run Query Profiling Test: ${run_args}"
+
+    ./Eval/dis_exec.sh "${run_args}"
+
+    cat ./debug.txt
+    # rm ./debug.txt
+
+    echo "Query Profiling Test ${prefix} DONE."
 
 done;
 

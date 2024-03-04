@@ -23,7 +23,21 @@ void arith_aggregation(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &re
     size_t len = sharedA.rows();
 
     if (!checkPowerOfTwo(len)) {
-        THROW_RUNTIME_ERROR("The size of sharedA must be power of 2!");
+        // THROW_RUNTIME_ERROR("The size of sharedA must be power of 2!");
+        size_t mix_len = roundUpToPowerOfTwo(len);
+        size_t left_size = mix_len - len;
+
+        if(pIdx == 0) debug_info("len = " + std::to_string(len) + ", mix_len = " + std::to_string(mix_len) + ", left_size = " + std::to_string(left_size));
+
+        // for Eigen Matrix data structure.
+        sharedA.mShares[0].conservativeResize(mix_len, 1);
+        sharedA.mShares[1].conservativeResize(mix_len, 1);
+
+        // for the left size, we need to fill the left size with 0.
+        sharedA.mShares[0].block(len, 0, left_size, 1).setZero();
+        sharedA.mShares[1].block(len, 0, left_size, 1).setZero();
+
+        len = mix_len;
     }
 
     size_t round = (size_t)floor(log2(len));

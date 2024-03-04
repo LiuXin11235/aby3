@@ -740,116 +740,103 @@ int sqrt_oram_test(oc::CLP &cmd){
     return 0;
 }
 
-// int graph_loading_test(oc::CLP &cmd){
+int communication_test(oc::CLP &cmd){
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
 
-//     // get the configs.
-//     int role = -1;
-//     if (cmd.isSet("role")) {
-//         auto keys = cmd.getMany<int>("role");
-//         role = keys[0];
-//     }
-//     if (role == -1) {
-//         throw std::runtime_error(LOCATION);
-//     }
+    if (role == 0) {
+        debug_info("RUN Communication TEST");
+    }
 
-//     if (role == 0) {
-//         debug_info("RUN Graph Loading TEST");
-//     }
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
 
-//     // setup communications.
-//     IOService ios;
-//     Sh3Encryptor enc;
-//     Sh3Evaluator eval;
-//     Sh3Runtime runtime;
-//     basic_setup((u64)role, ios, enc, eval, runtime);
-//     aby3Info party_info(role, enc, eval, runtime);
-
-//     // filenames.
-//     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
-//     std::string meta_file = "tmp_graph_meta.txt";
-//     std::string graph_data_file = "tmp_graph_2dpartition.txt";
-
-//     // load the graph.
-//     Graph2d secGraph(graph_data_folder + meta_file, graph_data_folder + graph_data_file, party_info);
-
-//     // check the graph.
-//     secGraph.check_graph(graph_data_folder + meta_file, graph_data_folder + graph_data_file, party_info);
-
-//     return 0;
-// }
-
-// int basic_graph_query_test(oc::CLP& cmd){
-//     // get the configs.
-//     int role = -1;
-//     if (cmd.isSet("role")) {
-//         auto keys = cmd.getMany<int>("role");
-//         role = keys[0];
-//     }
-//     if (role == -1) {
-//         throw std::runtime_error(LOCATION);
-//     }
-
-//     if (role == 0) {
-//         debug_info("RUN Basic Graph Query TEST");
-//     }
-
-//     // setup communications.
-//     IOService ios;
-//     Sh3Encryptor enc;
-//     Sh3Evaluator eval;
-//     Sh3Runtime runtime;
-//     basic_setup((u64)role, ios, enc, eval, runtime);
-//     aby3Info party_info(role, enc, eval, runtime);
-
-//     // filenames.
-//     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
-//     std::string meta_file = "tmp_graph_meta.txt";
-//     std::string graph_data_file = "tmp_graph_2dpartition.txt";
-
-//     // get the plain Graph.
-//     plainGraph2d pGraph(graph_data_folder + meta_file, graph_data_folder + graph_data_file);
-
-//     size_t stash_size = 8;
-//     size_t pack_size = 4;
-
-//     // construct the graph query engine.
-//     GraphQueryEngine secGraphEngine(party_info, graph_data_folder + meta_file, graph_data_folder + graph_data_file, stash_size, pack_size, stash_size, pack_size);
-
-//     // query the graph.
-//     int starting_node = 10, ending_node = 11;
-//     int starting_chunk = starting_node / pGraph.k, ending_chunk = ending_node / pGraph.k;
-//     int target_edge_block = starting_chunk * pGraph.b + ending_chunk;
-//     boolIndex cipher_edge_block = boolIndex(target_edge_block, role);
-//     boolIndex cipher_node_chunk = boolIndex(starting_chunk, role);
-
-//     // fetch the target edge block.
-//     aby3::sbMatrix target_edge_block_enc = secGraphEngine.get_edge_block(cipher_edge_block);
-//     aby3::sbMatrix target_node_chunk_enc = secGraphEngine.get_node_edges(cipher_node_chunk);
-
-//     // check the result.
-//     aby3::i64Matrix test_edge_block;
-//     aby3::i64Matrix test_node_chunk;
-//     enc.revealAll(runtime, target_edge_block_enc, test_edge_block).get();
-//     enc.revealAll(runtime, target_node_chunk_enc, test_node_chunk).get();
+    // test the communication.
+    size_t test_size = 1 << 30;
+    aby3::i64Matrix test_a(test_size, 1);
+    for(size_t i=0; i<test_size; i++){
+        test_a(i, 0) = role;
+    }
+    aby3::i64Matrix buffer(test_size, 1);
 
 
-//     std::vector<int> true_edge_block_vec = pGraph.get_edge_block(starting_chunk, ending_chunk);
-//     std::vector<int> true_node_chunk_vec = pGraph.get_node_chunk(starting_chunk);
+    // block-wise communicate
+    size_t block_size = 1 << 28;
+    size_t round = (size_t)ceil(test_size / (double)block_size);
+    size_t last_len = test_size - (round - 1) * block_size;
 
-//     aby3::i64Matrix true_edge_block(2*pGraph.l, 1);
-//     aby3::i64Matrix true_node_chunk(2*pGraph.l*pGraph.b, 1);
-//     for(size_t i=0; i<2*pGraph.l; i++){
-//         true_edge_block(i, 0) = true_edge_block_vec[i];
-//     }
-//     for(size_t i=0; i<2*pGraph.l*pGraph.b; i++){
-//         true_node_chunk(i, 0) = true_node_chunk_vec[i];
-//     }
+    for(size_t i=0; i<round; i++){
+        size_t len = (i == round - 1) ? last_len : block_size;
+        aby3::i64Matrix sub_test_a = test_a.block(i * block_size, 0, len, 1);
+        aby3::i64Matrix sub_buffer(len, 1);
+        auto send_fu = runtime.mComm.mNext.asyncSendFuture(sub_test_a.data(), sub_test_a.size());
+        auto recv_fu = runtime.mComm.mPrev.asyncRecv(sub_buffer.data(), sub_buffer.size());
+        send_fu.get();
+        recv_fu.get();
+        buffer.block(i * block_size, 0, len, 1) = sub_buffer;
+    }
 
-//     // check the result.
-//     if(role == 0){
-//         check_result("Edge block fetch test", test_edge_block, true_edge_block);
-//         check_result("Node chunk fetch test", test_node_chunk, true_node_chunk);
-//     }
+    aby3::i64Matrix checking_res(test_size, 1);
+    for(size_t i=0; i<test_size; i++){
+        if(role == 0) checking_res(i, 0) = buffer(i, 0) - 2;
+        else checking_res(i, 0) = buffer(i, 0) + 1;
+    }
 
-//     return 0;
-// }
+    check_result("Ring Communication test ROLE " + std::to_string(role), checking_res, test_a);
+
+    // only 0 -> 1 and 1 -> 2.
+    if(role == 0){
+        for(size_t i=0; i<round; i++){
+            size_t len = (i == round - 1) ? last_len : block_size;
+            aby3::i64Matrix sub_test_a = test_a.block(i * block_size, 0, len, 1);
+            aby3::i64Matrix sub_buffer(len, 1);
+            auto sendFu = runtime.mComm.mNext.asyncSendFuture(sub_test_a.data(), sub_test_a.size());
+            sendFu.get();
+        }
+    }
+    if(role == 1){
+        aby3::i64Matrix new_buf(test_size, 1);
+        // receiving from 0.
+        for(size_t i=0; i<round; i++){
+            size_t len = (i == round - 1) ? last_len : block_size;
+
+            // recv from p0.
+            aby3::i64Matrix sub_buffer(len, 1);
+            auto recvFu = runtime.mComm.mPrev.asyncRecv(sub_buffer.data(), sub_buffer.size());
+
+            // send to p2.
+            aby3::i64Matrix send_buf = test_a.block(i * block_size, 0, len, 1);
+            auto sendFu = runtime.mComm.mNext.asyncSendFuture(send_buf.data(), send_buf.size());
+
+            recvFu.get();
+            new_buf.block(i * block_size, 0, len, 1) = sub_buffer;
+            sendFu.get();
+        }
+        check_result("Single Communication test ROLE " + std::to_string(role), new_buf, buffer);
+    }
+    if(role == 2){
+        // receiving from 1.
+        aby3::i64Matrix new_buf(test_size, 1);
+        for(size_t i=0; i<round; i++){
+            size_t len = (i == round - 1) ? last_len : block_size;
+            aby3::i64Matrix sub_buffer(len, 1);
+            runtime.mComm.mPrev.recv(sub_buffer.data(), sub_buffer.size());
+            new_buf.block(i * block_size, 0, len, 1) = sub_buffer;
+        }
+        check_result("Single Communication test ROLE " + std::to_string(role), new_buf, buffer);
+    }
+
+
+    return 0;
+}

@@ -195,7 +195,6 @@ int basic_graph_query_test(oc::CLP& cmd){
     int target_chunk = GQEngine.get_block_index(target_node);
     boolIndex priv_target_chunk = boolIndex(target_chunk, role);
     boolIndex priv_target_node = boolIndex(target_node, role);
-    // aby3::sbMatrix outting_edges_count_node0 = outting_edge_count(priv_target_node, priv_target_chunk, GQEngine);
     aby3::si64Matrix outting_edges_count_node0 = outting_edge_count(priv_target_node, priv_target_chunk, GQEngine);
 
 

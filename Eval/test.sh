@@ -21,8 +21,9 @@ done
 # 5) -Shuffle : secure shuffling tests.
 # 6) -Graph : basic graph loading tests.
 # 7) -GraphQuery : basic graph query tests (block fetching, edge exist & outting edges count.)
+# 8) -Comm : test inter-party communication.
 # test_args=" -ORAM -Graph"
-test_args=" -Graph -GraphQuery"
+test_args=" -Comm"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 
