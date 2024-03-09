@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
 
 	if(cmd.isSet("Shuffle")){
 		shuffle_test(cmd);
+		large_scale_shuffle_test(cmd);
 	}
 
 	if(cmd.isSet("ORAM")){

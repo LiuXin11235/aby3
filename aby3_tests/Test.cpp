@@ -451,6 +451,172 @@ int shuffle_test(oc::CLP &cmd) {
     return 0;
 }
 
+int large_scale_shuffle_test(oc::CLP &cmd){
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if (role == 0) {
+        debug_info("RUN LARGE-SCALE SHUFFLE TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    size_t LARGE_SCALE_SIZE = 1 << 20;
+    size_t LARGE_UNIT_SIZE = 1 << 6;
+
+    // generate the test data.
+    std::vector<i64Matrix> input_x(LARGE_SCALE_SIZE);
+    for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+        input_x[i].resize(LARGE_UNIT_SIZE, 1);
+        for (size_t j = 0; j < LARGE_UNIT_SIZE; j++) {
+            input_x[i](j, 0) = i;
+        }
+    }
+
+    // encrypt the inputs.
+    std::vector<sbMatrix> bsharedX(LARGE_SCALE_SIZE);
+    for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+        bsharedX[i].resize(LARGE_UNIT_SIZE, 1);
+        if (role == 0) {
+            enc.localBinMatrix(runtime, input_x[i], bsharedX[i]).get();
+        } else {
+            enc.remoteBinMatrix(runtime, bsharedX[i]).get();
+        }
+    }
+
+    if(role == 0){
+        debug_info("After data generation.  ");
+    }
+
+    // generate the permutation.
+    block prevSeed = enc.mShareGen.mPrevCommon.getSeed();
+    block nextSeed = enc.mShareGen.mNextCommon.getSeed();
+    size_t len = LARGE_SCALE_SIZE;
+    std::vector<size_t> prev_permutation;
+    std::vector<size_t> next_permutation;
+    get_permutation(len, prev_permutation, prevSeed);
+    get_permutation(len, next_permutation, nextSeed);
+
+    std::vector<size_t> other_permutation(len);
+    runtime.mComm.mPrev.asyncSendCopy(next_permutation.data(),
+                                      next_permutation.size());
+    runtime.mComm.mNext.recv(other_permutation.data(),
+                             other_permutation.size());
+
+    std::vector<size_t> final_permutation;
+    std::vector<std::vector<size_t>> permutation_list;
+    if (role == 0) {
+        permutation_list = {next_permutation, prev_permutation,
+                            other_permutation};
+    }
+    if (role == 1) {
+        permutation_list = {prev_permutation, other_permutation,
+                            next_permutation};
+    }
+    if (role == 2) {
+        permutation_list = {other_permutation, next_permutation,
+                            prev_permutation};
+    }
+    combine_permutation(permutation_list, final_permutation);
+
+    std::vector<i64Matrix> shuffle_res(LARGE_SCALE_SIZE);
+    for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+        shuffle_res[i].resize(LARGE_UNIT_SIZE, 1);
+        shuffle_res[i] = input_x[i];
+    }
+    plain_permutate(final_permutation, shuffle_res);
+
+    if(role == 0) debug_info("after permutation generation.  ");
+
+    // shuffle with permutation test.
+    std::vector<aby3::sbMatrix> bsharedShuffle(LARGE_SCALE_SIZE);
+    std::vector<si64> shared_permutation(LARGE_SCALE_SIZE);
+    efficient_shuffle_with_random_permutation(
+        bsharedX, role, bsharedShuffle, shared_permutation, enc, eval, runtime);
+    
+    if(role == 0) debug_info("");
+
+    std::vector<i64Matrix> test_res2(LARGE_SCALE_SIZE);
+    for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+        test_res2[i].resize(LARGE_UNIT_SIZE, 1);
+        enc.revealAll(runtime, bsharedShuffle[i], test_res2[i]).get();
+    }
+    sbMatrix shared_permutation_matrix(LARGE_SCALE_SIZE, 1);
+    for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+        shared_permutation_matrix.mShares[0](i) =
+            shared_permutation[i].mData[0];
+        shared_permutation_matrix.mShares[1](i) =
+            shared_permutation[i].mData[1];
+    }
+    i64Matrix test_permutation(LARGE_SCALE_SIZE, 1);
+    enc.revealAll(runtime, shared_permutation_matrix, test_permutation).get();
+
+    bool check_shuffle = true;
+    bool check_permutation = true;
+
+    for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+        if (test_permutation(i, 0) != final_permutation[i]) {
+            check_permutation = false;
+        }
+        for (size_t j = 0; j < LARGE_UNIT_SIZE; j++) {
+            if (test_res2[i](j, 0) != shuffle_res[i](j, 0)) {
+                check_shuffle = false;
+            }
+        }
+    }
+
+    // check the final result.
+    if (role == 0) {
+        if (check_shuffle) {
+            debug_info(
+                "\033[32m SHUFFLE in shuffle and permutation CHECK SUCCESS ! "
+                "\033[0m\n");
+        } else {
+            debug_info(
+                "\033[31m SHUFFLE in in shuffle and permutation CHECK ERROR ! "
+                "\033[0m\n");
+            debug_info("True result: \n");
+            for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+                debug_output_matrix(shuffle_res[i]);
+            }
+            debug_info("Func result: \n");
+            for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {
+                debug_output_matrix(test_res2[i]);
+            }
+        }
+
+        if (check_permutation) {
+            debug_info(
+                "\033[32m PERMUTATION in shuffle and permutation CHECK SUCCESS "
+                "! "
+                "\033[0m\n");
+        } else {
+            debug_info(
+                "\033[31m PERMUTATION in in shuffle and permutation CHECK "
+                "ERROR ! "
+                "\033[0m\n");
+            debug_info("True result: \n");
+            debug_output_vector(final_permutation);
+
+            debug_info("Func result: \n");
+            debug_output_matrix(test_permutation);
+        }
+    }
+    return 0;
+}
+
 int correlation_test(oc::CLP &cmd) {
     // get the configs.
     int role = -1;

@@ -19,6 +19,7 @@ int get_first_zero_test(oc::CLP& cmd);
 
 int initialization_test(oc::CLP& cmd);
 int shuffle_test(oc::CLP& cmd);
+int large_scale_shuffle_test(oc::CLP& cmd);
 int correlation_test(oc::CLP& cmd);
 int communication_test(oc::CLP& cmd);
 
