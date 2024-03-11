@@ -496,10 +496,6 @@ int large_scale_shuffle_test(oc::CLP &cmd){
         }
     }
 
-    if(role == 0){
-        debug_info("After data generation.  ");
-    }
-
     // generate the permutation.
     block prevSeed = enc.mShareGen.mPrevCommon.getSeed();
     block nextSeed = enc.mShareGen.mNextCommon.getSeed();
@@ -538,15 +534,12 @@ int large_scale_shuffle_test(oc::CLP &cmd){
     }
     plain_permutate(final_permutation, shuffle_res);
 
-    if(role == 0) debug_info("after permutation generation.  ");
-
     // shuffle with permutation test.
     std::vector<aby3::sbMatrix> bsharedShuffle(LARGE_SCALE_SIZE);
     std::vector<si64> shared_permutation(LARGE_SCALE_SIZE);
     efficient_shuffle_with_random_permutation(
         bsharedX, role, bsharedShuffle, shared_permutation, enc, eval, runtime);
     
-    if(role == 0) debug_info("");
 
     std::vector<i64Matrix> test_res2(LARGE_SCALE_SIZE);
     for (size_t i = 0; i < LARGE_SCALE_SIZE; i++) {

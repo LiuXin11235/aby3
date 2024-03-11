@@ -23,7 +23,7 @@ done
 # 7) -GraphQuery : basic graph query tests (block fetching, edge exist & outting edges count.)
 # 8) -Comm : test inter-party communication.
 # test_args=" -ORAM -Graph"
-test_args=" -Comm"
+test_args=" -Shuffle"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

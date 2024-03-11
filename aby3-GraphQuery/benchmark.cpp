@@ -99,10 +99,6 @@ int performance_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
-    // // check graph integrity.
-    // secGraphEngine.graph->check_graph(meta_file, graph_data_file, party_info);
-    // if(role == 0) debug_info("Graph integrity check success!!");
-
     // oram construction.
     if(role == 0) debug_info("Eoram construction...");
     timer.start("EdgeOramInit");
@@ -171,7 +167,6 @@ int performance_profiling(oc::CLP& cmd){
 
     // 2) outting edges count query.
     timer.start("OuttingEdgesCountQuery");
-    // aby3::sbMatrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     timer.end("OuttingEdgesCountQuery");
 
