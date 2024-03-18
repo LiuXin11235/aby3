@@ -316,4 +316,20 @@ void arith_aggregation(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &re
                          aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
                          aby3::Sh3Runtime &runtime, const std::string& func);
 
+template <typename T>
+void vector_tile(const std::vector<T>& v, int n, std::vector<T>& target, int start){
+    for(int i=0; i<n; i++){
+        std::copy(v.begin(), v.end(), target.begin() + start + (i * v.size()));
+    }
+    return;
+}
+
+template <typename T>
+void vector_repeat(const std::vector<T>& v, int n, std::vector<T> &target, int start){
+    for(int i=0; i<v.size(); i++){
+        std::fill(target.begin() + start + i*n, target.begin() + start + (i + 1) * n, v[i]);
+    }
+    return;
+}
+
 #endif

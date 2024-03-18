@@ -22,8 +22,9 @@ done
 # 6) -Graph : basic graph loading tests.
 # 7) -GraphQuery : basic graph query tests (block fetching, edge exist & outting edges count.)
 # 8) -Comm : test inter-party communication.
+# 9) -Sort : test the sort functions.
 # test_args=" -ORAM -Graph"
-test_args=" -Shuffle"
+test_args=" -Sort"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

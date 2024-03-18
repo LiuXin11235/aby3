@@ -30,6 +30,8 @@ int graph_loading_test(oc::CLP& cmd);
 int graph_block_fetch_test(oc::CLP& cmd);
 int basic_graph_query_test(oc::CLP& cmd);
 
+int bc_sort_test(oc::CLP& cmd);
+
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);
 
