@@ -332,4 +332,10 @@ void vector_repeat(const std::vector<T>& v, int n, std::vector<T> &target, int s
     return;
 }
 
+std::vector<size_t> argwhere(aby3::i64Matrix& input, int target);
+
+std::vector<size_t> argwhere(std::vector<std::vector<int>>& inputs, int target);
+
+std::vector<size_t> argwhere(std::vector<size_t>& inputs, int target);
+
 #endif

@@ -56,6 +56,7 @@ int main(int argc, char** argv) {
 
 	if(cmd.isSet("Sort")){
 		bc_sort_test(cmd);
+		quick_sort_test(cmd);
 	}
   return 0;
 }

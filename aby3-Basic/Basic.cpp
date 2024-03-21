@@ -48,3 +48,43 @@ int large_data_receiving(int pIdx, aby3::i64Matrix &res, aby3::Sh3Runtime &runti
 
     return 0;
 }
+
+std::vector<size_t> argwhere(aby3::i64Matrix& input, int target){
+    size_t len = input.size();
+    std::vector<size_t> res;
+
+    for(size_t i=0; i<len; i++){
+        if(input(i, 0) == target){
+            res.push_back(i);
+        }
+    }
+    return res;
+}
+
+std::vector<size_t> argwhere(std::vector<std::vector<int>>& input, int target){
+    size_t len = input.size();
+    size_t unit_len = input[0].size();
+    std::vector<size_t> res(len);
+
+    for(size_t i=0; i<len; i++){
+        for(size_t j=0; j<unit_len; j++){
+            if(input[i][j] == target){
+                res[i] = j; // assume only one element each row is equal to the target.
+                break;
+            }
+        }
+    }
+    return res;
+}
+
+std::vector<size_t> argwhere(std::vector<size_t>& input, int target){
+    size_t len = input.size();
+    std::vector<size_t> res;
+
+    for(size_t i=0; i<len; i++){
+        if(input[i] == target){
+            res.push_back(i);
+        }
+    }
+    return res;
+}
