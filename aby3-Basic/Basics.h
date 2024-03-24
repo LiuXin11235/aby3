@@ -338,4 +338,8 @@ std::vector<size_t> argwhere(std::vector<std::vector<int>>& inputs, int target);
 
 std::vector<size_t> argwhere(std::vector<size_t>& inputs, int target);
 
+void tag_append(int pIdx, std::vector<aby3::sbMatrix>& inputs);
+
+void tag_remove(int pIdx, size_t tag_len, std::vector<aby3::sbMatrix>& inputs);
+
 #endif

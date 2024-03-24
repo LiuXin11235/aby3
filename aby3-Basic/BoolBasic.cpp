@@ -792,3 +792,25 @@ void get_random_mask(int pIdx, i64Matrix &res, block &seed) {
     for (size_t i = 0; i < len; i++) res(i, 0) = (i64)prng.get<int64_t>();
     return;
 }
+
+void tag_append(int pIdx, std::vector<aby3::sbMatrix>& inputs){
+
+    size_t len = inputs.size();
+    size_t bitsize = inputs[0].bitCount();
+
+    // 1. generate the log(len)-size bit tag shares.
+
+    // 2. append the tag shares to the inputs.
+
+    return;
+}
+
+void tag_remove(int pIdx, size_t tag_len, std::vector<aby3::sbMatrix>& inputs){
+
+    size_t total_bit_size = inputs[0].bitCount();
+    size_t bitsize = total_bit_size - tag_len;
+
+    // remove the last tag_len bits from the tail of the inputs.
+
+    return;
+}
