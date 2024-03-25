@@ -8,7 +8,7 @@ def getLibOTe(install, prefix, par,libOTe, boost, relic):
     cwd = os.getcwd()
     
     if os.path.isdir("libOTe") == False:
-        os.system("git clone --recursive https://github.com/osu-crypto/libOTe.git")
+        os.system("git clone --recursive git@github.com:osu-crypto/libOTe.git")
 
     os.chdir(cwd + "/libOTe")
     os.system("git checkout cf537295c47a3924c13030a9b796cee9d6ebeace ")
