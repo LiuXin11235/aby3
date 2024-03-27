@@ -11,6 +11,7 @@
 #include "./Pair_then_Reduce/include/datatype.h"
 #include "./Pair_then_Reduce/include/tasks.h"
 #include "BuildingBlocks.h"
+#include "GeneralPTA.h"
 #include "debug.h"
 
 template <aby3::Decimal D>
@@ -148,42 +149,42 @@ class SubPRGatherABY3 : public SubTask<NUMX, NUMY, NUMT, NUMR>{
     }
 };
 
-// mpi function definition.
-template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
-          template <typename, typename, typename, typename> class TASK>
-class ABY3MPITask : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
- public:
-  // aby3 info
-  int pIdx;
-  aby3::Sh3Encryptor& enc;
-  aby3::Sh3Runtime& runtime;
-  aby3::Sh3Evaluator& eval;
+// // mpi function definition.
+// template <typename NUMX, typename NUMY, typename NUMT, typename NUMR,
+//           template <typename, typename, typename, typename> class TASK>
+// class ABY3MPITask : public MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK> {
+//  public:
+//   // aby3 info
+//   int pIdx;
+//   aby3::Sh3Encryptor& enc;
+//   aby3::Sh3Runtime& runtime;
+//   aby3::Sh3Evaluator& eval;
 
-  // setup all the aby3 environment variables, pIdx and rank.
-  using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
-  ABY3MPITask(int tasks, size_t optimal_block, const int pIdx,
-                 aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
-                 aby3::Sh3Evaluator& eval)
-      : pIdx(pIdx),
-        enc(enc),
-        runtime(runtime),
-        eval(eval),
-        MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {}
+//   // setup all the aby3 environment variables, pIdx and rank.
+//   using MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>::MPIPTRTask;
+//   ABY3MPITask(int tasks, size_t optimal_block, const int pIdx,
+//                  aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+//                  aby3::Sh3Evaluator& eval)
+//       : pIdx(pIdx),
+//         enc(enc),
+//         runtime(runtime),
+//         eval(eval),
+//         MPIPTRTask<NUMX, NUMY, NUMT, NUMR, TASK>(tasks, optimal_block) {}
 
-  // override sub_task create.
-  void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
-                       size_t table_end) override {
-    auto subTaskPtr(
-        new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
-                                         this->enc, this->runtime, this->eval));
-    this->subTask.reset(subTaskPtr);
-    this->subTask->initial_value = this->default_value;
-    this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
-                                     table_end);
-    for (int j = 0; j < this->n; j++)
-      this->subTask->res[j] = this->default_value;
-  }
-};
+//   // override sub_task create.
+//   void create_sub_task(size_t optimal_block, int task_id, size_t table_start,
+//                        size_t table_end) override {
+//     auto subTaskPtr(
+//         new TASK<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id, this->pIdx,
+//                                          this->enc, this->runtime, this->eval));
+//     this->subTask.reset(subTaskPtr);
+//     this->subTask->initial_value = this->default_value;
+//     this->subTask->circuit_construct(this->shapeX, this->shapeY, table_start,
+//                                      table_end);
+//     for (int j = 0; j < this->n; j++)
+//       this->subTask->res[j] = this->default_value;
+//   }
+// };
 
 
 
