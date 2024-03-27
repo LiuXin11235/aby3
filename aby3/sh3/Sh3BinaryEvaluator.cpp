@@ -730,8 +730,7 @@ namespace aby3
 					*updateIter++ = static_cast<i32>(out);
 					z = getShares();
 					for (i32 k = 0; k < simdWidth128; k += 8)
-					{
-
+					{	
 						t0[0] = s0_in0[k + 0] & s0_in1[k + 0];
 						t0[1] = s0_in0[k + 1] & s0_in1[k + 1];
 						t0[2] = s0_in0[k + 2] & s0_in1[k + 2];
@@ -777,6 +776,7 @@ namespace aby3
 						t0[6] = t0[6] ^ t1[6];
 						t0[7] = t0[7] ^ t1[7];
 
+						// what is the usage of z?
 						s0_Out[k + 0] = t0[0] ^ z[k + 0];
 						s0_Out[k + 1] = t0[1] ^ z[k + 1];
 						s0_Out[k + 2] = t0[2] ^ z[k + 2];
@@ -914,8 +914,8 @@ namespace aby3
 					z = getShares();
 					for (i32 k = 0; k < simdWidth128; k += 8)
 					{
-						// the following OR gate logic is: z = (x & y) ^ (x ^ y).
-						// 1. first comput the and gate.
+						
+						// first compute the and gate.
 						t0[0] = s0_in0[k + 0] & s0_in1[k + 0];
 						t0[1] = s0_in0[k + 1] & s0_in1[k + 1];
 						t0[2] = s0_in0[k + 2] & s0_in1[k + 2];
@@ -960,6 +960,107 @@ namespace aby3
 						t0[5] = t0[5] ^ t1[5];
 						t0[6] = t0[6] ^ t1[6];
 						t0[7] = t0[7] ^ t1[7];
+
+						// then xor with the xor-gate.
+						s0_Out[k + 0] = t0[0] ^ s0_in0[k + 0] ^ s0_in1[k + 0] ^ z[k + 0];
+						s0_Out[k + 1] = t0[1] ^ s0_in0[k + 1] ^ s0_in1[k + 1] ^ z[k + 1];
+						s0_Out[k + 2] = t0[2] ^ s0_in0[k + 2] ^ s0_in1[k + 2] ^ z[k + 2];
+						s0_Out[k + 3] = t0[3] ^ s0_in0[k + 3] ^ s0_in1[k + 3] ^ z[k + 3];
+						s0_Out[k + 4] = t0[4] ^ s0_in0[k + 4] ^ s0_in1[k + 4] ^ z[k + 4];
+						s0_Out[k + 5] = t0[5] ^ s0_in0[k + 5] ^ s0_in1[k + 5] ^ z[k + 5];
+						s0_Out[k + 6] = t0[6] ^ s0_in0[k + 6] ^ s0_in1[k + 6] ^ z[k + 6];
+						s0_Out[k + 7] = t0[7] ^ s0_in0[k + 7] ^ s0_in1[k + 7] ^ z[k + 7];
+
+						// // t0 = mem00
+						// t0[0] = s0_in0[k + 0] ^ AllOneBlock;
+						// t0[1] = s0_in0[k + 1] ^ AllOneBlock;
+						// t0[2] = s0_in0[k + 2] ^ AllOneBlock;
+						// t0[3] = s0_in0[k + 3] ^ AllOneBlock;
+						// t0[4] = s0_in0[k + 4] ^ AllOneBlock;
+						// t0[5] = s0_in0[k + 5] ^ AllOneBlock;
+						// t0[6] = s0_in0[k + 6] ^ AllOneBlock;
+						// t0[7] = s0_in0[k + 7] ^ AllOneBlock;
+
+						// // t1 = mem01
+						// t1[0] = s0_in1[k + 0] ^ AllOneBlock;
+						// t1[1] = s0_in1[k + 1] ^ AllOneBlock;
+						// t1[2] = s0_in1[k + 2] ^ AllOneBlock;
+						// t1[3] = s0_in1[k + 3] ^ AllOneBlock;
+						// t1[4] = s0_in1[k + 4] ^ AllOneBlock;
+						// t1[5] = s0_in1[k + 5] ^ AllOneBlock;
+						// t1[6] = s0_in1[k + 6] ^ AllOneBlock;
+						// t1[7] = s0_in1[k + 7] ^ AllOneBlock;
+
+						// // t2 = mem10
+						// t2[0] = s1_in0[k + 0] ^ AllOneBlock;
+						// t2[1] = s1_in0[k + 1] ^ AllOneBlock;
+						// t2[2] = s1_in0[k + 2] ^ AllOneBlock;
+						// t2[3] = s1_in0[k + 3] ^ AllOneBlock;
+						// t2[4] = s1_in0[k + 4] ^ AllOneBlock;
+						// t2[5] = s1_in0[k + 5] ^ AllOneBlock;
+						// t2[6] = s1_in0[k + 6] ^ AllOneBlock;
+						// t2[7] = s1_in0[k + 7] ^ AllOneBlock;
+
+
+						// // t3 = mem11 & mem00
+						// s0_Out[k + 0] = s1_in1[k + 0] & t0[0];
+						// s0_Out[k + 1] = s1_in1[k + 1] & t0[1];
+						// s0_Out[k + 2] = s1_in1[k + 2] & t0[2];
+						// s0_Out[k + 3] = s1_in1[k + 3] & t0[3];
+						// s0_Out[k + 4] = s1_in1[k + 4] & t0[4];
+						// s0_Out[k + 5] = s1_in1[k + 5] & t0[5];
+						// s0_Out[k + 6] = s1_in1[k + 6] & t0[6];
+						// s0_Out[k + 7] = s1_in1[k + 7] & t0[7];
+
+						// // t2 = mem10 & mem01
+						// t2[0] = t2[0] & t1[0];
+						// t2[1] = t2[1] & t1[1];
+						// t2[2] = t2[2] & t1[2];
+						// t2[3] = t2[3] & t1[3];
+						// t2[4] = t2[4] & t1[4];
+						// t2[5] = t2[5] & t1[5];
+						// t2[6] = t2[6] & t1[6];
+						// t2[7] = t2[7] & t1[7];
+
+						// // out = mem11 & mem00 ^ mem10 & mem01
+						// s0_Out[k + 0] = s0_Out[k + 0] ^ t2[0];
+						// s0_Out[k + 1] = s0_Out[k + 1] ^ t2[1];
+						// s0_Out[k + 2] = s0_Out[k + 2] ^ t2[2];
+						// s0_Out[k + 3] = s0_Out[k + 3] ^ t2[3];
+						// s0_Out[k + 4] = s0_Out[k + 4] ^ t2[4];
+						// s0_Out[k + 5] = s0_Out[k + 5] ^ t2[5];
+						// s0_Out[k + 6] = s0_Out[k + 6] ^ t2[6];
+						// s0_Out[k + 7] = s0_Out[k + 7] ^ t2[7];
+
+						// // t1 = mem00 & mem01
+						// t1[0] = t0[0] & t1[0];
+						// t1[1] = t0[1] & t1[1];
+						// t1[2] = t0[2] & t1[2];
+						// t1[3] = t0[3] & t1[3];
+						// t1[4] = t0[4] & t1[4];
+						// t1[5] = t0[5] & t1[5];
+						// t1[6] = t0[6] & t1[6];
+						// t1[7] = t0[7] & t1[7];
+
+						// // out = mem11 & mem00 ^ mem10 & mem01 ^ mem00 & mem01
+						// s0_Out[k + 0] = s0_Out[k + 0] ^ t1[0];
+						// s0_Out[k + 1] = s0_Out[k + 1] ^ t1[1];
+						// s0_Out[k + 2] = s0_Out[k + 2] ^ t1[2];
+						// s0_Out[k + 3] = s0_Out[k + 3] ^ t1[3];
+						// s0_Out[k + 4] = s0_Out[k + 4] ^ t1[4];
+						// s0_Out[k + 5] = s0_Out[k + 5] ^ t1[5];
+						// s0_Out[k + 6] = s0_Out[k + 6] ^ t1[6];
+						// s0_Out[k + 7] = s0_Out[k + 7] ^ t1[7];
+
+						// // out = mem11 & mem00 ^ mem10 & mem01 ^ mem00 & mem01 ^ z0 ^ z1
+						// s0_Out[k + 0] = s0_Out[k + 0] ^ z[k + 0];
+						// s0_Out[k + 1] = s0_Out[k + 1] ^ z[k + 1];
+						// s0_Out[k + 2] = s0_Out[k + 2] ^ z[k + 2];
+						// s0_Out[k + 3] = s0_Out[k + 3] ^ z[k + 3];
+						// s0_Out[k + 4] = s0_Out[k + 4] ^ z[k + 4];
+						// s0_Out[k + 5] = s0_Out[k + 5] ^ z[k + 5];
+						// s0_Out[k + 6] = s0_Out[k + 6] ^ z[k + 6];
+						// s0_Out[k + 7] = s0_Out[k + 7] ^ z[k + 7];
 
 						// 2. then comput the xor gate.
 						s0_Out[k + 0] = t0[0] ^ s0_in0[k + 0] ^ s0_in1[k + 0] ^ z[k + 0];
@@ -1073,7 +1174,6 @@ namespace aby3
 				case GateType::na_Or:
 				case GateType::One:
 				default:
-
 					throw std::runtime_error("BinaryEngine unsupported GateType " LOCATION);
 					break;
 				}
@@ -1165,7 +1265,6 @@ namespace aby3
 					comm.mNext.asyncSend(std::move(sendBuff));
 				else
 					comm.mNext.asyncSend(sendBuff.data(), sendBuff.size());
-
 				mRecvData.resize(size);
 				mRecvFutr.emplace_back(comm.mPrev.asyncRecv(mRecvData));
 			}
