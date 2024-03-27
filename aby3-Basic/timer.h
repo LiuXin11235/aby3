@@ -70,7 +70,7 @@ public:
         } else if (unit == "minutes") {
             duration /= 60000000;
         }
-        os << "Time taken by " << key << ": " << duration << " " << unit << std::endl;
+        os << key << ": " << duration << " " << unit << std::endl;
     }
 
     void print_total(const std::string& unit = "microseconds", std::ostream& os = std::cout){

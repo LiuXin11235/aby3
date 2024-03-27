@@ -10,7 +10,7 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-// #define LOCAL_TEST
+#define LOCAL_TEST
 
 static int BASEPORT=6000;
 
@@ -746,8 +746,9 @@ int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& 
   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(),
                                           circuitInput0.mShares[1].size());
   fu.get();
-
   fetch_eq_res(pIdx, circuitInput0, circuitInput1, res, eval, runtime);
+
+  return 0;
 }
 
 
@@ -775,14 +776,6 @@ int fetch_eq_res(int pIdx, sbMatrix& circuitA, sbMatrix& circuitB, sbMatrix& res
         binEng.getOutput(0, res);
     });
   dep.get();  
-
-  // sequentially evaluate the eq circuit.
-  // Sh3Task task = runtime.noDependencies();
-  // res.resize(i64Size, 1);
-  // binEng.validateMemory();
-  // binEng.distributeInputs();
-  // binEng.roundCallback(runtime.mComm, task);
-  // binEng.getOutput(0, res);
 
   return 0;
 }

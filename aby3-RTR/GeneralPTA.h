@@ -13,7 +13,7 @@
 #include "BuildingBlocks.h"
 #include "debug.h"
 
-// aby3 subtask definition.
+// aby3 subtask definition, currently we do not mainain this class.
 template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
 class SubABY3Task : public SubTask<NUMX, NUMY, NUMT, NUMR>{
 public:
@@ -28,7 +28,7 @@ public:
 
     using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
 
-    ABY3SubTask(const size_t optimal_block, const int task_id, const int pIdx,
+    SubABY3Task(const size_t optimal_block, const int task_id, const int pIdx,
             aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
             aby3::Sh3Evaluator& eval)
         : pIdx(pIdx),
@@ -43,14 +43,14 @@ public:
         this->m_end = (this->table_end - 1) / this->n;
         size_t partial_len = this->m_end - this->m_start + 1;
         if(this->m_end >= this->m - 1){
-            return partial_len
+            return partial_len;
         }
         else{
             partial_len += this->lookahead;
         }
         return partial_len;
     }
-}
+};
 
 
 // mpi function definition.

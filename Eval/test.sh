@@ -1,8 +1,5 @@
 # prepare the test cpp.
 cp ./frontend/main.test ./frontend/main.cpp
-
-# compile the main.
-cp ./frontend/main.test ./frontend/main.cpp
 python build.py
 
 # clean debugging files party-*.txt if exist.
@@ -28,7 +25,7 @@ done
 # 9) -Sort : test the sort functions.
 # test_args=" -ORAM -Graph"
 test_args=" -Sort"
-./Eval/dis_exec.sh "${test_args}"
+./Eval/basic/dis_exec.sh "${test_args}"
 wait;
 
 # scp aby31:~/aby3/debug.txt ./debug-p1.txt

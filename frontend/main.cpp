@@ -3,8 +3,7 @@
 #include <tests_cryptoTools/UnitTests.h>
 #include <map>
 #include <mpi.h>
-#include "aby3_tests/Test.h"
-#include "aby3_tests/aby3_tests.h"
+#include "aby3-RTR/PtATests.h"
 #include "eric.h"
 
 using namespace oc;
@@ -12,41 +11,14 @@ using namespace aby3;
 
 int main(int argc, char** argv) {
   oc::CLP cmd(argc, argv);
-  // reinit the environment and then finalize the environment.
 
   MPI_Init(&argc, &argv);
 
-  // set the role for this process.
-	if (cmd.isSet("Bool")){
-		bool_basic_test(cmd);
-		bool_basic_test2(cmd);
-		get_first_zero_test(cmd);
-		bool_aggregation_test(cmd);
-	}
+  if(cmd.isSet("cipher_index")) {
+	test_cipher_index_pta(cmd);
+  }
 
-	if (cmd.isSet("Arith")){
-		arith_basic_test(cmd);
-	}
+  MPI_Finalize();
 
-	if (cmd.isSet("Init")){
-		initialization_test(cmd);
-		correlation_test(cmd);
-	}
-
-	if(cmd.isSet("Comm")){
-		communication_test(cmd);
-	}
-
-	if(cmd.isSet("Shuffle")){
-		shuffle_test(cmd);
-		large_scale_shuffle_test(cmd);
-	}
-
-	if(cmd.isSet("ORAM")){
-		pos_map_test(cmd);
-		sqrt_oram_test(cmd);
-	}
-
-	MPI_Finalize();
   return 0;
 }

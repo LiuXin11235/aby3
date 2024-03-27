@@ -1,22 +1,42 @@
 #include "GeneralPTA.h"
 #include "DataGenerator.h"
 
-class CipherIndex : SubABY3Task<aby3::si64, int, aby3::si64, aby3::si64> {
-    using SubABY3Task<aby3::si64, int, aby3::si64, aby3::si64>::SubABY3Task;
+const aby3::si64 GET_ZERO_SHARE = [] {
+    aby3::si64 dval;
+    dval.mData[0] = 0;
+    dval.mData[1] = 0;
+    return dval;
+}();
+
+// functional class override.
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class CipherIndex : public SubTask<NUMX, NUMY, NUMT, NUMR> { 
+
+public:
+    // aby3 info
+    int pIdx;
+    aby3::Sh3Encryptor* enc;
+    aby3::Sh3Runtime* runtime;
+    aby3::Sh3Evaluator* eval;
+
+    using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
 
     CipherIndex(const size_t optimal_block, const int task_id, const int pIdx,
             aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
-            aby3::Sh3Evaluator& eval)
-        : SubABY3Task<aby3::si64, int, aby3::si64, aby3::si64>(optimal_block, task_id, pIdx, enc, runtime, eval) {
-        this->have_selective = true;
+            aby3::Sh3Evaluator& eval) : 
+        pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+            this->have_selective = true;
     }
 
-    virtual void compute_local_table(std::vector<aby3::si64>& expandX, std::vector<int>& expandY, std::vector<aby3::si64>& local_table, BlockInfo* binfo) override {
+    virtual void compute_local_table(std::vector<NUMX>& expandX, std::vector<NUMY>& expandY, std::vector<NUMT>& local_table, BlockInfo* binfo) override {
         aby3::u64 block_length = binfo->block_len;
-        
         // pairwise comparison
-        aby3::sbMatrix partTable;
-        vector_cipher_eq(this->pIdx, expandX, expandY, partTable, *this->eval, *this->runtime, *this->enc);
+        aby3::sbMatrix partTable(block_length, 1);
+        vector_cipher_eq(this->pIdx, expandX, expandY, partTable, *(this->eval), *(this->runtime));
 
         // pairwise abmul.
         aby3::si64Matrix expandV(block_length, 1);
@@ -27,16 +47,16 @@ class CipherIndex : SubABY3Task<aby3::si64, int, aby3::si64, aby3::si64> {
         for (size_t i = 0; i < block_length; i++) local_table[i] = expandV(i, 0);
     }
 
-    virtual void partical_reduction(std::vector<aby3::si64>& resLeft,
-                                  std::vector<aby3::si64>& resRight,
-                                  std::vector<aby3::si64>& local_res,
+    virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
                                   BlockInfo* binfo) override {
         for (size_t i = 0; i < resLeft.size(); i++) local_res[i] = resLeft[i] + resRight[i];
     }
 
     std::tuple<std::vector<aby3::si64>, std::vector<int>, std::vector<aby3::si64>> data_loading(std::string data_folder){
         // load the input data.
-        raise NotImplementedError("data_loading through file");
+        THROW_RUNTIME_ERROR("data_loading through file is not implemented yet.");
     }
 
     std::tuple<std::vector<aby3::si64>, std::vector<int>, std::vector<aby3::si64>> data_loading(){

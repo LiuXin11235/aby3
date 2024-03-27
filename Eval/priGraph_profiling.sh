@@ -48,7 +48,7 @@ for count in $(seq 1 5); do
 
         echo "Run Query Profiling Test: ${run_args}"
 
-        ./Eval/dis_exec.sh "${run_args}"
+        ./Eval/basic/dis_exec.sh "${run_args}"
 
         cat ./debug.txt
         rm ./debug.txt
