@@ -360,6 +360,12 @@ namespace aby3
 			return Ref<sf64<D>>(s0, s1);
 		}
 
+		void operator()(u64 x, u64 y, sf64<D> new_v){
+			// std::cout << "in this operator" << std::endl;
+			mShares[0](x, y) = new_v.mShare[0];
+			mShares[1](x, y) = new_v.mShare[1];
+		}
+
 		Ref<sf64<D>> operator()(u64 xy)
 		{
 			auto& s0 = static_cast<typename sf64<D>::value_type&>(mShares[0](xy));
