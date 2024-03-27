@@ -21,6 +21,7 @@ int main(int argc, char** argv) {
 		bool_basic_test(cmd);
 		bool_basic_test2(cmd);
 		get_first_zero_test(cmd);
+		bool_aggregation_test(cmd);
 	}
 
 	if (cmd.isSet("Arith")){
@@ -32,11 +33,17 @@ int main(int argc, char** argv) {
 		correlation_test(cmd);
 	}
 
+	if(cmd.isSet("Comm")){
+		communication_test(cmd);
+	}
+
 	if(cmd.isSet("Shuffle")){
 		shuffle_test(cmd);
+		large_scale_shuffle_test(cmd);
 	}
 
 	if(cmd.isSet("ORAM")){
+		pos_map_test(cmd);
 		sqrt_oram_test(cmd);
 	}
 

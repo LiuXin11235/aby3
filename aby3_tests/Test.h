@@ -9,21 +9,34 @@
 
 #include "../aby3-RTR/debug.h"
 
-#define SHOW_TEST_CASE
+// #define SHOW_TEST_CASE
 
 int arith_basic_test(oc::CLP& cmd);
 int bool_basic_test(oc::CLP& cmd);
 int bool_basic_test2(oc::CLP& cmd);
+int bool_aggregation_test(oc::CLP& cmd);
 int get_first_zero_test(oc::CLP& cmd);
 
 int initialization_test(oc::CLP& cmd);
 int shuffle_test(oc::CLP& cmd);
+int large_scale_shuffle_test(oc::CLP& cmd);
 int correlation_test(oc::CLP& cmd);
+int communication_test(oc::CLP& cmd);
 
+int pos_map_test(oc::CLP& cmd);
 int sqrt_oram_test(oc::CLP& cmd);
+
+int graph_loading_test(oc::CLP& cmd);
+int graph_block_fetch_test(oc::CLP& cmd);
+int basic_graph_query_test(oc::CLP& cmd);
+
+int bc_sort_test(oc::CLP& cmd);
+int quick_sort_test(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);
+
+bool check_result(const std::string& func_name, std::vector<aby3::i64Matrix> test, std::vector<aby3::i64Matrix> res);
 
 template <aby3::Decimal D>
 bool check_result(const std::string& func_name, aby3::f64Matrix<D>& test,

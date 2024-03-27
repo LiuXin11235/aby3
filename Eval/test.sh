@@ -2,6 +2,7 @@
 cp ./frontend/main.test ./frontend/main.cpp
 
 # compile the main.
+cp ./frontend/main.test ./frontend/main.cpp
 python build.py
 
 # clean debugging files party-*.txt if exist.
@@ -21,7 +22,12 @@ done
 # 3) -ORAM : ORAM tests; 
 # 4) -Init : initialization tests, including the correlated shares; 
 # 5) -Shuffle : secure shuffling tests.
-test_args=" -ORAM"
+# 6) -Graph : basic graph loading tests.
+# 7) -GraphQuery : basic graph query tests (block fetching, edge exist & outting edges count.)
+# 8) -Comm : test inter-party communication.
+# 9) -Sort : test the sort functions.
+# test_args=" -ORAM -Graph"
+test_args=" -Sort"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

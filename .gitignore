@@ -36,6 +36,7 @@ log.txt
 
 *.bin
 *.json
+.clang-format
 
 *.psess
 *.vspx

@@ -1,3 +1,7 @@
 [submodule "aby3-RTR/Pair_then_Reduce"]
 	path = aby3-RTR/Pair_then_Reduce
 	url = git@github.com:Fannxy/Pair_then_Reduce.git
+
+[submodule "aby3-GraphQuery/privGraphQuery"]
+	path = aby3-GraphQuery/privGraphQuery
+	url = git@github.com:Fannxy/privGraphQuery.git

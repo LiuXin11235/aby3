@@ -1,3 +1,4 @@
+#include <cmath>
 #include <aby3/sh3/Sh3Encryptor.h>
 #include <aby3/sh3/Sh3Evaluator.h>
 #include <aby3/sh3/Sh3FixedPoint.h>
@@ -6,11 +7,23 @@
 #include <cryptoTools/Network/IOService.h>
 
 #include "../aby3-RTR/debug.h"
+#include "assert.h"
 
 #ifndef _ABY3_BASICS_H_
 #define _ABY3_BASICS_H_
 
 static int BITSIZE = 64;
+
+inline size_t roundUpToPowerOfTwo(size_t num) {
+    if (num == 0) {
+        return 1;
+    }
+    if (checkPowerOfTwo(num)) {
+        return num;
+    }
+    return (size_t) pow(2, ceil(log2(num)));
+}
+
 
 struct boolShare {
     std::array<bool, 2> bshares;
@@ -172,6 +185,13 @@ struct vecBoolIndices {
     }
 };
 
+// if toNext is true, send to the next party, otherwise send to the previous party.
+int large_data_sending(int pIdx, aby3::i64Matrix &sharedA, aby3::Sh3Runtime &runtime, bool toNext);
+
+// if fromPrev is true, receive from the previous party, otherwise receive from the next party.
+int large_data_receiving(int pIdx, aby3::i64Matrix &res, aby3::Sh3Runtime &runtime, bool fromPrev);
+
+
 void bool_cipher_lt(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
@@ -225,6 +245,10 @@ void bool_cipher_selector(int pIdx, boolShare &flag, aby3::sbMatrix &trueVal,
                           aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
                           aby3::Sh3Runtime &runtime);
 
+void bool2arith(int pIdx, aby3::sbMatrix &boolInput, aby3::si64Matrix &res,
+                aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                aby3::Sh3Runtime &runtime);
+
 void bool_get_first_zero_mask(int pIdx, std::vector<boolShare> &inputA,
                               aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
                               aby3::Sh3Evaluator &eval,
@@ -238,11 +262,20 @@ void bool_init_false(int pIdx, boolShare &res);
 
 void bool_init_true(int pIdx, boolShare &res);
 
+void bool_shift(int pIdx, boolIndex &sharedA, size_t shift_len,
+                boolIndex &res_shift, bool right_flag = true);
+
 void bool_shift_and_left(int pIdx, aby3::sbMatrix &sharedA, size_t shift_len,
                          aby3::sbMatrix &res_shift, aby3::sbMatrix &res_left);
 
 void bool_shift_and_left(int pIdx, boolIndex &sharedA, size_t shift_len,
                          boolIndex &res_shift, boolIndex &res_left);
+
+
+// TODO: support various functions.
+void bool_aggregation(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &res,
+                         aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                         aby3::Sh3Runtime &runtime, const std::string& func);
 
 aby3::i64Matrix back2plain(int pIdx, aby3::sbMatrix &cipher_val,
                            aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
@@ -278,5 +311,35 @@ void plain_permutate(std::vector<size_t> &permutation, std::vector<T> &data) {
 }
 
 void get_random_mask(int pIdx, aby3::i64Matrix &res, oc::block &seed);
+
+void arith_aggregation(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &res,
+                         aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                         aby3::Sh3Runtime &runtime, const std::string& func);
+
+template <typename T>
+void vector_tile(const std::vector<T>& v, int n, std::vector<T>& target, int start){
+    for(int i=0; i<n; i++){
+        std::copy(v.begin(), v.end(), target.begin() + start + (i * v.size()));
+    }
+    return;
+}
+
+template <typename T>
+void vector_repeat(const std::vector<T>& v, int n, std::vector<T> &target, int start){
+    for(int i=0; i<v.size(); i++){
+        std::fill(target.begin() + start + i*n, target.begin() + start + (i + 1) * n, v[i]);
+    }
+    return;
+}
+
+std::vector<size_t> argwhere(aby3::i64Matrix& input, int target);
+
+std::vector<size_t> argwhere(std::vector<std::vector<int>>& inputs, int target);
+
+std::vector<size_t> argwhere(std::vector<size_t>& inputs, int target);
+
+void tag_append(int pIdx, std::vector<aby3::sbMatrix>& inputs);
+
+void tag_remove(int pIdx, size_t tag_len, std::vector<aby3::sbMatrix>& inputs);
 
 #endif

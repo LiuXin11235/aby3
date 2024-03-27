@@ -75,16 +75,7 @@ inline void print_vector(std::vector<T> &data) {
   print_vector_impl(data, is_packed_index<T>{});
 }
 
-void get_permutation(size_t len, std::vector<size_t> &permutation) {
-  // generate the permutation for a len-sized array and save it into the
-  // permutation.
-  permutation.resize(len);
-  for (size_t i = 0; i < len; i++) {
-    permutation[i] = i;
-  }
-  std::random_shuffle(permutation.begin(), permutation.end());
-  return;
-}
+void get_permutation(size_t len, std::vector<size_t> &permutation);
 
 template <typename T, typename D>
 void permutate(std::vector<T> &permutation, std::vector<D> &data) {
