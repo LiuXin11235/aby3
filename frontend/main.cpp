@@ -4,6 +4,7 @@
 #include <map>
 #include <mpi.h>
 #include "aby3-RTR/PtATests.h"
+#include "aby3-RTR/PtAProfile.h"
 #include "eric.h"
 
 using namespace oc;
@@ -15,7 +16,11 @@ int main(int argc, char** argv) {
   MPI_Init(&argc, &argv);
 
   if(cmd.isSet("cipher_index")) {
-	test_cipher_index_pta(cmd);
+	  test_cipher_index_pta(cmd);
+  }
+
+  if(cmd.isSet("system_profile")){
+    pta_system_profile(cmd);
   }
 
   MPI_Finalize();

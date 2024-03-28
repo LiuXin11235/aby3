@@ -1,3 +1,4 @@
+#pragma once
 #include "BuildingBlocks.h"
 
 const long ENCRYPTION_LIMIT = 268435456;

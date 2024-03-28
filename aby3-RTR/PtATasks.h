@@ -1,3 +1,4 @@
+#pragma once
 #include "GeneralPTA.h"
 #include "DataGenerator.h"
 
