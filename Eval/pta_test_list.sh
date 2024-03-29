@@ -28,6 +28,7 @@ logFolders["cipher_index"]=${ptaLogFolder}"cipher_index/"
 
 
 # compile the main.
+cp ./frontend/main.pta ./frontend/main.cpp
 python build.py
 
 for task in ${task_list[@]}; do

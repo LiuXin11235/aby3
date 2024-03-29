@@ -20,6 +20,21 @@
     Sh3Evaluator eval; \
     Sh3Runtime runtime; \
     multi_processor_setup((u64)role, rank, ios, enc, eval, runtime);
-    
+
+#define SETUP_SINGLE_PROCESS \ 
+    int role = -1; \
+    if (cmd.isSet("role")) { \
+        auto keys = cmd.getMany<int>("role"); \
+        role = keys[0]; \
+    } \
+    if (role == -1) { \
+        throw std::runtime_error(LOCATION); \
+    } \
+    IOService ios; \
+    Sh3Encryptor enc; \
+    Sh3Evaluator eval; \
+    Sh3Runtime runtime; \
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
 
 int test_cipher_index_pta(oc::CLP& cmd);

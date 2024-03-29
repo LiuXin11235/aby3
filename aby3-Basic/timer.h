@@ -88,6 +88,18 @@ public:
         }
     }
 
+    double get_time(const std::string& key, const std::string& unit = "microseconds") {
+        double duration = durations[key];
+        if (unit == "milliseconds") {
+            duration /= 1000;
+        } else if (unit == "seconds") {
+            duration /= 1000000;
+        } else if (unit == "minutes") {
+            duration /= 60000000;
+        }
+        return duration;
+    }
+
     void accumulate() {
         for(auto& kv : durations){
             std::string time_prefix = get_prefix(kv.first);
