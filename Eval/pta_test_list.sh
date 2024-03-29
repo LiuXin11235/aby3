@@ -1,4 +1,5 @@
-task_list=("cipher_index")
+# task_list=("cipher_index")
+task_list=("max")
 
 logFolder=/root/aby3/Record/
 ptaLogFolder=${logFolder}pta/
@@ -13,18 +14,23 @@ fi
 
 declare -A M_lists
 M_lists["cipher_index"]="4194304 4194304 4194304"
+M_lists["max"]="4194304 4194304 4194304"
 
 declare -A N_lists
 N_lists["cipher_index"]="1 1 1"
+N_lists["max"]="1 1 1"
 
 declare -A c_lists
 c_lists["cipher_index"]="5 10 20"
+c_lists["max"]="5 10 20"
 
 declare -A optB_lists
 optB_lists["cipher_index"]="32768 65536 131072"
+optB_lists["max"]="32768 65536 131072"
 
 declare -A logFolders
 logFolders["cipher_index"]=${ptaLogFolder}"cipher_index/"
+logFolders["max"]=${ptaLogFolder}"max/"
 
 
 # compile the main.

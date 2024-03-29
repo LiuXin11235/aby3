@@ -37,3 +37,5 @@ int task_profile(oc::CLP& cmd);
 std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, size_t gap, std::function<std::pair<double, double>(size_t)> evaluate_task);
 
 int cipher_index_profile(oc::CLP& cmd);
+
+int max_profile(oc::CLP& cmd);

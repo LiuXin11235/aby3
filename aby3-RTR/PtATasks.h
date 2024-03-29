@@ -69,3 +69,61 @@ public:
         return std::make_tuple(vecX, vecY, vecV);
     }
 };
+
+// Max function class
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class Max : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+
+public:
+    // aby3 info
+    int pIdx;
+    aby3::Sh3Encryptor* enc;
+    aby3::Sh3Runtime* runtime;
+    aby3::Sh3Evaluator* eval;
+
+    using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+    Max(const size_t optimal_block, const int task_id, const int pIdx,
+            aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+            aby3::Sh3Evaluator& eval) : 
+        pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+            this->have_selective = false;
+    }
+
+    // functional code.
+    virtual void compute_local_table(std::vector<NUMX>& expandX, std::vector<NUMY>& expandY, std::vector<NUMT>& local_table, BlockInfo* binfo) override {
+        local_table = expandY;
+        return;
+    }
+
+    virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+        aby3::sbMatrix comp_res;
+        vector_cipher_gt(this->pIdx, resLeft, resRight, comp_res, *(this->eval), *(this->enc), *(this->runtime));
+        aby3::si64Matrix mul_mat(resLeft.size(), 1);
+        for(size_t i=0; i<resLeft.size(); i++) mul_mat(i, 0, resRight[i] - resLeft[i]);
+        cipher_mul_seq(this->pIdx, mul_mat, comp_res, mul_mat, *(this->eval), *(this->enc), *(this->runtime));
+        for(size_t i=0; i<resLeft.size(); i++) local_res[i] = resLeft[i] + mul_mat(i, 0);
+        return;
+    }
+
+    std::vector<aby3::si64> data_loading(std::string data_folder){
+        // load the input data.
+        THROW_RUNTIME_ERROR("data_loading through file is not implemented yet.");
+    }
+
+    std::vector<aby3::si64> data_loading(){
+        // directly generate the input data.
+        size_t partial_len = this->get_partial_m_lens();
+        std::vector<aby3::si64> vecY = generate_vector_si64(partial_len, this->pIdx, *this->enc, *this->runtime);
+        return vecY;
+    }
+
+};
+

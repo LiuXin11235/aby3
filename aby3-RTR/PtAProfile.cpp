@@ -35,6 +35,10 @@ int task_profile(oc::CLP& cmd){
         cipher_index_profile(cmd);
         return 0;
     }
+    else if(target_task == "max"){
+        max_profile(cmd);
+        return 0;
+    }
     else{
         throw std::runtime_error(LOCATION);
     }
@@ -110,6 +114,58 @@ int cipher_index_profile(oc::CLP& cmd){
 
         // pass the seletive value.
         ptaTask->set_selective_value(inputV.data(), 0);
+        auto fakeX = ptaTask->fake_repeatX(inputX.data());
+        auto fakeY = ptaTask->fake_repeatY(inputY.data());
+
+        // evaluate the task.
+        timer.start("time_circuit_evaluate");
+        ptaTask->subTask->circuit_profile(fakeX, fakeY, ptaTask->selectV);
+        timer.end("time_circuit_evaluate");
+
+        double _time_c = timer.get_time("time_circuit_evaluate");
+        synchronized_time(role, _time_c, runtime);
+        MPI_Bcast(&_time_c, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        double ratio = _time_c / b;
+        timer.clear_records();
+
+        return std::make_pair(_time_c, ratio);
+    };
+
+    // get the optimal vector size.
+    PROFILER_RECORDER
+
+    return 0;
+}
+
+int max_profile(oc::CLP& cmd){
+
+    // prepare the profiler.
+    PROFILER_PREPARE
+
+    // setup the process.
+    SETUP_PROCESS
+
+    // construct the task.
+    auto ptaTask = new ABY3MPITask<int, si64, si64, si64, Max>(size, start_b, role, enc, runtime, eval);
+    ptaTask->set_default_value(GET_ZERO_SHARE);
+
+    // define the task evaluation function.
+    auto evaluate_task = [&](size_t b){
+
+        // get the timer.
+        Timer& timer = Timer::getInstance();
+        size_t m=size * b;
+
+        if(n != 1) n = 1;
+
+        ptaTask->optimal_block = b;
+        ptaTask->circuit_construct({n}, {m});
+
+        // data loading.
+        std::vector<int> inputX(1);
+        std::vector<si64> inputY = ptaTask->subTask->data_loading();
+
+        // pass the seletive value.
         auto fakeX = ptaTask->fake_repeatX(inputX.data());
         auto fakeY = ptaTask->fake_repeatY(inputY.data());
 

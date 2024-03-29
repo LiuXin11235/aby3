@@ -19,6 +19,10 @@ int main(int argc, char** argv) {
 	  test_cipher_index_pta(cmd);
   }
 
+  if(cmd.isSet("max")){
+    test_max_pta(cmd);
+  }
+
   if(cmd.isSet("system_profile")){
     pta_system_profile(cmd);
   }
