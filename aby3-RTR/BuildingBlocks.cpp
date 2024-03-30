@@ -10,7 +10,7 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-#define LOCAL_TEST
+// #define LOCAL_TEST
 
 static int BASEPORT=6000;
 
@@ -74,25 +74,25 @@ void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor 
     case 0:
       fport = std::to_string(BASEPORT + 3*rank);
       sport = std::to_string(BASEPORT + 3*rank + 1);
-      comm.mNext = Session(ios, "10.0.1.15:"+fport, SessionMode::Server, "01")
+      comm.mNext = Session(ios, "10.0.1.23:"+fport, SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.15:"+sport, SessionMode::Server, "02")
+      comm.mPrev = Session(ios, "10.0.1.23:"+sport, SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
       fport = std::to_string(BASEPORT + 3*rank);
       tport = std::to_string(BASEPORT + 3*rank + 2);
-      comm.mNext = Session(ios, "10.0.1.4:"+tport, SessionMode::Server, "12")
+      comm.mNext = Session(ios, "10.0.1.19:"+tport, SessionMode::Server, "12")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.15:"+fport, SessionMode::Client, "01")
+      comm.mPrev = Session(ios, "10.0.1.23:"+fport, SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
       sport = std::to_string(BASEPORT + 3*rank + 1);
       tport = std::to_string(BASEPORT + 3*rank + 2);
-      comm.mNext = Session(ios, "10.0.1.15:"+sport, SessionMode::Client, "02")
+      comm.mNext = Session(ios, "10.0.1.23:"+sport, SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.4:"+tport, SessionMode::Client, "12")
+      comm.mPrev = Session(ios, "10.0.1.19:"+tport, SessionMode::Client, "12")
                        .addChannel();
       break;
   }

@@ -23,6 +23,10 @@ int main(int argc, char** argv) {
     test_max_pta(cmd);
   }
 
+  if(cmd.isSet("sort")){
+    test_sort_pta(cmd);
+  }
+
   if(cmd.isSet("system_profile")){
     pta_system_profile(cmd);
   }
