@@ -124,7 +124,7 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
 
     // get the final result.
     size_t optimal_vector_size = (binary_start_b + binary_end_b) / 2;
-    std::tie(ratio, time_c) = evaluate_task(optimal_vector_size);
+    std::tie(time_c, ratio) = evaluate_task(optimal_vector_size);
 
     return {optimal_vector_size, time_c};
 }
@@ -166,7 +166,7 @@ int cipher_index_profile(oc::CLP& cmd){
         ptaTask->subTask->circuit_profile(fakeX, fakeY, ptaTask->selectV);
         timer.end("time_circuit_evaluate");
 
-        double _time_c = timer.get_time("time_circuit_evaluate");
+        double _time_c = timer.get_time("time_circuit_evaluate", "milliseconds");
         synchronized_time(role, _time_c, runtime);
         MPI_Bcast(&_time_c, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         double ratio = _time_c / b;
@@ -219,11 +219,12 @@ int max_profile(oc::CLP& cmd){
         ptaTask->subTask->circuit_profile(fakeX, fakeY, ptaTask->selectV);
         timer.end("time_circuit_evaluate");
 
-        double _time_c = timer.get_time("time_circuit_evaluate");
+        double _time_c = timer.get_time("time_circuit_evaluate", "milliseconds");
         synchronized_time(role, _time_c, runtime);
         MPI_Bcast(&_time_c, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         double ratio = _time_c / b;
         timer.clear_records();
+        MPI_Barrier(MPI_COMM_WORLD);
 
         return std::make_pair(_time_c, ratio);
     };
@@ -279,11 +280,12 @@ int sort_profile(oc::CLP& cmd){
         ptaTask_step2->subTask->circuit_profile(fakeX2, fakeY, ptaTask_step2->selectV);
         timer.end("time_circuit_evaluate");
 
-        double _time_c = timer.get_time("time_circuit_evaluate");
+        double _time_c = timer.get_time("time_circuit_evaluate", "milliseconds");
         synchronized_time(role, _time_c, runtime);
         MPI_Bcast(&_time_c, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         double ratio = _time_c / b;
         timer.clear_records();
+        MPI_Barrier(MPI_COMM_WORLD);
 
         return std::make_pair(_time_c, ratio);
     };
