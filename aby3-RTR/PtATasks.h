@@ -127,3 +127,56 @@ public:
 
 };
 
+template <typename NUMX, typename NUMY, typename NUMT, typename NUMR>
+class Rank : public SubTask<NUMX, NUMY, NUMT, NUMR> {
+
+public:
+    //aby3 info
+    int pIdx;
+    aby3::Sh3Encryptor* enc;
+    aby3::Sh3Runtime* runtime;
+    aby3::Sh3Evaluator* eval;
+
+    using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
+
+    Rank(const size_t optimal_block, const int task_id, const int pIdx,
+            aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime,
+            aby3::Sh3Evaluator& eval) : 
+        pIdx(pIdx),
+        enc(&enc),
+        runtime(&runtime),
+        eval(&eval),
+        SubTask<NUMX, NUMY, NUMT, NUMR>(optimal_block, task_id) {
+            this->have_selective = false;
+    }
+
+    // functional code.
+    virtual void compute_local_table(std::vector<NUMX>& expandX, std::vector<NUMY>& expandY, std::vector<NUMT>& local_table, BlockInfo* binfo) override {
+        aby3::u64 block_length = binfo->block_len;
+        aby3::sbMatrix partTable(block_length, 1);
+        vector_cipher_gt(this->pIdx, expandX, expandY, local_table, *(this->eval), *(this->enc), *(this->runtime));
+        return;
+    }
+
+    virtual void partical_reduction(std::vector<NUMR>& resLeft,
+                                  std::vector<NUMR>& resRight,
+                                  std::vector<NUMR>& local_res,
+                                  BlockInfo* binfo) override {
+        for(size_t i=0; i<resLeft.size(); i++) local_res[i] = resLeft[i] + resRight[i];
+        return;
+    }
+
+    std::vector<aby3::si64> data_loading(std::string data_folder){
+        // load the input data.
+        THROW_RUNTIME_ERROR("data_loading through file is not implemented yet.");
+    }
+
+    std::pair<std::vector<aby3::si64>, std::vector<aby3::si64>> data_loading(){
+        // directly generate the input data.
+        size_t partial_len = this->get_partial_m_lens();
+        std::vector<aby3::si64> vecX = generate_vector_si64(this->n, this->pIdx, *this->enc, *this->runtime);
+        std::vector<aby3::si64> vecY = generate_vector_si64(partial_len, this->pIdx, *this->enc, *this->runtime);
+        return std::make_pair(vecX, vecY);
+    }
+
+};
