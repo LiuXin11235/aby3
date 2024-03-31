@@ -9,9 +9,13 @@
 
 #include "../aby3-RTR/debug.h"
 
-// #define SHOW_TEST_CASE
+#ifndef TEST_H  
+#define TEST_H 
+
+#define SHOW_TEST_CASE
 
 int arith_basic_test(oc::CLP& cmd);
+int arith_basic_test2(oc::CLP& cmd);
 int bool_basic_test(oc::CLP& cmd);
 int bool_basic_test2(oc::CLP& cmd);
 int bool_aggregation_test(oc::CLP& cmd);
@@ -32,6 +36,7 @@ int basic_graph_query_test(oc::CLP& cmd);
 
 int bc_sort_test(oc::CLP& cmd);
 int quick_sort_test(oc::CLP& cmd);
+int correctness_cipher_index_pta(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);
@@ -84,3 +89,5 @@ typename std::enable_if<std::is_pod<T>::value, bool>::type check_result(
     }
     return check_flag;
 }
+
+#endif

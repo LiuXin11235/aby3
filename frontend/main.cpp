@@ -6,6 +6,7 @@
 #include "aby3-RTR/PtATests.h"
 #include "aby3-RTR/PtAProfile.h"
 #include "eric.h"
+#include "aby3_tests/Test.h"
 
 using namespace oc;
 using namespace aby3;
@@ -29,6 +30,10 @@ int main(int argc, char** argv) {
 
   if(cmd.isSet("system_profile")){
     communication_profile(cmd);
+  }
+
+  if(cmd.isSet("pta_correctness")){
+    correctness_cipher_index_pta(cmd);
   }
 
   if(cmd.isSet("task_profile")){

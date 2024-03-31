@@ -193,6 +193,71 @@ int arith_basic_test(CLP &cmd) {
     return 0;
 }
 
+int arith_basic_test2(CLP& cmd){
+    // get the configs.
+    // get the configs.
+    int role = -1;
+    if (cmd.isSet("role")) {
+        auto keys = cmd.getMany<int>("role");
+        role = keys[0];
+    }
+    if (role == -1) {
+        throw std::runtime_error(LOCATION);
+    }
+
+    if (role == 0) {
+        debug_info("RUN ARITH TEST");
+    }
+
+    // setup communications.
+    IOService ios;
+    Sh3Encryptor enc;
+    Sh3Evaluator eval;
+    Sh3Runtime runtime;
+    // distribute_setup((u64)role, ios, enc, eval, runtime);
+    basic_setup((u64)role, ios, enc, eval, runtime);
+
+    // generate test data.
+    aby3::si64Matrix test_x(TEST_SIZE, 1);
+    std::vector<int> test_y(TEST_SIZE);
+    aby3::i64Matrix plain_x(TEST_SIZE, 1);
+    aby3::i64Matrix res(TEST_SIZE, 1);
+
+    for(size_t i=0; i<TEST_SIZE; i++){
+        plain_x(i, 0) = 1;
+        test_y[i] = i;
+        if(i == 1) res(i, 0) = 1;
+        else res(i, 0) = 0;
+    }
+
+    if(role == 0){
+        enc.localIntMatrix(runtime, plain_x, test_x).get();
+    }else{
+        enc.remoteIntMatrix(runtime, test_x).get();
+    }
+
+    // compute for the result.
+    std::vector<si64> test_x_vec(TEST_SIZE);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        test_x_vec[i].mData[0] = test_x.mShares[0](i, 0);
+        test_x_vec[i].mData[1] = test_x.mShares[1](i, 0);
+    }
+
+    aby3::sbMatrix test_res(TEST_SIZE, 1);
+    vector_cipher_eq(role, test_x_vec, test_y, test_res, eval, runtime);
+
+    // check the result.
+    aby3::i64Matrix test_res_plain(TEST_SIZE, 1);
+    enc.revealAll(runtime, test_res, test_res_plain).get();
+
+    if(role == 0){
+        check_result("vector_cipher_eq", test_res_plain, res);
+    }
+
+
+    return 0;
+}
+
 int initialization_test(CLP &cmd) {
     // get the configs.
     int role = -1;

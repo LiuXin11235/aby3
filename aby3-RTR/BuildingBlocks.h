@@ -79,7 +79,9 @@ int cipher_mul(int pIdx, aby3::sf64Matrix<D> &sharedA, aby3::sf64Matrix<D> &shar
     return 0;
 }
 
+int vec2mat(std::vector<aby3::si64>& vec, aby3::si64Matrix& mat);
 
+int mat2vec(aby3::si64Matrix& mat, std::vector<aby3::si64>& vec);
 
 // synchronized version of fetch_msb.
 int fetch_msb(int pIdx, aby3::si64Matrix &diffAB, aby3::sbMatrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime, aby3::Sh3Task &task);

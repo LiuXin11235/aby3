@@ -10,7 +10,7 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-// #define LOCAL_TEST
+#define LOCAL_TEST
 
 static int BASEPORT=6000;
 #define P0_IP "10.90.0.26"
@@ -188,7 +188,10 @@ int vector_mean_square(int pIdx, const std::vector<aby3::si64>&sharedA, const st
 
   eval.asyncMul(runtime, matA, matA, matRes).get();
 
-  for(int i=0; i<res.size(); i++) res[i] = matRes(i, 0);
+  for(int i=0; i<res.size(); i++) {
+    res[i].mData[0] = matRes.mShares[0](i, 0);
+    res[i].mData[1] = matRes.mShares[1](i, 0);
+  }
 
   return 0;
 }
@@ -367,6 +370,22 @@ int cipher_mul(int pIdx, const aby3::si64Matrix &sharedA, const aby3::sbMatrix &
 
 int cipher_mul(int pIdx, const aby3::si64Matrix &sharedA, const aby3::si64Matrix &sharedB, aby3::si64Matrix &res, aby3::Sh3Evaluator &eval, aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
   return cipher_mul_seq(pIdx, sharedA, sharedB, res, eval, enc, runtime);
+}
+
+int vec2mat(std::vector<aby3::si64>& vec, aby3::si64Matrix& mat){
+  for(int i=0; i<vec.size(); i++){
+    mat.mShares[0](i, 0) = vec[i].mData[0];
+    mat.mShares[1](i, 0) = vec[i].mData[1];
+  }
+  return 0;
+}
+
+int mat2vec(aby3::si64Matrix& mat, std::vector<aby3::si64>& vec){
+  for(int i=0; i<vec.size(); i++){
+    vec[i].mData[0] = mat.mShares[0](i, 0);
+    vec[i].mData[1] = mat.mShares[1](i, 0);
+  }
+  return 0;
 }
 
 // synchronized version of fetch_msb.

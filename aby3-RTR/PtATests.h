@@ -39,6 +39,12 @@
 
 int test_cipher_index_pta(oc::CLP& cmd);
 
+// int correctness_cipher_index_pta(oc::CLP& cmd);
+
 int test_max_pta(oc::CLP& cmd);
 
+// int correctness_max_pta(oc::CLP& cmd);
+
 int test_sort_pta(oc::CLP& cmd);
+
+// int correctness_sort_pta(oc::CLP& cmd);
