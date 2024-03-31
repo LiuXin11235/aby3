@@ -1,3 +1,4 @@
+#pragma once
 #include <aby3/sh3/Sh3Encryptor.h>
 #include <aby3/sh3/Sh3Evaluator.h>
 #include <aby3/sh3/Sh3FixedPoint.h>
@@ -39,6 +40,8 @@ extern void debug_info(Eigen::internal::Packet4i &info);
 extern void write_log(std::string log_file, std::string info);
 
 extern void debug_output_vector(std::vector<aby3::si64>& problem_vec, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc);
+
+extern void debug_output_vector_mpi(int pIdx, int rank, std::vector<aby3::si64>& problem_vec, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc, std::string prefix);
 
 extern void debug_output_matrix(aby3::si64Matrix& problem_mat, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc);
 

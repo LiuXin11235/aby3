@@ -1,6 +1,8 @@
 #include "PtATests.h"
 #include "GASTest.h"
 #include "../aby3-Basic/timer.h"
+#include "debug.h"
+// #include "../aby3_tests/Test.h"
 
 using namespace oc;
 using namespace aby3;
@@ -95,7 +97,6 @@ int test_max_pta(oc::CLP& cmd){
 
     return 0;
 }
-
 
 int test_sort_pta(oc::CLP& cmd){
     size_t n, m, optB;

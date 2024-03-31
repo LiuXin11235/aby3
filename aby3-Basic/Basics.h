@@ -291,6 +291,9 @@ std::vector<bool> back2plain(int pIdx, std::vector<boolShare> &cipher_val,
                              aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
                              aby3::Sh3Runtime &runtime);
 
+aby3::i64Matrix back2plain(int pIdx, std::vector<aby3::si64>& cipher_val, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                           aby3::Sh3Runtime &runtime);
+
 void get_permutation(size_t len, std::vector<size_t> &permutation,
                      oc::block &seed);
 

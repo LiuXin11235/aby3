@@ -76,3 +76,19 @@ void arith_aggregation(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &re
               res.mShares.begin());
     return;
 }
+
+aby3::i64Matrix back2plain(int pIdx, std::vector<aby3::si64>& cipher_val, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                           aby3::Sh3Runtime &runtime){
+    size_t len = cipher_val.size();
+    aby3::si64Matrix cipher_mat(len, 1);
+    for(size_t i=0; i<len; i++){
+        // cipher_mat(i, 0) = cipher_val[i];
+        cipher_mat.mShares[0](i, 0) = cipher_val[i].mData[0];
+        cipher_mat.mShares[1](i, 0) = cipher_val[i].mData[1];
+    }
+
+    aby3::i64Matrix plain_mat(len, 1);
+    enc.revealAll(runtime, cipher_mat, plain_mat).get();
+
+    return plain_mat;
+}
