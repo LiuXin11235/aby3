@@ -424,7 +424,7 @@ int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, S
   }
 
   // 3. binary secrets reshare.
-  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
+  runtime.mComm.mNext.asyncSendCopy(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
   fu.get();
 
@@ -533,9 +533,11 @@ int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3:
 
   si64Matrix ones(sintA.size(), 1);
   init_ones(pIdx, enc, runtime, ones, sintA.size());
-  cipher_mul_seq(pIdx, ones, tmpRes, ones, eval, enc, runtime);
+  si64Matrix tmpResMat(sintA.size(), 1);
+  cipher_mul_seq(pIdx, ones, tmpRes, tmpResMat, eval, enc, runtime);
   for(int i=0; i<sintA.size(); i++){
-    res[i] = ones(i, 0);
+    res[i].mData[0] = tmpResMat.mShares[0](i, 0);
+    res[i].mData[1] = tmpResMat.mShares[1](i, 0);
   }
   return 0;
 }

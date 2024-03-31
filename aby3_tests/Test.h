@@ -37,6 +37,7 @@ int basic_graph_query_test(oc::CLP& cmd);
 int bc_sort_test(oc::CLP& cmd);
 int quick_sort_test(oc::CLP& cmd);
 int correctness_cipher_index_pta(oc::CLP& cmd);
+int correctness_sort_pta(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);
