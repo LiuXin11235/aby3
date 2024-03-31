@@ -45,11 +45,14 @@ int communication_profile(oc::CLP& cmd){
 
     aby3::si64Matrix small_data(1, 1);
     init_ones(role, enc, runtime, small_data, 1);
+    MPI_Barrier(MPI_COMM_WORLD);
     timer.start("time_latency");
     runtime.mComm.mNext.asyncSend(small_data.mShares[0].data(), small_data.mShares[0].size());
     auto fu = runtime.mComm.mPrev.asyncRecv(small_data.mShares[1].data(), small_data.mShares[1].size());
     fu.get();
+    MPI_Barrier(MPI_COMM_WORLD);
     timer.end("time_latency");
+
 
     while(b < end_b){
 
