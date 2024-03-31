@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   }
 
   if(cmd.isSet("system_profile")){
-    pta_system_profile(cmd);
+    communication_profile(cmd);
   }
 
   if(cmd.isSet("task_profile")){

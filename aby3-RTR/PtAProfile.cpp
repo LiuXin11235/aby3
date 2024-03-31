@@ -26,6 +26,58 @@ int pta_system_profile(oc::CLP& cmd){
     return 0;
 }
 
+int communication_profile(oc::CLP& cmd){
+
+    Timer& timer = Timer::getInstance();
+
+    timer.start("time_setup");
+    SETUP_PROCESS
+    timer.end("time_setup");
+
+    // test the communication & bandwidth.
+    std::string logging_file;
+    get_value("logFile", cmd, logging_file);
+    size_t start_b, end_b;
+    get_value("startB", cmd, start_b);
+    get_value("endB", cmd, end_b);
+
+    size_t b = start_b;
+
+    aby3::si64Matrix small_data(1, 1);
+    init_ones(role, enc, runtime, small_data, 1);
+    timer.start("time_latency");
+    runtime.mComm.mNext.asyncSend(small_data.mShares[0].data(), small_data.mShares[0].size());
+    auto fu = runtime.mComm.mPrev.asyncRecv(small_data.mShares[1].data(), small_data.mShares[1].size());
+    fu.get();
+    timer.end("time_latency");
+
+    while(b < end_b){
+
+        aby3::si64Matrix data(b, 1);
+        init_ones(role, enc, runtime, data, b);
+
+        std::string comm_key = "time_communication." + std::to_string(b);
+        timer.start(comm_key);
+
+        runtime.mComm.mNext.asyncSendCopy(data.mShares[0].data(), data.mShares[0].size());
+        auto fu = runtime.mComm.mPrev.asyncRecv(data.mShares[1].data(), data.mShares[1].size());
+        fu.get();
+
+        timer.end(comm_key);
+
+        b *= 4;
+    }
+
+    if(rank ==0 && role ==0){
+        std::ofstream stream(logging_file, std::ios::app);
+        stream << "tasknum: " << std::to_string(size) << std::endl;
+        timer.print_total("milliseconds", stream);
+        stream.close();
+    }
+    
+    return 0;
+}
+
 
 int task_profile(oc::CLP& cmd){
     std::string target_task;

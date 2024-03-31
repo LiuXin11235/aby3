@@ -32,6 +32,8 @@
 
 int pta_system_profile(oc::CLP& cmd);
 
+int communication_profile(oc::CLP& cmd);
+
 int task_profile(oc::CLP& cmd);
 
 std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, size_t gap, std::function<std::pair<double, double>(size_t)> evaluate_task, std::string logging_file);
