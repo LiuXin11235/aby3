@@ -10,7 +10,9 @@ using namespace aby3;
 using namespace std;
 using namespace oc;
 
-#define LOCAL_TEST
+#include "./Pair_then_Reduce/include/datatype.h"
+
+// #define LOCAL_TEST
 
 static int BASEPORT=6000;
 #define P0_IP "10.90.0.26"
@@ -729,6 +731,8 @@ int circuit_cipher_eq(int pIdx, si64Matrix &intA, si64Matrix &intB, sbMatrix &re
 
 int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& intB, sbMatrix &res, Sh3Evaluator &eval, Sh3Runtime &runtime){
 
+  auto start = std::chrono::high_resolution_clock::now();
+
   // set the correspondong boolean circuit.
   sbMatrix circuitInput0;
   sbMatrix circuitInput1;
@@ -769,6 +773,9 @@ int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& 
   fu.get();
   fetch_eq_res(pIdx, circuitInput0, circuitInput1, res, eval, runtime);
 
+  auto end = std::chrono::high_resolution_clock::now();
+  comp_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
   return 0;
 }
 
@@ -803,14 +810,10 @@ int fetch_eq_res(int pIdx, sbMatrix& circuitA, sbMatrix& circuitB, sbMatrix& res
 
 
 int init_zeros(int pIdx, Sh3Encryptor &enc, Sh3Runtime &runtime, si64Matrix &res, int n){
-    i64Matrix zeros(n, 1);
-    for(int i=0; i<n; i++) zeros(i, 0) = 0;
     res.resize(n, 1);
-    if(pIdx == 0) {
-        enc.localIntMatrix(runtime, zeros, res).get();
-    }
-    else{
-        enc.remoteIntMatrix(runtime, res).get();
+    for(size_t i=0; i<n; i++){
+      res.mShares[0](i, 0) = 0;
+      res.mShares[1](i, 0) = 0;
     }
     return 0;
 }

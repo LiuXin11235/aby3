@@ -9,3 +9,5 @@ for i in $(seq 1 $times); do
 done
 
 python ${USER_FOLDER}/PtA_deploy/system_analysis.py
+mkdir ${USER_FOLDER}/system_profiling/Log
+mv ${USER_FOLDER}/system_profiling_* ${USER_FOLDER}/system_profiling/Log/

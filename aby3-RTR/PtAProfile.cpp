@@ -46,6 +46,7 @@ int communication_profile(oc::CLP& cmd){
     aby3::si64Matrix small_data(1, 1);
     init_ones(role, enc, runtime, small_data, 1);
     MPI_Barrier(MPI_COMM_WORLD);
+
     timer.start("time_latency");
     runtime.mComm.mNext.asyncSend(small_data.mShares[0].data(), small_data.mShares[0].size());
     auto fu = runtime.mComm.mPrev.asyncRecv(small_data.mShares[1].data(), small_data.mShares[1].size());
@@ -57,14 +58,19 @@ int communication_profile(oc::CLP& cmd){
     while(b < end_b){
 
         aby3::si64Matrix data(b, 1);
-        init_ones(role, enc, runtime, data, b);
+        init_zeros(role, enc, runtime, data, b);
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         std::string comm_key = "time_communication." + std::to_string(b);
         timer.start(comm_key);
 
-        runtime.mComm.mNext.asyncSendCopy(data.mShares[0].data(), data.mShares[0].size());
-        auto fu = runtime.mComm.mPrev.asyncRecv(data.mShares[1].data(), data.mShares[1].size());
-        fu.get();
+        // runtime.mComm.mNext.asyncSendCopy(data.mShares[0].data(), data.mShares[0].size());
+        auto fu_send = runtime.mComm.mNext.asyncSendFuture(data.mShares[0].data(), data.mShares[0].size());
+        auto fu_recv = runtime.mComm.mPrev.asyncRecv(data.mShares[1].data(), data.mShares[1].size());
+        // fu.get();
+        fu_send.get();
+        fu_recv.get();
 
         timer.end(comm_key);
 
