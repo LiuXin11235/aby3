@@ -124,7 +124,7 @@ public:
         aby3::si64Matrix mul_mat(resLeft.size(), 1), mul_res(resLeft.size(), 1);
         for(size_t i=0; i<resLeft.size(); i++) mul_mat(i, 0, resRight[i] - resLeft[i]);
         cipher_mul_seq(this->pIdx, mul_mat, comp_res, mul_res, *(this->eval), *(this->enc), *(this->runtime));
-        for(size_t i=0; i<resLeft.size(); i++) local_res[i] = resLeft[i] + mul_res(i, 0);
+        for(size_t i=0; i<resLeft.size(); i++) local_res[i] = resRight[i] + mul_res(i, 0);
         return;
     }
 
@@ -288,25 +288,11 @@ class BioMetric : public SubTask<NUMX, NUMY, NUMT, NUMR> {
         if(std::is_same<typename NUMX::value_type, aby3::si64>::value){
             vector_mean_square(this->pIdx, flatX, flatY, flatX, *(this->eval), *(this->enc), *(this->runtime));
         }
-
-        // enc index.
-        aby3::i64Matrix indexMat(expandX.size(), 1);
-        aby3::si64Matrix sindex(expandX.size(), 1);
-        for(int i=0; i<expandX.size(); i++) indexMat(i, 0) = binfo->t_start + i;
-        if(this->pIdx == 0){
-            this->enc->localIntMatrix(*(this->runtime), indexMat, sindex).get();
-        }
-        else{
-            this->enc->remoteIntMatrix(*(this->runtime), sindex).get();
-        }
         
         // reduce to local table
         for(int i=0; i<expandX.size(); i++){
-            local_table[i].value = this->initial_value.value;
-            local_table[i].index = sindex(i, 0);
-            for (int j=0; j<k; j++){
-                local_table[i].value = local_table[i].value + flatX[j];
-            }
+            local_table[i] = this->initial_value.value;
+            for(int j=0; j<k; j++) local_table[i] += flatX[i*k+j];
         }
         return;
     }
@@ -316,29 +302,17 @@ class BioMetric : public SubTask<NUMX, NUMY, NUMT, NUMR> {
                                   std::vector<NUMR>& local_res,
                                   BlockInfo* binfo) override {
         aby3::sbMatrix comp_res;
-        std::vector<aby3::si64> resLeft_value(resLeft.size());
-        std::vector<aby3::si64> resRight_value(resRight.size());
-        // initiate the value
-        for(int i=0; i<resLeft.size(); i++){
-        resLeft_value[i] = resLeft[i].value; resRight_value[i] = resRight[i].value;
-        }
-        vector_cipher_gt(this->pIdx, resLeft_value, resRight_value, comp_res, *(this->eval), *(this->enc), *(this->runtime));
+        vector_cipher_gt(this->pIdx, resLeft, resRight, comp_res, *(this->eval), *(this->enc), *(this->runtime));
 
         // multiply for value extraction.
-        aby3::si64Matrix matSub;
-        matSub.resize(resLeft.size(), 1);
-        for(int i=0; i<resLeft.size(); i++) matSub(static_cast<aby3::u64>(i), static_cast<aby3::u64>(0), resRight[i].value - resLeft[i].value);
-        cipher_mul_seq(this->pIdx, matSub, comp_res, matSub, *(this->eval), *(this->enc), *(this->runtime));
-
-        aby3::si64Matrix matIndex;
-        matIndex.resize(resLeft.size(), 1);
-        for(int i=0; i<matIndex.size(); i++) matIndex(i, 0, resRight[i].index - resLeft[i].index);
-        cipher_mul_seq(this->pIdx, matIndex, comp_res, matIndex, *(this->eval), *(this->enc), *(this->runtime));
+        aby3::si64Matrix mat_mul(resLeft.size(), 1), mat_res(resLeft.size(), 1);
+        for(size_t i=0; i<resLeft.size(); i++) mat_mul(i, 0, resRight[i] - resLeft[i]);
+        cipher_mul_seq(this->pIdx, mat_mul, comp_res, mat_res, *(this->eval), *(this->enc), *(this->runtime));
 
         // compute the final result
         for(int i=0; i<resLeft.size(); i++){
-            local_res[i].value = resRight[i].value - matSub(i, 0);
-            local_res[i].index = resRight[i].index - matIndex(i, 0);
+            local_res[i].mData[0] = resLeft[i].mData[0] + mat_res.mShares[0](i, 0);
+            local_res[i].mData[1] = resLeft[i].mData[1] + mat_res.mShares[1](i, 0);            
         }
         return;
     }

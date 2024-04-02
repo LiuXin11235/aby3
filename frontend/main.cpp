@@ -36,6 +36,8 @@ int main(int argc, char** argv) {
     correctness_cipher_index_pta(cmd);
     MPI_Barrier(MPI_COMM_WORLD);  // Wait for all processes to finish before starting the next test
     correctness_sort_pta(cmd);
+    MPI_Barrier(MPI_COMM_WORLD);
+    correctness_sum_pta(cmd);
   }
 
   if(cmd.isSet("task_profile")){
