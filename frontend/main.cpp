@@ -38,6 +38,10 @@ int main(int argc, char** argv) {
     correctness_sort_pta(cmd);
     MPI_Barrier(MPI_COMM_WORLD);
     correctness_sum_pta(cmd);
+    MPI_Barrier(MPI_COMM_WORLD);
+    correctness_max_pta(cmd);
+    MPI_Barrier(MPI_COMM_WORLD);
+    correctness_metric_pta(cmd);
   }
 
   if(cmd.isSet("task_profile")){

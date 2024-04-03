@@ -87,6 +87,27 @@ void debug_output_vector_mpi(int pIdx, int rank, std::vector<aby3::si64>& proble
   return;
 }
 
+void debug_output_mat_mpi(int pIdx, int rank, aby3::si64Matrix& problem_vec, aby3::Sh3Runtime& runtime, aby3::Sh3Encryptor &enc, std::string prefix){
+  
+    std::string debugFile_mpi = debugFolder + "DEBUG-role:" + std::to_string(pIdx) + "-rank:" + std::to_string(rank) + ".txt";
+    std::ofstream ofs(debugFile_mpi, std::ios_base::app);
+  
+    aby3::i64Matrix plain_problem_mat(problem_vec.rows(), problem_vec.cols());
+    enc.revealAll(runtime, problem_vec, plain_problem_mat).get();
+  
+    std::string info = prefix + " length: " + std::to_string(problem_vec.rows()) + "x" + std::to_string(problem_vec.cols()) + "\n";
+    for(int i=0; i<problem_vec.rows(); i++){
+      for(int j=0; j<problem_vec.cols(); j++){
+        info += std::to_string(plain_problem_mat(i, j)) + " ";
+      }
+    }
+    
+    ofs << info << std::endl;
+    ofs.close();
+  
+    return;
+}
+
 void debug_info(std::string info){
   std::ofstream ofs(debugFile, std::ios_base::app);
   ofs << info << std::endl;

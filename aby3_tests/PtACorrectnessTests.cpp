@@ -234,3 +234,130 @@ int correctness_sum_pta(oc::CLP& cmd){
     return 0;
 }
 
+
+int correctness_max_pta(oc::CLP& cmd){
+    size_t n = 1, m=1<<10, optB=128;
+    int task_num;
+    MPI_Comm_size(MPI_COMM_WORLD, &task_num);
+    MPI_Barrier(MPI_COMM_WORLD);
+    SETUP_PROCESS
+
+    // construct the task.
+    auto ptaTask = new ABY3MPITask<si64, si64, si64, si64, Max>(task_num, optB, role, enc, runtime, eval);
+    ptaTask->set_default_value(GET_ZERO_SHARE);
+    ptaTask->circuit_construct({n}, {m});
+
+    // data_construction.
+    i64Matrix plain_data(m, 1);
+    i64Matrix max(1, 1);
+    max(0, 0) = m-1;
+    for(size_t i=0; i<m; i++){
+        plain_data(i, 0) = i;
+    }
+    si64Matrix sdata(m, 1);
+    if(role == 0){
+        enc.localIntMatrix(runtime, plain_data, sdata).get();
+    }
+    else{
+        enc.remoteIntMatrix(runtime, sdata).get();
+    }
+
+    std::vector<si64> inputX(n);
+    std::vector<si64> res(n);
+    inputX[0].mData[0] = 0;
+    inputX[0].mData[1] = 0;
+    res[0].mData[0] = 0;
+    res[0].mData[1] = 0;
+
+    size_t partial_len = ptaTask->subTask->get_partial_m_lens();
+    size_t m_start = ptaTask->m_start;
+
+    std::vector<si64> partialX(partial_len);
+    for(size_t i=0; i<partial_len; i++){
+        partialX[i].mData[0] = sdata.mShares[0](m_start + i, 0);
+        partialX[i].mData[1] = sdata.mShares[1](m_start + i, 0);
+    }
+
+    // evaluate the task.
+    ptaTask->circuit_evaluate(inputX.data(), partialX.data(), nullptr, res.data());
+
+    // check the result.
+    aby3::i64Matrix test_res(1, 1);
+    aby3::si64Matrix runtime_res(1, 1);
+    runtime_res.mShares[0](0, 0) = res[0].mData[0];
+    runtime_res.mShares[1](0, 0) = res[0].mData[1];
+    enc.revealAll(runtime, runtime_res, test_res).get();
+
+    if(rank == 0 && role == 0){
+        check_result("pta max", test_res, max);
+    }
+
+    return 0;
+}
+
+int correctness_metric_pta(oc::CLP& cmd){
+
+    size_t n = 1, m=1<<10, optB=128, k=1;
+    int task_num;
+    MPI_Comm_size(MPI_COMM_WORLD, &task_num);
+    MPI_Barrier(MPI_COMM_WORLD);
+    SETUP_PROCESS
+
+    // construct the task.
+    auto ptaTask = new ABY3MPITask<std::vector<si64>, std::vector<si64>, si64, si64, BioMetric>(task_num, optB, role, enc, runtime, eval);
+    ptaTask->set_default_value(get_share(role, m+1));
+    ptaTask->circuit_construct({n}, {m});
+
+    // data_construction.
+    i64Matrix plain_data(m, 1);
+    i64Matrix min_dis(1, 1);
+    min_dis(0, 0) = 1;
+    i64Matrix target(1, 1);
+    target(0, 0) = 0;
+    for(size_t i=0; i<m; i++){
+        plain_data(i, 0) = i + 1;
+    }
+    si64Matrix sdata(m, 1);
+    si64Matrix starget(1, 1);
+    if(role == 0){
+        enc.localIntMatrix(runtime, plain_data, sdata).get();
+        enc.localIntMatrix(runtime, target, starget).get();
+    }
+    else{
+        enc.remoteIntMatrix(runtime, sdata).get();
+        enc.remoteIntMatrix(runtime, starget).get();
+    }
+
+    std::vector<std::vector<si64>> inputX(n, std::vector<si64>(1));
+    std::vector<si64> res(n);
+    inputX[0][0].mData[0] = starget.mShares[0](0, 0);
+    inputX[0][0].mData[1] = starget.mShares[1](0, 0);
+    res[0].mData[0] = 0;
+    res[0].mData[1] = 0;
+
+    size_t partial_len = ptaTask->subTask->get_partial_m_lens();
+    size_t m_start = ptaTask->m_start;
+
+    std::vector<std::vector<si64>> partialX(partial_len, std::vector<si64>(1));
+    for(size_t i=0; i<partial_len; i++){
+        partialX[i][0].mData[0] = sdata.mShares[0](m_start + i, 0);
+        partialX[i][0].mData[1] = sdata.mShares[1](m_start + i, 0);
+    }
+
+    // evaluate the task.
+    ptaTask->circuit_evaluate(inputX.data(), partialX.data(), nullptr, res.data());
+
+    // check the result.
+    aby3::i64Matrix test_res(1, 1);
+    aby3::si64Matrix runtime_res(1, 1);
+    runtime_res.mShares[0](0, 0) = res[0].mData[0];
+    runtime_res.mShares[1](0, 0) = res[0].mData[1];
+    enc.revealAll(runtime, runtime_res, test_res).get();
+
+    if(rank == 0 && role == 0){
+        check_result("pta metric", test_res, min_dis);
+    }
+
+    return 0;
+}
+

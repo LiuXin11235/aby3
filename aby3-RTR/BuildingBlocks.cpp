@@ -181,7 +181,9 @@ int vector_mean_square(int pIdx, const std::vector<aby3::si64>&sharedA, const st
   si64Matrix matRes(res.size(), 1);
 
   for(int i=0; i<sharedA.size(); i++){
-    matA(i, 0, sharedA[i] - sharedB[i]);
+    // matA(i, 0, sharedA[i] - sharedB[i]);
+    matA.mShares[0](i, 0) = sharedA[i].mData[0] - sharedB[i].mData[0];
+    matA.mShares[1](i, 0) = sharedA[i].mData[1] - sharedB[i].mData[1];
   }
 
   eval.asyncMul(runtime, matA, matA, matRes).get();
@@ -517,14 +519,15 @@ int cipher_gt(int pIdx, si64Matrix &sharedA, si64Matrix &sharedB, sbMatrix &res,
 
 int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, aby3::sbMatrix& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
   si64Matrix diffAB(sintA.size(), 1);
-  // sbMatrix tmpRes(sintA.size(), 1);
   for(int i=0; i<sintA.size(); i++){
-    diffAB(i, 0, sintA[i] - sintB[i]);
+    diffAB.mShares[0](i, 0) = sintB[i].mData[0] - sintA[i].mData[0];
+    diffAB.mShares[1](i, 0) = sintB[i].mData[1] - sintA[i].mData[1];
   }
   Sh3Task task = runtime.noDependencies();
   fetch_msb(pIdx, diffAB, res, eval, runtime, task);
   return 0;
 }
+
 
 int vector_cipher_gt(int pIdx, std::vector<aby3::si64>& sintA, std::vector<aby3::si64>& sintB, std::vector<aby3::si64>& res, Sh3Evaluator &eval, Sh3Encryptor &enc, Sh3Runtime &runtime){
   // si64Matrix diffAB(sintA.size(), 1);

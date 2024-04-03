@@ -7,6 +7,27 @@
 using namespace oc;
 using namespace aby3;
 
+aby3::si64 get_share(int pIdx, int target_val){
+    aby3::si64 dval;
+    switch(pIdx){
+        case 0:
+            dval.mData[0] = 0;
+            dval.mData[1] = 0;
+            break;
+        case 1:
+            dval.mData[0] = target_val;
+            dval.mData[1] = 0;
+            break;
+        case 2:
+            dval.mData[0] = 0;
+            dval.mData[1] = target_val;
+            break;
+        default:
+            THROW_RUNTIME_ERROR("Invalid party index - " + std::to_string(pIdx));
+    }
+    return dval;
+}
+
 
 int test_cipher_index_pta(oc::CLP& cmd){
 
