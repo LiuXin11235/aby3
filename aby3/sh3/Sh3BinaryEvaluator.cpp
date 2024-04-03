@@ -1164,7 +1164,7 @@ namespace aby3
 				if (mLevel == mCir->mLevelCounts.size() - 1)
 					comm.mNext.asyncSend(std::move(sendBuff));
 				else
-					comm.mNext.asyncSend(sendBuff.data(), sendBuff.size());
+					comm.mNext.asyncSendCopy(sendBuff.data(), sendBuff.size());
 				mRecvData.resize(size);
 				mRecvFutr.emplace_back(comm.mPrev.asyncRecv(mRecvData));
 			}
