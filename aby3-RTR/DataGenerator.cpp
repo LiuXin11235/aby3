@@ -7,7 +7,10 @@ std::vector<aby3::si64> generate_vector_si64(size_t len, int pIdx, aby3::Sh3Encr
         size_t block_size = end - start;
         aby3::si64Matrix target_mat(block_size, 1);
         init_zeros(pIdx, enc, runtime, target_mat, block_size);
-        for(size_t i=start; i<end-start; i++) target_vec[i] = target_mat(i-start, 0);
+        for(size_t i=start; i<end-start; i++){
+            target_vec[i].mData[0] = target_mat.mShares[0](i-start, 0);
+            target_vec[i].mData[1] = target_mat.mShares[1](i-start, 0);
+        }
     }
     return target_vec;
 }

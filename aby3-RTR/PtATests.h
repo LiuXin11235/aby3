@@ -48,3 +48,7 @@ int test_max_pta(oc::CLP& cmd);
 int test_sort_pta(oc::CLP& cmd);
 
 // int correctness_sort_pta(oc::CLP& cmd);
+
+int test_sum_pta(oc::CLP& cmd);
+
+int test_metric_pta(oc::CLP& cmd);

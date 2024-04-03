@@ -28,12 +28,28 @@ int main(int argc, char** argv) {
     test_sort_pta(cmd);
   }
 
+  if(cmd.isSet("sum")){
+    test_sum_pta(cmd);
+  }
+
+  if(cmd.isSet("metric")){
+    test_metric_pta(cmd);
+  }
+
   if(cmd.isSet("system_profile")){
     communication_profile(cmd);
   }
 
   if(cmd.isSet("pta_correctness")){
     correctness_cipher_index_pta(cmd);
+    MPI_Barrier(MPI_COMM_WORLD);  // Wait for all processes to finish before starting the next test
+    correctness_sort_pta(cmd);
+    MPI_Barrier(MPI_COMM_WORLD);
+    correctness_sum_pta(cmd);
+    MPI_Barrier(MPI_COMM_WORLD);
+    correctness_max_pta(cmd);
+    MPI_Barrier(MPI_COMM_WORLD);
+    correctness_metric_pta(cmd);
   }
 
   if(cmd.isSet("task_profile")){
