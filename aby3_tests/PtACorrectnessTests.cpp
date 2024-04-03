@@ -172,7 +172,6 @@ int correctness_sort_pta(oc::CLP& cmd){
     return 0;
 }
 
-
 int correctness_sum_pta(oc::CLP& cmd){
     size_t n = 1, m=1<<10, optB=128;
     int task_num;

@@ -28,6 +28,14 @@ int main(int argc, char** argv) {
     test_sort_pta(cmd);
   }
 
+  if(cmd.isSet("sum")){
+    test_sum_pta(cmd);
+  }
+
+  if(cmd.isSet("metric")){
+    test_metric_pta(cmd);
+  }
+
   if(cmd.isSet("system_profile")){
     communication_profile(cmd);
   }

@@ -344,8 +344,8 @@ public:
     std::pair<std::vector<std::vector<aby3::si64>>, std::vector<std::vector<aby3::si64>>> data_loading(size_t k=1){
         // directly generate the input data.
         size_t partial_len = this->get_partial_m_lens();
-        std::vector<std::vector<aby3::si64>> vecX = generate_vector_si64(this->n * this->k, this->pIdx, *this->enc, *this->runtime);
-        std::vector<std::vector<aby3::si64>> vecY = generate_vector_si64(partial_len * this->k, this->pIdx, *this->enc, *this->runtime);
+        std::vector<aby3::si64> vecX = generate_vector_si64(this->n * k, this->pIdx, *this->enc, *this->runtime);
+        std::vector<aby3::si64> vecY = generate_vector_si64(partial_len * k, this->pIdx, *this->enc, *this->runtime);
 
         std::vector<std::vector<aby3::si64>> vecX2d(this->n, std::vector<aby3::si64>(k));
         std::vector<std::vector<aby3::si64>> vecY2d(partial_len, std::vector<aby3::si64>(k));
