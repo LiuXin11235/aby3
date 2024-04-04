@@ -6,6 +6,8 @@
 using namespace oc;
 using namespace aby3;
 
+#define SEE_VECTOR
+
 int pta_system_profile(oc::CLP& cmd){
 
     Timer& timer = Timer::getInstance();
@@ -95,6 +97,14 @@ int task_profile(oc::CLP& cmd){
         sort_profile(cmd);
         return 0;
     }
+    else if(target_task == "sum"){
+        sum_profile(cmd);
+        return 0;
+    }
+    else if(target_task == "metric"){
+        metric_profile(cmd);
+        return 0;
+    }
     else{
         throw std::runtime_error(LOCATION);
     }
@@ -114,7 +124,7 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if(rank < 2){
+    if(rank == 0){
         logging_stream.open(logging_file, std::ios::app);
         logging_stream << "start_b: " << b_start << std::endl;
         logging_stream << "end_b: " << b_end << std::endl;
@@ -129,28 +139,32 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
 
         std::tie(time_c, ratio) = evaluate_task(b);
 
+#ifndef SEE_VECTOR
         if(last_ratio > 0){
             if(ratio > last_ratio){
                 if(rank < 2){
                     logging_stream << "b: " << b << std::endl;
                     logging_stream << "time_c: " << time_c << std::endl;
                     logging_stream << "ratio: " << ratio << std::endl;
-                    logging_stream << "last ratio: " << last_ratio << std::endl;
                 }
                 break;
             }
         }
+#endif
         last_ratio = ratio;
 
-        if(rank < 2){
+        if(rank == 0){
             logging_stream << "b: " << b << std::endl;
             logging_stream << "time_c: " << time_c << std::endl;
             logging_stream << "ratio: " << ratio << std::endl;
-            logging_stream << "last ratio: " << last_ratio << std::endl;
         }
 
         b *= 2;
     }
+
+#ifdef SEE_VECTOR
+    return {1, 0};
+#endif
 
     // then binary search the optimal batch size.
     size_t binary_start_b = b / 2;
@@ -344,6 +358,111 @@ int sort_profile(oc::CLP& cmd){
 
     // get the optimal vector size.
     PROFILER_RECORDER
+
+    return 0;
+}
+
+int sum_profile(oc::CLP& cmd){
+
+    // setup the process.
+    SETUP_PROCESS
+
+    // prepare the profiler.
+    PROFILER_PREPARE
+
+    // construct the task.
+    auto ptaTask = new ABY3MPITask<int, si64, si64, si64, Sum>(size, start_b, role, enc, runtime, eval);
+    ptaTask->set_default_value(GET_ZERO_SHARE);
+
+    // define the task evaluation function.
+    auto evaluate_task = [&](size_t b){
+
+        // get the timer.
+        Timer& timer = Timer::getInstance();
+        size_t m=size * b;
+
+        if(n != 1) n = 1;
+
+        ptaTask->optimal_block = b;
+        ptaTask->circuit_construct({n}, {m});
+
+        // data loading.
+        std::vector<si64> partialY = ptaTask->subTask->data_loading();
+        std::vector<si64> res(n);
+        std::vector<int> inputX(1);
+
+        auto fakeY = ptaTask->fake_repeatY(partialY.data());
+        auto fakeX = ptaTask->fake_repeatX(inputX.data());
+
+        timer.start("time_circuit_evaluate");
+        ptaTask->subTask->circuit_profile(fakeX, fakeY, ptaTask->selectV);
+        timer.end("time_circuit_evaluate");
+
+        double _time_c = timer.get_time("time_circuit_evaluate", "milliseconds");
+        synchronized_time(role, _time_c, runtime);
+        MPI_Bcast(&_time_c, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        double ratio = _time_c / b;
+        timer.clear_records();
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        return std::make_pair(_time_c, ratio);
+    };
+
+    // get the optimal vector size.
+    PROFILER_RECORDER
+
+    return 0;
+}
+
+int metric_profile(oc::CLP& cmd){
+
+    // setup the process.
+    SETUP_PROCESS
+
+    // prepare the profiler.
+    PROFILER_PREPARE
+
+    // construct the task.
+    auto ptaTask = new ABY3MPITask<std::vector<si64>, std::vector<si64>, si64, si64, BioMetric>(size, start_b, role, enc, runtime, eval);
+    ptaTask->set_default_value(GET_ZERO_SHARE);
+
+    // define the task evaluation function.
+    auto evaluate_task = [&](size_t b){
+
+        // get the timer.
+        Timer& timer = Timer::getInstance();
+        size_t m=size * b;
+
+        if(n != 1) n = 1;
+
+        ptaTask->optimal_block = b;
+        ptaTask->circuit_construct({n}, {m});
+
+        // data loading.
+        std::vector<std::vector<si64>> inputX; std::vector<std::vector<si64>> inputY;
+        std::tie(inputX, inputY) = ptaTask->subTask->data_loading();
+        std::vector<si64> res(n);
+
+        auto fakeX = ptaTask->fake_repeatX(inputX.data());
+        auto fakeY = ptaTask->fake_repeatY(inputY.data());
+
+        timer.start("time_circuit_evaluate");
+        ptaTask->subTask->circuit_profile(fakeX, fakeY, ptaTask->selectV);
+        timer.end("time_circuit_evaluate");
+
+        double _time_c = timer.get_time("time_circuit_evaluate", "milliseconds");
+        synchronized_time(role, _time_c, runtime);
+        MPI_Bcast(&_time_c, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        double ratio = _time_c / b;
+        timer.clear_records();
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        return std::make_pair(_time_c, ratio);
+    };
+
+    // get the optimal vector size.
+    PROFILER_RECORDER
+    
 
     return 0;
 }

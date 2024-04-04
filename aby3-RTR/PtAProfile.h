@@ -43,3 +43,7 @@ int cipher_index_profile(oc::CLP& cmd);
 int max_profile(oc::CLP& cmd);
 
 int sort_profile(oc::CLP& cmd);
+
+int sum_profile(oc::CLP& cmd);
+
+int metric_profile(oc::CLP& cmd);
