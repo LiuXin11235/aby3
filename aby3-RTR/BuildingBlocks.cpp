@@ -21,8 +21,8 @@ static int BASEPORT=6000;
 double synchronized_time(int pIdx, double& time_slot, Sh3Runtime &runtime){
   // double sync_time = time_slot;
   if(pIdx == 0){
-    runtime.mComm.mNext.asyncSend<double>(time_slot);
-    runtime.mComm.mPrev.asyncSend<double>(time_slot);
+    runtime.mComm.mNext.asyncSendCopy<double>(time_slot);
+    runtime.mComm.mPrev.asyncSendCopy<double>(time_slot);
     return time_slot;
   }
   if(pIdx == 1){
@@ -42,23 +42,25 @@ double synchronized_time(int pIdx, double& time_slot, Sh3Runtime &runtime){
 void distribute_setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
            Sh3Runtime &runtime) {
   CommPkg comm;
+  string fport, sport, tport;
+  fport = "1419"; sport = "1420"; tport = "1421";
   switch (partyIdx) {
     case 0:
-      comm.mNext = Session(ios, "10.0.1.15:1419", SessionMode::Server, "01")
+      comm.mNext = Session(ios, std::string(P0_IP) + ":" + fport, SessionMode::Server, "01")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.15:1420", SessionMode::Server, "02")
+      comm.mPrev = Session(ios, std::string(P0_IP) + ":" + sport, SessionMode::Server, "02")
                        .addChannel();
       break;
     case 1:
-      comm.mNext = Session(ios, "10.0.1.4:1421", SessionMode::Server, "12")
+      comm.mNext = Session(ios, std::string(P1_IP) + ":" + tport, SessionMode::Server, "12")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.15:1419", SessionMode::Client, "01")
+      comm.mPrev = Session(ios, std::string(P0_IP) + ":" + fport, SessionMode::Client, "01")
                        .addChannel();
       break;
     default:
-      comm.mNext = Session(ios, "10.0.1.15:1420", SessionMode::Client, "02")
+      comm.mNext = Session(ios, std::string(P0_IP) + ":" + sport, SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, "10.0.1.4:1421", SessionMode::Client, "12")
+      comm.mPrev = Session(ios, std::string(P1_IP) + ":" + tport,  SessionMode::Client, "12")
                        .addChannel();
       break;
   }
@@ -96,7 +98,7 @@ void multi_processor_setup(u64 partyIdx, int rank, IOService &ios, Sh3Encryptor 
       tport = std::to_string(BASEPORT + 3*rank + 2);
       comm.mNext = Session(ios, std::string(P0_IP) + ":" + sport, SessionMode::Client, "02")
                        .addChannel();
-      comm.mPrev = Session(ios, std::string(P1_IP) + ":" +tport, SessionMode::Client, "12")
+      comm.mPrev = Session(ios, std::string(P1_IP) + ":" + tport, SessionMode::Client, "12")
                        .addChannel();
       break;
   }

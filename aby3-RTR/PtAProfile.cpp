@@ -6,7 +6,7 @@
 using namespace oc;
 using namespace aby3;
 
-#define SEE_VECTOR
+// #define SEE_VECTOR
 
 int pta_system_profile(oc::CLP& cmd){
 
@@ -57,7 +57,7 @@ int communication_profile(oc::CLP& cmd){
     timer.end("time_latency");
 
 
-    while(b < end_b){
+    while(b <= end_b){
 
         aby3::si64Matrix data(b, 1);
         init_zeros(role, enc, runtime, data, b);
@@ -67,10 +67,8 @@ int communication_profile(oc::CLP& cmd){
         std::string comm_key = "time_communication." + std::to_string(b);
         timer.start(comm_key);
 
-        // runtime.mComm.mNext.asyncSendCopy(data.mShares[0].data(), data.mShares[0].size());
         auto fu_send = runtime.mComm.mNext.asyncSendFuture(data.mShares[0].data(), data.mShares[0].size());
         auto fu_recv = runtime.mComm.mPrev.asyncRecv(data.mShares[1].data(), data.mShares[1].size());
-        // fu.get();
         fu_send.get();
         fu_recv.get();
 
@@ -127,6 +125,8 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
     double ratio = -1;
     size_t b = b_start;
     double time_c = -1;
+    double time_c_all = 0;
+    size_t repeat_times = 5;
 
     std::ofstream logging_stream;
 
@@ -143,15 +143,20 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
     }
 
     // exponentially increase the batch size for probing.
-    while(b < b_end){
-        if(b > b_end) b = b_end;
+    while(b <= b_end){
 
-        std::tie(time_c, ratio) = evaluate_task(b);
+        time_c_all = 0;
+        for(size_t i=0; i<repeat_times; i++){
+            std::tie(time_c, ratio) = evaluate_task(b);
+            time_c_all += time_c;
+        }
+        time_c = time_c_all / repeat_times;
+        ratio = time_c / b;
 
 #ifndef SEE_VECTOR
         if(last_ratio > 0){
-            if(ratio > last_ratio){
-                if(rank < 2){
+            if(ratio > last_ratio * 1.1){
+                if(rank == 0){
                     logging_stream << "b: " << b << std::endl;
                     logging_stream << "time_c: " << time_c << std::endl;
                     logging_stream << "ratio: " << ratio << std::endl;
@@ -175,6 +180,8 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
     return {1, 0};
 #endif
 
+    return {b/2, time_c};
+
     // then binary search the optimal batch size.
     size_t binary_start_b = b / 2;
     size_t binary_end_b = b;
@@ -185,7 +192,16 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
 
     while(binary_end_b - binary_start_b > gap){
         b = (binary_start_b + binary_end_b) / 2;
-        std::tie(time_c, ratio) = evaluate_task(b);
+        time_c_all = 0;
+
+        for(size_t i=0; i<repeat_times; i++){
+            std::tie(time_c, ratio) = evaluate_task(b);
+            time_c_all += time_c;
+        }
+
+        time_c = time_c_all / repeat_times;
+        ratio = time_c / b;
+
         if(ratio > last_ratio){
             binary_end_b = b;
             if(rank == 0){
@@ -204,6 +220,21 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
     return {optimal_vector_size, time_c};
 }
 
+double get_unit_time(size_t b, std::function<std::pair<double, double>(size_t)> evaluate_task, std::string logging_file){
+
+    double time_c = -1;
+    double ratio = -1;
+    double time_c_all = 0;
+    size_t repeat_times = 5;
+
+    for(size_t i=0; i<repeat_times; i++){
+        std::tie(time_c, ratio) = evaluate_task(b);
+        time_c_all += time_c;
+    }
+    time_c = time_c_all / repeat_times;
+
+    return time_c;
+}
 
 int cipher_index_profile(oc::CLP& cmd){
 

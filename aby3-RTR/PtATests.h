@@ -34,7 +34,7 @@
     Sh3Encryptor enc; \
     Sh3Evaluator eval; \
     Sh3Runtime runtime; \
-    basic_setup((u64)role, ios, enc, eval, runtime);
+    distribute_setup((u64)role, ios, enc, eval, runtime);
 
 
 int test_cipher_index_pta(oc::CLP& cmd);

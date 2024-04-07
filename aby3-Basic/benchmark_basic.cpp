@@ -2,6 +2,8 @@
 #include "../aby3-RTR/GASTest.h"
 #include <cmath>
 
+static size_t MAX_ENC_SIZE = 1 << 25;
+
 using namespace oc;
 using namespace aby3;
 
@@ -35,11 +37,25 @@ int sqrt_oram_benchmark(oc::CLP& cmd){
         input_x(i, 0) = i;
     }
     enc_x_mat.resize(data_len, 64);
-    if(role == 0){
-        enc.localBinMatrix(runtime, input_x, enc_x_mat).get();
-    }else{
-        enc.remoteBinMatrix(runtime, enc_x_mat).get();
+
+    size_t round = (size_t) ceil(data_len / (double)MAX_ENC_SIZE);
+    size_t last_len = data_len - (round - 1) * MAX_ENC_SIZE;
+    for(size_t i=0; i<round; i++){
+        size_t enc_len = (i == round - 1) ? last_len : MAX_ENC_SIZE;
+        i64Matrix x_block = input_x.block(i * MAX_ENC_SIZE, 0, enc_len, 1);
+        sbMatrix _enc_block(enc_len, 64);
+        if(role == 0){
+            enc.localBinMatrix(runtime, x_block, _enc_block).get();
+        }else{
+            enc.remoteBinMatrix(runtime, _enc_block).get();
+        }
+        // enc_x_mat.block(i * MAX_ENC_SIZE, 0, enc_len, 64) = _enc_block;
+        for(size_t j=0; j<enc_len; j++){
+            enc_x_mat.mShares[0](i * MAX_ENC_SIZE + j, 0) = _enc_block.mShares[0](j, 0);
+            enc_x_mat.mShares[1](i * MAX_ENC_SIZE + j, 0) = _enc_block.mShares[1](j, 0);
+        }
     }
+
     for(size_t i=0; i<data_len; i++){
         enc_x[i].resize(1, 64);
         enc_x[i].mShares[0](0, 0) = enc_x_mat.mShares[0](i, 0);
@@ -47,11 +63,15 @@ int sqrt_oram_benchmark(oc::CLP& cmd){
     }
     timer.end("data_load");
 
+    std::cout << "after data loading" << std::endl;
+
     // evaluate the sqrt-oram.
     timer.start("oram_construction");
     ABY3SqrtOram oram(data_len, stash_size, pack_size, role, enc, eval, runtime);
     oram.initiate(enc_x);
     timer.end("oram_construction");
+
+    std::cout << "after oram construction" << std::endl;
 
     // evaluate the access time.
     std::vector<sbMatrix> access_res(n);
@@ -61,6 +81,8 @@ int sqrt_oram_benchmark(oc::CLP& cmd){
         access_res[i] = oram.access(logical_index);
     }
     timer.end("oram_access");
+
+    std::cout << "after oram access" << std::endl;
 
     if(role == 0){
         std::ofstream stream(logging_file, std::ios::app);
