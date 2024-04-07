@@ -5,7 +5,7 @@ using namespace aby3;
 
 #define DEBUG_SHUFFLE2
 
-static size_t MAX_COMM_SIZE = 1 << 25;
+static size_t MAX_COMM_SIZE = 1 << 10;
 
 /**
  * The shuffle protocol accoring to
@@ -285,7 +285,7 @@ int efficient_shuffle_with_random_permutation(
     get_random_mask(pIdx, next_maskRZ, nextSeed);
 
 #ifdef DEBUG_SHUFFLE2
-    std::string party_debug_file = "/home/ubuntu/configuration/aby3/party-" + std::to_string(pIdx) + ".txt";
+    std::string party_debug_file = "/home/tsingj_ubuntu/fanxy/PtA/aby3/party-" + std::to_string(pIdx) + ".txt";
     std::ofstream partyfs(party_debug_file, std::ios_base::app);
     partyfs << "before shuffle ptotocol" << std::endl;
 #endif
@@ -384,7 +384,7 @@ int efficient_shuffle_with_random_permutation(
         for(size_t i=0; i<index_round; i++){
             size_t _len = (i == index_round - 1) ? index_last_len : MAX_COMM_SIZE;
             aby3::i64Matrix _recv_buffer(_len, 1);
-            auto recvFu = runtime.mComm.mPrev.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
+            auto recvFu = runtime.mComm.mNext.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
             recvFu.get();
             sharedRY1_matrix.block(i * MAX_COMM_SIZE, 0, _len, 1) = _recv_buffer;
         }
@@ -424,7 +424,7 @@ int efficient_shuffle_with_random_permutation(
             aby3::i64Matrix _data = maskRB2.block(i * MAX_COMM_SIZE, 0, _len, 1);
             auto sendFu = runtime.mComm.mNext.asyncSendFuture(_data.data(), _data.size());
             aby3::i64Matrix _recv_buffer(_len, 1);
-            auto recvFu = runtime.mComm.mPrev.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
+            auto recvFu = runtime.mComm.mNext.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
 
             sendFu.get();
             recvFu.get();
@@ -640,7 +640,7 @@ int efficient_shuffle_with_random_permutation(
             aby3::i64Matrix _data = maskRB1.block(i * MAX_COMM_SIZE, 0, _len, 1);
             auto sendFu = runtime.mComm.mPrev.asyncSendFuture(_data.data(), _data.size());
             aby3::i64Matrix _recv_buffer(_len, 1);
-            auto recvFu = runtime.mComm.mNext.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
+            auto recvFu = runtime.mComm.mPrev.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
             sendFu.get();
             recvFu.get();
             maskRB2.block(i * MAX_COMM_SIZE, 0, _len, 1) = _recv_buffer;
@@ -787,7 +787,7 @@ int efficient_shuffle_with_random_permutation(
         for (size_t i = 0; i < len; i++) {
             sharedRX2_matrix(i, 0) = sharedRX2[i];
         }
-        
+
         size_t index_len = sharedRX2.size();
         size_t index_round = (size_t)ceil(index_len / (double)MAX_COMM_SIZE);
         size_t index_last_len = index_len - (index_round - 1) * MAX_COMM_SIZE;
