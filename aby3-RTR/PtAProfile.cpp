@@ -7,6 +7,7 @@ using namespace oc;
 using namespace aby3;
 
 // #define SEE_VECTOR
+#define REPEAT_TIMES 5
 
 int pta_system_profile(oc::CLP& cmd){
 
@@ -126,7 +127,7 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
     size_t b = b_start;
     double time_c = -1;
     double time_c_all = 0;
-    size_t repeat_times = 5;
+    size_t repeat_times = REPEAT_TIMES;
 
     std::ofstream logging_stream;
 
@@ -157,7 +158,7 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
         if(last_ratio > 0){
             if(ratio > last_ratio * 1.1){
                 if(rank == 0){
-                    logging_stream << "b: " << b << std::endl;
+                    logging_stream << "ending b: " << b << std::endl;
                     logging_stream << "time_c: " << time_c << std::endl;
                     logging_stream << "ratio: " << ratio << std::endl;
                 }
@@ -170,7 +171,7 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
         if(rank == 0){
             logging_stream << "b: " << b << std::endl;
             logging_stream << "time_c: " << time_c << std::endl;
-            logging_stream << "ratio: " << ratio << std::endl;
+            logging_stream << "ratio: " << last_ratio << std::endl;
         }
 
         b *= 2;
@@ -179,7 +180,7 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
 #ifdef SEE_VECTOR
     return {1, 0};
 #endif
-
+    time_c = last_ratio * (b / 2);
     return {b/2, time_c};
 
     // then binary search the optimal batch size.
@@ -225,7 +226,7 @@ double get_unit_time(size_t b, std::function<std::pair<double, double>(size_t)> 
     double time_c = -1;
     double ratio = -1;
     double time_c_all = 0;
-    size_t repeat_times = 5;
+    size_t repeat_times = REPEAT_TIMES;
 
     for(size_t i=0; i<repeat_times; i++){
         std::tie(time_c, ratio) = evaluate_task(b);
