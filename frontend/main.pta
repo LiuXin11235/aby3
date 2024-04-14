@@ -37,7 +37,8 @@ int main(int argc, char** argv) {
   }
 
   if(cmd.isSet("system_profile")){
-    communication_profile(cmd);
+    // communication_profile(cmd);
+    pta_system_profile(cmd);
   }
 
   if(cmd.isSet("pta_correctness")){

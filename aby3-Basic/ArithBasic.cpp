@@ -66,6 +66,17 @@ void arith_aggregation(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &re
             }
         }
 
+        // if(func == "MAX"){
+        //     aby3::sbMatrix compMatrix(mid_len, 1);  
+        //     cipher_gt(pIdx, _left_val, _right_val, compMatrix, enc, runtime, eval);
+        //     aby3::si64Matrix _max_val(mid_len, 1);
+        //     cipher_mul(pIdx, _left_val, compMatrix, _max_val, eval, enc, runtime);
+        //     for(size_t i=0; i<_res_val.rows(); i++){
+        //         _res_val.mShares[0](i, 0) = _max_val.mShares[0](i, 0) + _right_val.mShares[0](i, 0);
+        //         _res_val.mShares[1](i, 0) = _max_val.mShares[1](i, 0) + _right_val.mShares[1](i, 0);
+        //     }
+        // }
+
         res_last.resize(mid_len, 1);
 
         std::copy(_res_val.mShares.begin(), _res_val.mShares.end(),

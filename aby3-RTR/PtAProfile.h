@@ -32,7 +32,7 @@
 #define PROFILER_RECORDER \
     if(get_unit){ \
         double unit_time = get_unit_time(start_b, evaluate_task, probing_log); \
-        if(rank == 0 && role == 0){ \
+        if(rank == 0){ \
             std::ofstream stream(probing_res, std::ios::app); \
             stream << "unit_time-" << start_b << "-" << size << ": " << unit_time << " milliseconds" << std::endl; \
             stream.close(); \
@@ -41,7 +41,7 @@
     else{ \
         size_t optimal_vector_size; \
         std::tie(optimal_vector_size, time_c) = get_optimal_vector_size(start_b, ending_b, gap, evaluate_task, probing_log); \
-        if(rank == 0 && role == 0){ \
+        if(rank == 0){ \
             std::ofstream stream(probing_res, std::ios::app); \
             stream << "optimal_B: " << optimal_vector_size << std::endl; \
             stream << "unit_time: " << time_c << " milliseconds" << std::endl; \

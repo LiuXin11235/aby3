@@ -14,9 +14,9 @@ using namespace oc;
 
 // #define LOCAL_TEST
 
-static int BASEPORT=6000;
-#define P0_IP "10.90.0.26"
-#define P1_IP "10.90.0.27"
+static int BASEPORT=4000;
+#define P0_IP "10.90.0.27"
+#define P1_IP "10.90.0.26"
 
 double synchronized_time(int pIdx, double& time_slot, Sh3Runtime &runtime){
   // double sync_time = time_slot;

@@ -6,8 +6,11 @@
 using namespace oc;
 using namespace aby3;
 
-// #define SEE_VECTOR
+#define SEE_VECTOR
 #define REPEAT_TIMES 5
+#define UNIT_REPEAT_TIMES 1
+#define DELTA 1.1
+#define THRESHOLD 3
 
 int pta_system_profile(oc::CLP& cmd){
 
@@ -15,11 +18,12 @@ int pta_system_profile(oc::CLP& cmd){
     timer.start("time_setup");
     SETUP_PROCESS
     timer.end("time_setup");
+    MPI_Barrier(MPI_COMM_WORLD);
 
     std::string logging_file;
     get_value("logFile", cmd, logging_file);
 
-    if(rank == 0 && role == 0){
+    if(rank == 0){
         std::ofstream stream(logging_file, std::ios::app);
         stream << "task num: " << size << std::endl;
         timer.print_total("milliseconds", stream);
@@ -54,8 +58,17 @@ int communication_profile(oc::CLP& cmd){
     runtime.mComm.mNext.asyncSend(small_data.mShares[0].data(), small_data.mShares[0].size());
     auto fu = runtime.mComm.mPrev.asyncRecv(small_data.mShares[1].data(), small_data.mShares[1].size());
     fu.get();
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
     timer.end("time_latency");
+
+    double time_latency = timer.get_time("time_latency", "milliseconds");
+    std::string logging_rank = logging_file + "." + std::to_string(rank);
+
+    std::ofstream stream(logging_rank, std::ios::app);
+    stream << "tasknum: " << std::to_string(size) << std::endl;
+    stream << "time_latency: " << time_latency << std::endl;
+    stream.close();
+
 
 
     while(b <= end_b){
@@ -78,7 +91,7 @@ int communication_profile(oc::CLP& cmd){
         b *= 4;
     }
 
-    if(rank ==0 && role ==0){
+    if(rank ==0){
         std::ofstream stream(logging_file, std::ios::app);
         stream << "tasknum: " << std::to_string(size) << std::endl;
         timer.print_total("milliseconds", stream);
@@ -122,12 +135,18 @@ int task_profile(oc::CLP& cmd){
 
 std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, size_t gap, std::function<std::pair<double, double>(size_t)> evaluate_task, std::string logging_file){
     size_t n=1; 
-    double last_ratio = -1;
+    double min_ratio = 99;
     double ratio = -1;
     size_t b = b_start;
     double time_c = -1;
     double time_c_all = 0;
     size_t repeat_times = REPEAT_TIMES;
+
+    int unexpected_ratio_count = 0; // threshold:5
+    int unexpected_ratio_count_threshold = THRESHOLD;
+    double output_ratio =0.0;
+    int output_b = 0;
+    double output_time_c = 0.0;
 
     std::ofstream logging_stream;
 
@@ -153,80 +172,92 @@ std::pair<size_t, double> get_optimal_vector_size(size_t b_start, size_t b_end, 
         }
         time_c = time_c_all / repeat_times;
         ratio = time_c / b;
-
-#ifndef SEE_VECTOR
-        if(last_ratio > 0){
-            if(ratio > last_ratio * 1.1){
-                if(rank == 0){
-                    logging_stream << "ending b: " << b << std::endl;
-                    logging_stream << "time_c: " << time_c << std::endl;
-                    logging_stream << "ratio: " << ratio << std::endl;
-                }
-                break;
-            }
+        
+        if (ratio > min_ratio * DELTA){ // will not update output if it's unexpected ratio.
+            unexpected_ratio_count++;
         }
-#endif
-        last_ratio = ratio;
+
+        if(ratio < min_ratio){
+            min_ratio = ratio;
+            output_b = b;
+            output_time_c = time_c;
+            output_ratio = ratio;
+        }
+
+        if (unexpected_ratio_count > unexpected_ratio_count_threshold){
+            if(rank == 0){
+                logging_stream << "unexpected ratio count exceeds the threshold" << std::endl;
+                logging_stream << "b: " << output_b << std::endl;
+                logging_stream << "time_c: " << output_time_c << std::endl;
+                logging_stream << "ratio: " << output_ratio << std::endl;
+            }
+            break;
+        } 
 
         if(rank == 0){
             logging_stream << "b: " << b << std::endl;
             logging_stream << "time_c: " << time_c << std::endl;
-            logging_stream << "ratio: " << last_ratio << std::endl;
+            logging_stream << "ratio: " << ratio << std::endl;
+            logging_stream << "min_ratio: " << min_ratio << std::endl;
+            logging_stream << "output_ratio: " << output_ratio << std::endl;
         }
 
         b *= 2;
     }
 
+    return {output_b, output_time_c};
+
 #ifdef SEE_VECTOR
     return {1, 0};
 #endif
-    time_c = last_ratio * (b / 2);
-    return {b/2, time_c};
+    // // time_c = last_ratio * (b / 2);
+    // return {b/2, time_c};
 
-    // then binary search the optimal batch size.
-    size_t binary_start_b = b / 2;
-    size_t binary_end_b = b;
+    // // then binary search the optimal batch size.
+    // size_t binary_start_b = b / 2;
+    // size_t binary_end_b = b;
 
-    if(rank == 0){
-        logging_stream << "binary probing" << std::endl;
-    }
+    // if(rank == 0){
+    //     logging_stream << "binary probing" << std::endl;
+    // }
 
-    while(binary_end_b - binary_start_b > gap){
-        b = (binary_start_b + binary_end_b) / 2;
-        time_c_all = 0;
+    // while(binary_end_b - binary_start_b > gap){
+    //     b = (binary_start_b + binary_end_b) / 2;
+    //     time_c_all = 0;
 
-        for(size_t i=0; i<repeat_times; i++){
-            std::tie(time_c, ratio) = evaluate_task(b);
-            time_c_all += time_c;
-        }
+    //     for(size_t i=0; i<repeat_times; i++){
+    //         std::tie(time_c, ratio) = evaluate_task(b);
+    //         time_c_all += time_c;
+    //     }
 
-        time_c = time_c_all / repeat_times;
-        ratio = time_c / b;
+    //     time_c = time_c_all / repeat_times;
+    //     ratio = time_c / b;
 
-        if(ratio > last_ratio){
-            binary_end_b = b;
-            if(rank == 0){
-                logging_stream << "b: " << b << std::endl;
-                logging_stream << "time_c: " << time_c << std::endl;
-                logging_stream << "ratio: " << ratio << std::endl;
-            }
-        }
-        else break;
-    }
+    //     if(ratio > min_ratio){
+    //         binary_end_b = b;
+    //         if(rank == 0){
+    //             logging_stream << "b: " << b << std::endl;
+    //             logging_stream << "time_c: " << time_c << std::endl;
+    //             logging_stream << "ratio: " << ratio << std::endl;
+    //         }
+    //     }
+    //     else break;
+    // }
 
-    // get the final result.
-    size_t optimal_vector_size = (binary_start_b + binary_end_b) / 2;
-    std::tie(time_c, ratio) = evaluate_task(optimal_vector_size);
+    // // get the final result.
+    // size_t optimal_vector_size = (binary_start_b + binary_end_b) / 2;
+    // std::tie(time_c, ratio) = evaluate_task(optimal_vector_size);
 
-    return {optimal_vector_size, time_c};
+    // return {optimal_vector_size, time_c};
 }
+
 
 double get_unit_time(size_t b, std::function<std::pair<double, double>(size_t)> evaluate_task, std::string logging_file){
 
     double time_c = -1;
     double ratio = -1;
     double time_c_all = 0;
-    size_t repeat_times = REPEAT_TIMES;
+    size_t repeat_times = UNIT_REPEAT_TIMES;
 
     for(size_t i=0; i<repeat_times; i++){
         std::tie(time_c, ratio) = evaluate_task(b);
@@ -279,7 +310,6 @@ int cipher_index_profile(oc::CLP& cmd){
         double ratio = _time_c / b;
         timer.clear_records();
         MPI_Barrier(MPI_COMM_WORLD);
-
         return std::make_pair(_time_c, ratio);
     };
 
@@ -341,7 +371,6 @@ int max_profile(oc::CLP& cmd){
 
     return 0;
 }
-
 
 int sort_profile(oc::CLP& cmd){
 

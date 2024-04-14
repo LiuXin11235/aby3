@@ -3,9 +3,9 @@
 using namespace oc;
 using namespace aby3;
 
-#define DEBUG_SHUFFLE2
+// #define DEBUG_SHUFFLE2
 
-static size_t MAX_COMM_SIZE = 1 << 10;
+static size_t MAX_COMM_SIZE = 1 << 25;
 
 /**
  * The shuffle protocol accoring to

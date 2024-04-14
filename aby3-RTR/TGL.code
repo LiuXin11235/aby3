@@ -1,0 +1,134 @@
+#pragma once
+#include "GeneralPTA.h"
+#include "DataGenerator.h"
+
+int tgl_cipher_index(int pIdx, std::vector<aby3::si64> inputx, std::vector<aby3::si64> inputY, std::vector<aby3::si64> res, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime, aby3::Sh3Evaluator& eval){
+    size_t n = inputX.size();   
+    size_t m = inputY.size();
+
+    aby3::si64Matrix expandX(n*m, 1);
+    aby3::i64Matrix expandY(n*m, 1);
+    for(size_t i=0; i<n; i++){
+        for(size_t j=0; j<m; j++){
+            expandX.mShares[0](i*m + j, 0) = inputX[i].mData[0];
+            expandX.mShares[1](i*m + j, 0) = inputX[i].mData[1];
+            expandY(i*m + j, 0) = j;
+        }
+    }
+    aby3::sbMatrix compMatrix(n*m, 1);
+    cipher_eq(pIdx, expandX, expandY, compMatrix, enc, runtime, eval);
+
+    aby3::si64Matrix expandRes(n*m, 1);
+    for(size_t i=0; i<n; i++){
+        for(size_t j=0; j<m; j++){
+            expandRes(i*m + j, 0) = inputY[j];
+        }
+    }
+
+    aby3::si64Matrix resMatrix(n*m, 1);
+    cipher_mul(pIdx, expandRes, compMatrix, resMatrix, eval, enc, runtime);
+    
+    // aggregation.
+    for(size_t i=0; i<n; i++){
+        arith_aggregation(pIdx, resMatrix.block(i*m, 0, m, 1), res[i], "ADD", enc, runtime, eval); // account for 30 lines.
+    }
+    
+    return 0;
+}
+
+
+int tgl_sum(int pIdx, std::vector<aby3::si64> inputx std::vector<aby3::si64> res, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime, aby3::Sh3Evaluator& eval){
+    
+    arith_aggregation(pIdx, inputx, res, "ADD", enc, runtime, eval); // account for 30 lines.
+    
+    return 0;
+}
+
+int tgl_max(int pIdx, std::vector<aby3::si64> inputx, std::vector<aby3::si64> res, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime, aby3::Sh3Evaluator& eval){
+        
+    arith_aggregation(pIdx, inputx, res, "MAX", enc, runtime, eval); // account for 34 lines.
+    
+    return 0;
+}
+
+int tgl_min_distance(int pIdx, std::vector<std::vector<aby3::si64>> inputx, std::vector<std::vector<aby3::si64>> inputy, std::vector<aby3::si64> res, aby3::Sh3Encryptor& enc, aby3::Sh3Runtime& runtime, aby3::Sh3){
+    size_t n = inputx.size();
+    size_t m = inputy.size();
+    size_t unit_len = inputx[0].size(); 
+    std::vector<aby3::si64> res(n, aby3::si64(0));
+
+    // for each inputx, calculate the distance to each inputy.
+    size_t expand_len = n*m*unit_len;
+    aby3::si64Matrix expandX(expand_len, 1);
+    aby3::si64Matrix expandY(expand_len, 1);
+    for(size_t i=0; i<n; i++){
+        for(size_t j=0; j<m; j++){
+            for(size_t k=0; k<unit_len; k++){
+                expandX.mShares[0](i*m*unit_len + j*unit_len + k, 0) = inputx[i][k].mData[0];
+                expandX.mShares[1](i*m*unit_len + j*unit_len + k, 0) = inputx[i][k].mData[1];
+                expandY.mShares[0](i*m*unit_len + j*unit_len + k, 0) = inputy[j][k].mData[0];
+                expandY.mShares[1](i*m*unit_len + j*unit_len + k, 0) = inputy[j][k].mData[1];
+            }
+        }
+    }
+
+    aby3::si64Matrix diffMatrix(expand_len, 1);
+    vector_mean_square(pIdx, expandX, expandY, diffMatrix, enc, runtime, eval);
+
+    // compute the distance.
+    aby3::si64Matrix disMatrix(n*m, 1);
+    init_zero(pIdx, disMatrix, enc, runtime, eval);
+    for(size_t i=0; i<n*m; i++){
+        for(size_t k=0; k<unit_len; k++){
+            disMatrix.mShares[0](i*unit_len + k) += diffMatrix.mShares[0](i*m*unit_len + j*unit_len + k, 0);
+            disMatrix.mShares[1](i*unit_len + k) += diffMatrix.mShares[1](i*m*unit_len + j*unit_len + k, 0);
+        }
+    }
+
+    // aggregation.
+    for(size_t i=0; i<n; i++){
+        arith_aggregation(pIdx, disMatrix.block(i*m, 0, m, 1), res[i], "MIN", enc, runtime, eval);
+    }
+
+    return 0;
+}
+
+int tgl_sort(std::vector<aby3::si64> inputx){
+    // repeat and for pairwise comparison.
+    size_t len = inputx.size(); 
+    size_t expand_len = len*len;
+    aby3::si64Matrix expandx(len, 1);
+    aby3::si64Matrix expandy(len, 1);
+    for(size_t i=0; i<len; i++){
+        for(size_t j=0; j<len; j++){
+            expandx.mShares[0](i*len + j, 0) = inputx[i].mData[0];
+            expandx.mShares[1](i*len + j, 0) = inputx[i].mData[1];
+            expandy.mShares[0](i*len + j, 0) = inputx[j].mData[0];
+            expandy.mShares[1](i*len + j, 0) = inputx[j].mData[1];
+        }
+    }
+
+    aby3::sbMatrix compMatrix(len*len, 1);
+    cipher_gt(pIdx, expandx, expandy, compMatrix, enc, runtime, eval);
+
+    aby3::si64Matrix onesMat(len*len, 1);
+    init_one(pIdx, onesMat, enc, runtime, eval);
+    aby3::si64Matrix mul_res(len*len, 1);
+    cipher_mul(pIdx, compMatrix, onesMat, mul_res, eval, enc, runtime);
+
+    aby3::i64Matrix select_mat(len*len, 1);
+
+    for(size_t i=0; i<len; i++){
+        for(size_t j=0; j<len; j++){
+            select_mat(i*len + j, 0) = j;
+        }
+    }
+    cipher_mul(pIdx, mul_res, select_mat, select_mat, eval, enc, runtime);
+
+    for(size_t i=0; i<len; i++){
+        arith_aggregation(pIdx, select_mat.block(i*len, 0, len, 1), res[i], "ADD", enc, runtime, eval); // 30 Lines.
+    }
+
+    return 0;
+
+}

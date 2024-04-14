@@ -298,6 +298,9 @@ public:
         if(std::is_same<typename NUMX::value_type, aby3::si64>::value){
             vector_mean_square(this->pIdx, flatX, flatY, flatX, *(this->eval), *(this->enc), *(this->runtime));
         }
+
+        // delete the space of flatY.
+        flatY.clear();
         
         // reduce to local table
         for(int i=0; i<expandX.size(); i++){
@@ -327,6 +330,10 @@ public:
             mat_mul.mShares[1](i, 0) = resRight[i].mData[1] - resLeft[i].mData[1];
         }
         cipher_mul_seq(this->pIdx, mat_mul, comp_res, mat_res, *(this->eval), *(this->enc), *(this->runtime));
+        
+        // free the space of mat_mul and comp_res.
+        comp_res.resize(0, 0);
+        mat_mul.resize(0, 0);
 
         // compute the final result
         for(int i=0; i<resLeft.size(); i++){

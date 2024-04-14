@@ -2,6 +2,7 @@
 #include "GASTest.h"
 #include "../aby3-Basic/timer.h"
 #include "debug.h"
+#include <random>
 // #include "../aby3_tests/Test.h"
 
 using namespace oc;
@@ -40,8 +41,10 @@ int test_cipher_index_pta(oc::CLP& cmd){
 
     Timer& timer = Timer::getInstance();
 
+    timer.start("total");
     timer.start("time_setup");
     SETUP_PROCESS
+
     // construct the task.
     auto ptaTask = new ABY3MPITask<si64, int, si64, si64, CipherIndex>(task_num, optB, role, enc, runtime, eval);
     ptaTask->set_default_value(GET_ZERO_SHARE);
@@ -61,9 +64,10 @@ int test_cipher_index_pta(oc::CLP& cmd){
     timer.start("time_circuit_evaluate");
     ptaTask->circuit_evaluate(inputX.data(), inputY.data(), inputV.data(), res.data());
     timer.end("time_circuit_evaluate");
+    timer.end("total");
 
     // print the time.
-    if(rank == 0 && role == 0){
+    if(rank == 0){
         std::ofstream stream(logging_file, std::ios::app);
         timer.print_total("milliseconds", stream);
         ptaTask->print_time_profile(stream);
@@ -108,7 +112,7 @@ int test_max_pta(oc::CLP& cmd){
     timer.end("time_circuit_evaluate");
 
     // print the time.
-    if(rank == 0 && role == 0){
+    if(rank == 0){
         std::ofstream stream(logging_file, std::ios::app);
         timer.print_total("milliseconds", stream);
         ptaTask->print_time_profile(stream);
@@ -181,7 +185,7 @@ int test_sort_pta(oc::CLP& cmd){
     ptaTask_step2->circuit_evaluate(range_index.data(), partial_data, inputY.data(), sort_res.data());
     timer.end("time_circuit_evaluate_step2");
 
-    if(rank == 0 && role == 0){
+    if(rank == 0){
         std::ofstream stream(logging_file, std::ios::app);
         timer.print_total("milliseconds", stream);
         stream << "step1: " << std::endl;
@@ -228,7 +232,7 @@ int test_sum_pta(oc::CLP& cmd){
     timer.end("time_circuit_evaluate");
 
     // print the time.
-    if(rank == 0 && role == 0){
+    if(rank == 0){
         std::ofstream stream(logging_file, std::ios::app);
         timer.print_total("milliseconds", stream);
         ptaTask->print_time_profile(stream);
@@ -274,7 +278,7 @@ int test_metric_pta(oc::CLP& cmd){
     timer.end("time_circuit_evaluate");
 
     // print the time.
-    if(rank == 0 && role == 0){
+    if(rank == 0){
         std::ofstream stream(logging_file, std::ios::app);
         timer.print_total("milliseconds", stream);
         ptaTask->print_time_profile(stream);
