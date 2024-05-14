@@ -9,6 +9,39 @@
 
 #include "../aby3-RTR/debug.h"
 
+#define BASIC_TEST_INIT \ 
+    int role = -1; \
+    if (cmd.isSet("role")) { \
+        auto keys = cmd.getMany<int>("role"); \
+        role = keys[0]; \
+    } \
+    if (role == -1) { \
+        throw std::runtime_error(LOCATION); \
+    } \
+    IOService ios; \
+    Sh3Encryptor enc; \
+    Sh3Evaluator eval; \
+    Sh3Runtime runtime; \
+    basic_setup((u64)role, ios, enc, eval, runtime); \
+
+
+#define TEST_INIT \
+    int role = -1; \
+    if (cmd.isSet("role")) { \
+        auto keys = cmd.getMany<int>("role"); \
+        role = keys[0]; \
+    } \
+    if (role == -1) { \
+        throw std::runtime_error(LOCATION); \
+    } \
+    IOService ios; \
+    Sh3Encryptor enc; \
+    Sh3Evaluator eval; \
+    Sh3Runtime runtime; \
+    basic_setup((u64)role, ios, enc, eval, runtime); \
+    aby3Info party_info = aby3Info(role, enc, eval, runtime);
+
+
 // #define SHOW_TEST_CASE
 
 int arith_basic_test(oc::CLP& cmd);
@@ -29,9 +62,13 @@ int sqrt_oram_test(oc::CLP& cmd);
 int graph_loading_test(oc::CLP& cmd);
 int graph_block_fetch_test(oc::CLP& cmd);
 int basic_graph_query_test(oc::CLP& cmd);
+int neighbors_find_test(oc::CLP& cmd);
 
 int bc_sort_test(oc::CLP& cmd);
+int bc_sort_corner_test(oc::CLP& cmd);
+int bc_sort_multiple_times(oc::CLP& cmd);
 int quick_sort_test(oc::CLP& cmd);
+int quick_sort_with_duplicate_elements_test(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);

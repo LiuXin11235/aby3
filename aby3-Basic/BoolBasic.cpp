@@ -6,6 +6,7 @@
 #include <iostream>
 #include <random>
 #include <string>
+#include <cmath>
 
 #include "../aby3-RTR/debug.h"
 #include "../aby3-RTR/BuildingBlocks.h"
@@ -793,14 +794,38 @@ void get_random_mask(int pIdx, i64Matrix &res, block &seed) {
     return;
 }
 
+void left_shift_and_fill(int pIdx, aby3::sbMatrix& input, int tag_size, int tag_value){
+
+    assert(input.rows() == 1);
+    switch(pIdx) {
+        case 0:
+            input.mShares[0](0, 0) = input.mShares[0](0, 0) << tag_size;
+            input.mShares[1](0, 0) = input.mShares[1](0, 0) << tag_size;
+            break;
+        case 1:
+            input.mShares[0](0, 0) = (input.mShares[0](0, 0) << tag_size) | tag_value;
+            input.mShares[1](0, 0) = input.mShares[1](0, 0) << tag_size;
+            break;
+        case 2:
+            input.mShares[0](0, 0) = input.mShares[0](0, 0) << tag_size;
+            input.mShares[1](0, 0) = (input.mShares[1](0, 0) << tag_size) | tag_value;
+            break;
+        default:
+            THROW_RUNTIME_ERROR("left_shift_and_fill: pIdx out of range.");
+    }
+    return;
+}
+
 void tag_append(int pIdx, std::vector<aby3::sbMatrix>& inputs){
 
     size_t len = inputs.size();
-    size_t bitsize = inputs[0].bitCount();
+    size_t bitsize = inputs[0].bitCount(); // assume that the inputs value and the tag size together is less than 64.
+    size_t tag_size = std::ceil(std::log2(len));
 
-    // 1. generate the log(len)-size bit tag shares.
-
-    // 2. append the tag shares to the inputs.
+    // generate the log(len)-size bit tag shares and append to the inputs.
+    for(size_t i=0; i<len; i++){
+        left_shift_and_fill(pIdx, inputs[i], tag_size, (int) i);
+    }
 
     return;
 }
@@ -811,6 +836,34 @@ void tag_remove(int pIdx, size_t tag_len, std::vector<aby3::sbMatrix>& inputs){
     size_t bitsize = total_bit_size - tag_len;
 
     // remove the last tag_len bits from the tail of the inputs.
+    for(size_t i=0; i<inputs.size(); i++){
+        inputs[i].mShares[0](0, 0) = inputs[i].mShares[0](0, 0) >> tag_len;
+        inputs[i].mShares[1](0, 0) = inputs[i].mShares[1](0, 0) >> tag_len;
+    }
 
+    return;
+}
+
+void plain_permutate(std::vector<size_t> &permutation, aby3::sbMatrix &data){
+    size_t len = data.rows();
+    size_t bitsize = data.bitCount();
+
+    aby3::sbMatrix res(len, bitsize);
+    for(size_t i=0; i<len; i++){
+        res.mShares[0](i, 0) = data.mShares[0](permutation[i], 0);
+        res.mShares[1](i, 0) = data.mShares[1](permutation[i], 0);
+    }
+    data = res;
+    return;
+}
+
+void plain_permutate(std::vector<size_t> &permutation, aby3::i64Matrix &data){
+    size_t len = data.rows();
+
+    aby3::i64Matrix res(len, 1);
+    for(size_t i=0; i<len; i++){
+        res(i, 0) = data(permutation[i], 0);
+    }
+    data = res;
     return;
 }

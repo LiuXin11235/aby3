@@ -107,4 +107,15 @@ struct plainGraph2d{
 
         return node_chunk;
     }
+
+    std::vector<int> get_outting_neighbors(int starting_node){
+        std::vector<int> neighbors;
+        std::vector<int> node_chunk = get_node_chunk(starting_node);
+        for(size_t i=0; i<b*l; i++){
+            if(node_chunk[i] == starting_node){
+                neighbors.push_back(node_chunk[b*l + i]);
+            }
+        }
+        return neighbors;
+    }
 };

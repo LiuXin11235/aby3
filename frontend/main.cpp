@@ -52,11 +52,15 @@ int main(int argc, char** argv) {
 	if(cmd.isSet("GraphQuery")){
 		graph_block_fetch_test(cmd);
 		basic_graph_query_test(cmd);
+		neighbors_find_test(cmd);
 	}
 
 	if(cmd.isSet("Sort")){
 		bc_sort_test(cmd);
+		bc_sort_corner_test(cmd);
+		bc_sort_multiple_times(cmd);
 		quick_sort_test(cmd);
+		quick_sort_with_duplicate_elements_test(cmd);
 	}
   return 0;
 }

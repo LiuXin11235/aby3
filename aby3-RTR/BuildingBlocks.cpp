@@ -405,7 +405,7 @@ int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, S
   }
 
   // 3. binary secrets reshare.
-  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
+  runtime.mComm.mNext.asyncSendCopy(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
   fu.get();
 
@@ -461,7 +461,7 @@ int fetch_msb(int pIdx, si64Matrix &diffAB, sbMatrix &res, Sh3Evaluator &eval, S
   }
 
   // 3. binary secrets reshare.
-  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
+  runtime.mComm.mNext.asyncSendCopy(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
   fu.get();
 
@@ -603,7 +603,7 @@ int cipher_gt(int pIdx, si64Matrix &sharedA, vector<int> &plainB, sbMatrix &res,
   }
 
   // 3. binary secrets reshare.
-  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
+  runtime.mComm.mNext.asyncSendCopy(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
   fu.get();
 
@@ -696,7 +696,7 @@ int circuit_cipher_eq(int pIdx, si64Matrix &intA, si64Matrix &intB, sbMatrix &re
   }
 
   // 4. binary secrets reshare.
-  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
+  runtime.mComm.mNext.asyncSendCopy(circuitInput0.mShares[0].data(), circuitInput0.mShares[0].size());
   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(), circuitInput0.mShares[1].size());
   fu.get();
 
@@ -741,7 +741,7 @@ int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& 
     }
   }
 
-  runtime.mComm.mNext.asyncSend(circuitInput0.mShares[0].data(),
+  runtime.mComm.mNext.asyncSendCopy(circuitInput0.mShares[0].data(),
                                 circuitInput0.mShares[0].size());
   auto fu = runtime.mComm.mPrev.asyncRecv(circuitInput0.mShares[1].data(),
                                           circuitInput0.mShares[1].size());

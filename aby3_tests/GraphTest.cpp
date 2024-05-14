@@ -202,7 +202,6 @@ int basic_graph_query_test(oc::CLP& cmd){
     target_chunk = GQEngine.get_block_index(target_node);
     priv_target_chunk = boolIndex(target_chunk, role);  
     priv_target_node = boolIndex(target_node, role);
-    // aby3::sbMatrix outting_edges_count_node10 = outting_edge_count(priv_target_node, priv_target_chunk, GQEngine);
     aby3::si64Matrix outting_edges_count_node10 = outting_edge_count(priv_target_node, priv_target_chunk, GQEngine);
 
     if(role == 0) debug_info("finished two outting edges count");
@@ -218,5 +217,57 @@ int basic_graph_query_test(oc::CLP& cmd){
         check_result("Outting edges count node 10 test", test_outting_edges_count_node10(0, 0), 0);
     }
 
+    return 0;
+}
+
+int neighbors_find_test(oc::CLP& cmd){
+
+    // set up the environment. 
+    TEST_INIT
+    if(role == 0){
+        debug_info("RUN Basic Graph Neighbor Find Query TEST");
+    }
+
+    // graph filename, using star graph for testing, 0-other edge exists while other edges do not exist.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string meta_file = "tmp_graph_meta.txt";
+    std::string graph_data_file = "tmp_graph_2dpartition.txt";
+
+    size_t stash_size = 8;
+    size_t pack_size = 4;
+
+    // construct the graph query engine.
+    GraphQueryEngine GQEngine(party_info, graph_data_folder + meta_file, graph_data_folder + graph_data_file, stash_size, pack_size, stash_size, pack_size);
+
+    // query the graph.
+    int starting_node = 0;
+    int logical_index = GQEngine.get_block_index(starting_node);
+    boolIndex priv_logical_index = boolIndex(logical_index, role);
+    boolIndex priv_node_index = boolIndex(starting_node, role);
+
+    // query the neighbors.
+    aby3::sbMatrix masked_neighbors = outting_neighbors(priv_node_index, priv_logical_index, GQEngine);
+
+    // check the result.
+    aby3::i64Matrix test_neighbors(masked_neighbors.rows(), 1);
+    enc.revealAll(runtime, masked_neighbors, test_neighbors).get();
+
+    std::vector<int> queried_neighbors;
+    for(size_t i=0; i<test_neighbors.rows(); i++){
+        if(test_neighbors(i, 0) != 0){
+            queried_neighbors.push_back(test_neighbors(i, 0));
+        }
+    }
+
+    plainGraph2d pGraph(graph_data_folder + meta_file, graph_data_folder + graph_data_file);
+    std::vector<int> true_neighbors = pGraph.get_outting_neighbors(starting_node);
+
+
+    std::sort(queried_neighbors.begin(), queried_neighbors.end(), std::greater<int>());
+    std::sort(true_neighbors.begin(), true_neighbors.end(), std::greater<int>());
+    if(role == 0){
+        check_result("Basic graph query neighbors test", queried_neighbors, true_neighbors);
+    }
+    
     return 0;
 }

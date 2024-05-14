@@ -24,7 +24,6 @@ inline size_t roundUpToPowerOfTwo(size_t num) {
     return (size_t) pow(2, ceil(log2(num)));
 }
 
-
 struct boolShare {
     std::array<bool, 2> bshares;
 
@@ -310,6 +309,10 @@ void plain_permutate(std::vector<size_t> &permutation, std::vector<T> &data) {
     data = tmp;
 }
 
+void plain_permutate(std::vector<size_t> &permutation, aby3::sbMatrix &data);
+
+void plain_permutate(std::vector<size_t> &permutation, aby3::i64Matrix &data);
+
 void get_random_mask(int pIdx, aby3::i64Matrix &res, oc::block &seed);
 
 void arith_aggregation(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &res,
@@ -337,6 +340,8 @@ std::vector<size_t> argwhere(aby3::i64Matrix& input, int target);
 std::vector<size_t> argwhere(std::vector<std::vector<int>>& inputs, int target);
 
 std::vector<size_t> argwhere(std::vector<size_t>& inputs, int target);
+
+void left_shift_and_fill(int pIdx, aby3::sbMatrix &input, int tag_size, int tag_value);
 
 void tag_append(int pIdx, std::vector<aby3::sbMatrix>& inputs);
 

@@ -10,16 +10,16 @@ int large_data_sending(int pIdx, aby3::i64Matrix &sharedA, aby3::Sh3Runtime &run
     if(pIdx == 0) debug_info("In sending - len = " + std::to_string(len) + ", round = " + std::to_string(round) + ", last_len = " + std::to_string(last_len));
 
     if(round == 1){
-        if(toNext) runtime.mComm.mNext.asyncSend(sharedA.data(), sharedA.size());
-        else runtime.mComm.mPrev.asyncSend(sharedA.data(), sharedA.size());
+        if(toNext) runtime.mComm.mNext.asyncSendCopy(sharedA.data(), sharedA.size());
+        else runtime.mComm.mPrev.asyncSendCopy(sharedA.data(), sharedA.size());
         return 0;
     }
 
     for(size_t i=0; i<round; i++){
         size_t sending_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
         aby3::i64Matrix sending_data = sharedA.block(i * MAX_SENDING_SIZE, 0, sending_len, 1);
-        if(toNext) runtime.mComm.mNext.asyncSend(sending_data.data(), sending_data.size());
-        else runtime.mComm.mPrev.asyncSend(sending_data.data(), sending_data.size());
+        if(toNext) runtime.mComm.mNext.asyncSendCopy(sending_data.data(), sending_data.size());
+        else runtime.mComm.mPrev.asyncSendCopy(sending_data.data(), sending_data.size());
     }
 
     return 0;

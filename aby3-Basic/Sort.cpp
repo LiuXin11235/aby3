@@ -40,7 +40,10 @@ int bc_sort_different(std::vector<aby3::sbMatrix> &data, std::vector<size_t> &lo
             size_t low = lows[start + i], high = highs[start + i];
             size_t after = current + (high - low) * (high - low);
 
-            if(after > valid_size) break;
+            // if(pIdx == 0) debug_info("current after size = " + std::to_string((after - total_current)) + " | after = " + std::to_string(after) + " | total_current = " + std::to_string(total_current));
+            // if(pIdx == 0) debug_info("i = " + std::to_string(i) + " | low = " + std::to_string(low) + " | high = " + std::to_string(high) + " | current = " + std::to_string(current));
+
+            if((after - total_current) > valid_size) break;
 
             // tiling the indices.
             std::vector<size_t> ranging_indices(high - low, 0);
@@ -50,7 +53,6 @@ int bc_sort_different(std::vector<aby3::sbMatrix> &data, std::vector<size_t> &lo
             for(size_t j=0; j<(high - low); j++){
                 ranging_indices_str += std::to_string(ranging_indices[j]) + " ";
             }    
-            // if(pIdx == 0) debug_info("ranging_indices - " + ranging_indices_str);
 
             vector_tile<size_t>(ranging_indices, (high - low), index_tile, current - total_current);
             vector_repeat<size_t>(ranging_indices, (high - low), index_repeat, current - total_current);
@@ -62,7 +64,6 @@ int bc_sort_different(std::vector<aby3::sbMatrix> &data, std::vector<size_t> &lo
             for(size_t i=0; i<index_tile.size(); i++){
                 ranging_indices_str += std::to_string(index_tile[i]) + " ";
             }
-            // debug_info("index_tile indices - " + ranging_indices_str);
         }
 
         // if(pIdx == 0) debug_info("bc sorts - before tiling & repeating data construction.");
@@ -82,8 +83,6 @@ int bc_sort_different(std::vector<aby3::sbMatrix> &data, std::vector<size_t> &lo
         i64Matrix plain_comp(current - total_current, 1);
         enc.revealAll(runtime, data_comp, plain_comp).get();
 
-        // if(pIdx == 0) debug_info("bc sorts - after comparison | size = " + std::to_string(current - total_current));
-
         // compute the location after sorting and construct the data.
         current = total_current;
         size_t next_start = start;
@@ -92,7 +91,7 @@ int bc_sort_different(std::vector<aby3::sbMatrix> &data, std::vector<size_t> &lo
             size_t low = lows[start + i], high = highs[start + i];
             size_t after = current + (high - low) * (high - low);
 
-            if(after > valid_size){
+            if((after - total_current) > valid_size){
                 next_start = start + i;
                 break;
             }
@@ -117,7 +116,6 @@ int bc_sort_different(std::vector<aby3::sbMatrix> &data, std::vector<size_t> &lo
 
         start = next_start;
         total_current = current;
-        
     }
 
     // sort the data.
@@ -282,8 +280,10 @@ int quick_sort_different(std::vector<aby3::sbMatrix> &data, int pIdx, aby3::Sh3E
                 new_highs.push_back(low_pos);
             }
             else{
-                bc_lows.push_back(low);
-                bc_highs.push_back(low_pos);
+                if((low_pos - low) > 1){
+                    bc_lows.push_back(low);
+                    bc_highs.push_back(low_pos);
+                }
             }
 
             if((high - low_pos - 1) > min_size){
@@ -291,8 +291,10 @@ int quick_sort_different(std::vector<aby3::sbMatrix> &data, int pIdx, aby3::Sh3E
                 new_highs.push_back(high);
             }
             else{
-                bc_lows.push_back(low_pos + 1);
-                bc_highs.push_back(high);
+                if((high - low_pos - 1) > 1) {
+                    bc_lows.push_back(low_pos + 1);
+                    bc_highs.push_back(high);
+                }
             }
 
             current = after;
@@ -308,6 +310,24 @@ int quick_sort_different(std::vector<aby3::sbMatrix> &data, int pIdx, aby3::Sh3E
         highs = new_highs;
         num_interval = lows.size();
     }
+
+    // if(pIdx == 0) debug_info("before bc_sort!");
+    // if(pIdx == 0){
+    //     for(size_t i=0; i<bc_lows.size(); i++){
+    //         debug_info("bc_lows[" + std::to_string(i) + "] = " + std::to_string(bc_lows[i]) + ", bc_highs[" + std::to_string(i) + "] = " + std::to_string(bc_highs[i]) + " interval_size = " + std::to_string(bc_highs[i] - bc_lows[i]));
+    //     }
+    // }
+
     bc_sort_different(data, bc_lows, bc_highs, pIdx, enc, eval, runtime, 1048576);
+    return 0;
+}
+
+int quick_sort(std::vector<aby3::sbMatrix> &data, int pIdx, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime, size_t min_size){
+
+    tag_append(pIdx, data);
+    quick_sort_different(data, pIdx, enc, eval, runtime, min_size);
+    size_t tag_size = std::ceil(std::log2(data.size()));
+    tag_remove(pIdx, tag_size, data);
+
     return 0;
 }

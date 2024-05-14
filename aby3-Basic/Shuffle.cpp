@@ -225,6 +225,148 @@ int efficient_shuffle(std::vector<sbMatrix>& T, int pIdx,
     return 0;
 }
 
+
+int efficient_shuffle(aby3::sbMatrix &T, int pIdx, aby3::sbMatrix &Tres, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+
+    // get the common randomness.
+    block prevSeed = enc.mShareGen.mPrevCommon.getSeed();
+    block nextSeed = enc.mShareGen.mNextCommon.getSeed();
+    size_t len = T.rows();
+    size_t unit_size = (T.bitCount() + 63) / 64;
+
+    // generate the prev, next - correlated randomness.
+    // 1 - generate the permutations.
+    std::vector<size_t> prev_permutation;
+    std::vector<size_t> next_permutation;
+    get_permutation(len, prev_permutation, prevSeed);
+    get_permutation(len, next_permutation, nextSeed);
+
+    // 2 - generate the random masks Z.
+    i64Matrix prev_maskZ(len, unit_size);
+    i64Matrix next_maskZ(len, unit_size);
+    get_random_mask(pIdx, prev_maskZ, prevSeed);
+    get_random_mask(pIdx, next_maskZ, nextSeed);
+
+    // get the random permutation.
+    if(pIdx == 0){
+        // pre-generate the randomness.
+        i64Matrix maskB(len, unit_size);
+        i64Matrix maskA(len, unit_size);
+        get_random_mask(pIdx, maskB, nextSeed);
+        get_random_mask(pIdx, maskA, prevSeed);
+
+        // get the sharedX1.
+        i64Matrix sharedX1(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            sharedX1(i, 0) = T.mShares[0](i, 0) ^ T.mShares[1](i, 0) ^ next_maskZ(i, 0);
+        }
+        plain_permutate(next_permutation, sharedX1);
+
+        // get the sharedX2.
+        i64Matrix sharedX2(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            sharedX2(i, 0) = sharedX1(i, 0) ^ prev_maskZ(i, 0);
+        }
+        plain_permutate(prev_permutation, sharedX2);
+
+        // send the sharedX2 to P1.
+        runtime.mComm.mNext.asyncSendCopy(sharedX2.data(), sharedX2.size());
+
+        // compute the final shares.
+        Tres.resize(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            Tres.mShares[1](i, 0) = maskA(i, 0);
+            Tres.mShares[0](i, 0) = maskB(i, 0);
+        }
+    }
+    if(pIdx == 1){
+        // pre-generate the randomness.
+        i64Matrix maskB(len, unit_size);
+        get_random_mask(pIdx, maskB, prevSeed);
+
+        // compute the sharedY1 and send to the next party.
+        i64Matrix sharedY1(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            sharedY1(i, 0) = T.mShares[0](i, 0) ^ prev_maskZ(i, 0);
+        }
+        plain_permutate(prev_permutation, sharedY1);
+
+        runtime.mComm.mNext.asyncSendCopy(sharedY1.data(), sharedY1.size());
+
+        i64Matrix sharedX2(len, unit_size);
+        runtime.mComm.mPrev.recv(sharedX2.data(), sharedX2.size());
+
+        // compute the sharedX3.
+        i64Matrix sharedX3(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            sharedX3(i, 0) = sharedX2(i, 0) ^ next_maskZ(i, 0);
+        }
+        plain_permutate(next_permutation, sharedX3);
+
+        // compute the masked C1.
+        i64Matrix maskedC1(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            maskedC1(i, 0) = sharedX3(i, 0) ^ maskB(i, 0);
+        }
+        runtime.mComm.mNext.asyncSendCopy(maskedC1.data(), maskedC1.size());
+
+        i64Matrix maskedC2(len, unit_size);
+        runtime.mComm.mNext.recv(maskedC2.data(), maskedC2.size());
+
+        // compute the final shares.
+        Tres.resize(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            Tres.mShares[1](i, 0) = maskB(i, 0);
+            Tres.mShares[0](i, 0) = maskedC1(i, 0) ^ maskedC2(i, 0);
+        }
+    }
+    if(pIdx == 2){
+        // pre-generate the randomness.
+        i64Matrix maskA(len, unit_size);
+        get_random_mask(pIdx, maskA, nextSeed);
+
+        // receive the sharedY1 from the previous party.
+        i64Matrix sharedY1(len, unit_size);
+        runtime.mComm.mPrev.recv(sharedY1.data(), sharedY1.size());
+
+        // compute the sharedY2.
+        i64Matrix sharedY2(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            sharedY2(i, 0) = sharedY1(i, 0) ^ next_maskZ(i, 0);
+        }
+        plain_permutate(next_permutation, sharedY2);
+
+        i64Matrix sharedY3(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            sharedY3(i, 0) = sharedY2(i, 0) ^ prev_maskZ(i, 0);
+        }
+        plain_permutate(prev_permutation, sharedY3);
+
+        // compute the masked C2.
+        i64Matrix maskedC2(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            maskedC2(i, 0) = sharedY3(i, 0) ^ maskA(i, 0);
+        }
+        runtime.mComm.mPrev.asyncSendCopy(maskedC2.data(), maskedC2.size());
+        i64Matrix maskedC1(len, unit_size);
+        runtime.mComm.mPrev.recv(maskedC1.data(), maskedC1.size());
+
+        i64Matrix maskC(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            maskC(i, 0) = maskedC1(i, 0) ^ maskedC2(i, 0);
+        }
+
+        // compute the final shares.
+        Tres.resize(len, unit_size);
+        for(size_t i=0; i<len; i++){
+            Tres.mShares[1](i, 0) = maskC(i, 0);
+            Tres.mShares[0](i, 0) = maskA(i, 0);
+        }
+    }
+
+    return 0;
+}
+
 /**
  * The shuffle protocol accoring to
  * https://dl.acm.org/doi/10.1145/3460120.3484560 (advanced version).

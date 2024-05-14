@@ -24,6 +24,8 @@ done
 # 8) -Comm : test inter-party communication.
 # 9) -Sort : test the sort functions.
 # test_args=" -ORAM -Graph"
+# test_args=" -Graph -GraphQuery -Sort"
+# test_args=" -Sort -GraphQuery"
 test_args=" -Sort"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
