@@ -27,6 +27,9 @@ aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix&
     return eq_res;
 }
 
+
+// functions using GraphQueryEngine (based on Graph2D).
+
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
                          boolIndex logical_edge_block_index,
                          GraphQueryEngine &GQEngine) {
@@ -193,4 +196,54 @@ aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_bl
 
     // return std::make_pair(filtered_nodes, eq_res);
     return filtered_nodes;
+}
+
+
+// functions using AdjGraphQueryEngine.
+boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,AdjGraphQueryEngine &GQEngine){
+    boolIndex logical_edge_index = GQEngine.get_logical_edge_index(starting_node, ending_node);
+
+    aby3::sbMatrix edge_info = GQEngine.get_target_edge(logical_edge_index);
+
+    // whdther edge_info > 0 or not.
+    aby3::sbMatrix res(1, 1);
+    aby3::sbMatrix zero_share(edge_info.rows(), edge_info.bitCount());
+    for(int i=0; i<edge_info.rows(); i++){
+        zero_share.mShares[0](i, 0) = 0;
+        zero_share.mShares[1](i, 0) = 0;
+    }
+
+    bool_cipher_lt(GQEngine.party_info->pIdx, zero_share, edge_info, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    boolShare query_res;
+    query_res.from_matrix(res.mShares[0](0, 0), res.mShares[1](0, 0));
+
+    return query_res;
+}
+
+aby3::sbMatrix outting_edge_count(boolIndex node_index, AdjGraphQueryEngine &GQEngine){
+    aby3::sbMatrix res(1, 1);
+    aby3::sbMatrix zero_share(1, 1);
+    zero_share.mShares[0](0, 0) = 0;
+    zero_share.mShares[1](0, 0) = 0;
+
+    // aby3::si64Matrix edge_info = GQEngine.get_target_node(node_index);
+    aby3::sbMatrix node_info = GQEngine.get_target_node(node_index);
+
+    bool_aggregation(GQEngine.party_info->pIdx, node_info, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
+
+    return res;
+}
+
+aby3::sbMatrix outting_neighbors(boolIndex node_index, AdjGraphQueryEngine &GQEngine){
+    aby3::sbMatrix res = GQEngine.get_target_node(node_index);
+
+    // filterout the > 0 elements all to 1.
+    aby3::sbMatrix zero_share(res.rows(), res.bitCount());
+    for(int i=0; i<res.rows(); i++){
+        zero_share.mShares[0](i, 0) = 0;
+        zero_share.mShares[1](i, 0) = 0;
+    }
+    bool_cipher_lt(GQEngine.party_info->pIdx, zero_share, res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+    return res;
 }

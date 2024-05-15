@@ -47,6 +47,7 @@ int main(int argc, char** argv) {
 
 	if(cmd.isSet("Graph")){
 		graph_loading_test(cmd);
+		adj_graph_loading_test(cmd);
 	}
 
 	if(cmd.isSet("GraphQuery")){

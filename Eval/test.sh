@@ -26,7 +26,8 @@ done
 # test_args=" -ORAM -Graph"
 # test_args=" -Graph -GraphQuery -Sort"
 # test_args=" -Sort -GraphQuery"
-test_args=" -Sort"
+# test_args=" -Sort"
+test_args=" -Graph"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

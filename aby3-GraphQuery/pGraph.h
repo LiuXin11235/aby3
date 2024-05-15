@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vector>
 #include <array>
+#include <cassert>
 #include <string>
 
 struct plainGraph2d{
@@ -117,5 +118,50 @@ struct plainGraph2d{
             }
         }
         return neighbors;
+    }
+};
+
+struct plainGraphAdj{
+    size_t v;
+    size_t unique_edges = 0;
+    std::vector<int> starting_node_list;
+    std::vector<int> ending_node_list;  
+    std::vector<int> adj_list;
+
+    plainGraphAdj(){}; // default constructor
+
+    plainGraphAdj(const std::string& meta_data_file, const std::string& edge_list_file){
+        // load the graph meta data.
+        std::ifstream meta(meta_data_file);
+        meta >> v;
+        starting_node_list.resize(v);
+        ending_node_list.resize(v);
+
+        // load the edges.
+        std::ifstream edge_list(edge_list_file);
+        for (size_t i = 0; i < v; i++) {
+            edge_list >> starting_node_list[i] >> ending_node_list[i];
+        }
+        return;
+    }
+
+    void generate_adj_list(){
+        assert(!starting_node_list.empty() && !ending_node_list.empty());
+        assert(starting_node_list.size() == ending_node_list.size());
+
+        adj_list.resize(v*v, 0);
+        for(size_t i=0; i<starting_node_list.size(); i++){
+            int s = starting_node_list[i], e = ending_node_list[i];
+            if(adj_list[s*v + e] == 0){
+                unique_edges++;
+            }
+            adj_list[s*v + e] += 1;
+        }
+        return;
+    }
+
+    void printGraphMeta(){
+        std::cout << "v: " << this->v << std::endl;
+        std::cout << "unique_edges: " << this->unique_edges << std::endl;
     }
 };

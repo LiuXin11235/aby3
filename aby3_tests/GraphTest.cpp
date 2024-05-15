@@ -271,3 +271,26 @@ int neighbors_find_test(oc::CLP& cmd){
     
     return 0;
 }
+
+// adj graph query tests.
+int adj_graph_loading_test(oc::CLP& cmd){
+
+    TEST_INIT
+    
+    if(role == 0){
+        debug_info("RUN AdjGraph loading TEST");
+    }
+
+    // filenames.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string meta_file = "adj_tmp_adj_meta.txt";
+    std::string data_file = "adj_tmp_edge_list.txt";
+
+    // load the graph.
+    GraphAdj adjGraph(graph_data_folder + meta_file, graph_data_folder + data_file, party_info);
+
+    // check the graph.
+    adjGraph.check_graph(graph_data_folder + meta_file, graph_data_folder + data_file, party_info);
+
+    return 0;
+}

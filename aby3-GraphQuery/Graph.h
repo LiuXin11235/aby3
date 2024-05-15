@@ -18,7 +18,6 @@ struct aby3Info{
         pIdx(pIdx), enc(&enc), eval(&eval), runtime(&runtime){}
 };
 
-
 struct Graph2d {
     // each 2d-partation graph includes one node chuck list (length b) and one edge block list (length b^2).
     size_t v, e;
@@ -58,6 +57,7 @@ struct Graph2d {
             // the sbMatrix must be initialized with the correct size.
             edge_block_list[i].resize(2*l, BITSIZE);
 
+            // TODO - optimize
             if(party_info.pIdx == 0){
                 party_info.enc->localBinMatrix(*(party_info.runtime), nodes_list, edge_block_list[i]).get();
             }
@@ -142,6 +142,80 @@ struct Graph2d {
                 }
             }
             if(break_outter_loop) break;
+        }
+
+        if(party_info.pIdx == 0){
+            if(check_flag){
+                debug_info("\033[32m The secure graph is the same as the plaintext graph. \033[0m\n");
+            }
+            else{
+                debug_info("\033[31m Error: the secure graph is not the same as the plaintext graph. \033[0m\n");
+            }
+        }
+    }
+};
+
+struct GraphAdj {
+    size_t v;
+    size_t adj_size;
+    std::vector<aby3::sbMatrix> adj_list;
+
+    GraphAdj(){}; // default constructor
+
+    GraphAdj(const std::string& meta_data_file, const std::string& data_file, aby3Info &party_info){
+        plainGraphAdj plain_graph(meta_data_file, data_file);
+
+        // check the adj graph.
+        plain_graph.generate_adj_list();
+        v = plain_graph.v;
+        adj_size = plain_graph.adj_list.size();
+        adj_list.resize(adj_size);
+
+        aby3::i64Matrix full_adj_matrix(adj_size, 1);
+        for(size_t i=0; i<adj_size; i++){
+            full_adj_matrix(i, 0) = plain_graph.adj_list[i];
+        }
+
+        aby3::sbMatrix full_adj_matrix_sec(adj_size, BITSIZE);
+
+        // encrypt the adj graph
+        if(party_info.pIdx == 0){
+            party_info.enc->localBinMatrix(*(party_info.runtime), full_adj_matrix, full_adj_matrix_sec).get();
+        }
+        else{
+            party_info.enc->remoteBinMatrix(*(party_info.runtime), full_adj_matrix_sec).get();
+        }
+
+        for(size_t i=0; i<adj_size; i++){
+            adj_list[i].resize(1, BITSIZE);
+            adj_list[i].mShares[0](0, 0) = full_adj_matrix_sec.mShares[0](i, 0);
+            adj_list[i].mShares[1](0, 0) = full_adj_matrix_sec.mShares[1](i, 0);
+        }
+        return;
+    }
+
+    void check_graph(const std::string& meta_data_file, const std::string& data_file, aby3Info &party_info){
+        plainGraphAdj plain_graph(meta_data_file, data_file);
+        plain_graph.generate_adj_list();
+
+        // reveal the secure edge list back to plaintext.
+        aby3::i64Matrix adj_matrix(plain_graph.adj_list.size(), 1);
+        aby3::sbMatrix adj_matrix_sec(plain_graph.adj_list.size(), 1);
+
+        for(size_t i=0; i<plain_graph.adj_list.size(); i++){
+            adj_matrix_sec.mShares[0](i, 0) = adj_list[i].mShares[0](0, 0);
+            adj_matrix_sec.mShares[1](i, 0) = adj_list[i].mShares[1](0, 0);
+        }
+
+        party_info.enc->revealAll(*(party_info.runtime), adj_matrix_sec, adj_matrix).get();
+        
+        // check whether the secure graph is the same as the plaintext graph.
+        bool check_flag = true;
+        for(size_t i=0; i<plain_graph.adj_list.size(); i++){
+            if(adj_matrix(i, 0) != plain_graph.adj_list[i]){
+                check_flag = false;
+                break;
+            }
         }
 
         if(party_info.pIdx == 0){
@@ -262,6 +336,79 @@ class GraphQueryEngine{
         }
 };
 
+class AdjGraphQueryEngine{
+
+public:
+    GraphAdj *graph;
+    ABY3SqrtOram *edge_oram;
+    ABY3SqrtOram *node_oram;
+    aby3Info *party_info;
+
+    size_t v;
+
+    AdjGraphQueryEngine(){}
+
+    AdjGraphQueryEngine(aby3Info &party_info, const std::string& meta_data_file, const std::string& data_file){
+        graph = new GraphAdj(meta_data_file, data_file, party_info);
+        this->party_info = &party_info;
+        v = graph->v;
+
+        if(!checkPowerOfTwo(v)){ // as we only support 2^m indexed ORAM for efficiency.
+            THROW_RUNTIME_ERROR("The number of nodes must be power of 2.");
+        }
+        return;
+    }
+
+    void edge_oram_initialization(const int stash_size, const int pack_size){
+        edge_oram = new ABY3SqrtOram(graph->adj_size, stash_size, pack_size, party_info->pIdx, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
+        edge_oram->initiate(graph->adj_list);
+        return;
+    }
+
+    void node_oram_initialization(const int stash_size, const int pack_size){
+
+        // organize the node-edges data structure.
+        std::vector<aby3::sbMatrix> node_edges_list(v);
+
+        for(size_t i=0; i<v; i++){
+            aby3::sbMatrix node_edges(v, BITSIZE);
+            for(size_t j=0; j<v; j++){
+                node_edges.mShares[0](j, 0) = graph->adj_list[i*v+j].mShares[0](0, 0);
+                node_edges.mShares[1](j, 0) = graph->adj_list[i*v+j].mShares[1](0, 0);
+            }
+            node_edges_list[i] = node_edges;
+        }
+
+        node_oram = new ABY3SqrtOram(v, stash_size, pack_size, party_info->pIdx, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
+        node_oram->initiate(node_edges_list);
+
+        return;
+    }
+
+    aby3::sbMatrix get_target_edge(boolIndex edge_index){
+        return edge_oram->access(edge_index);
+    }
+
+    aby3::sbMatrix get_target_node(boolIndex node_index){
+        return node_oram->access(node_index);
+    }
+
+    boolIndex get_logical_edge_index(boolIndex start_node, boolIndex end_node){
+        boolIndex logical_edge_index;
+        bool_shift(party_info->pIdx, start_node, log2(v), logical_edge_index, false); // left shift
+        aby3::sbMatrix edge_index_mat;
+        aby3::sbMatrix starting_index_mat = logical_edge_index.to_matrix();
+        aby3::sbMatrix ending_index_mat = end_node.to_matrix();
+        bool_cipher_add(party_info->pIdx, starting_index_mat, ending_index_mat, edge_index_mat, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
+
+        logical_edge_index.from_matrix(edge_index_mat);
+
+        return logical_edge_index;
+    
+    }
+
+};
+
 aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix& node_block, aby3Info &party_info);
 
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
@@ -271,3 +418,9 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
 aby3::si64Matrix outting_edge_count(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
+
+boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,AdjGraphQueryEngine &GQEngine);
+
+aby3::sbMatrix outting_edge_count(int node_index, int logical_node_index, AdjGraphQueryEngine &GQEngine);
+
+aby3::sbMatrix outting_neighbors(int node_index, int logical_node_index, AdjGraphQueryEngine &GQEngine);
