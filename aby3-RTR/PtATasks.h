@@ -1,6 +1,8 @@
 #pragma once
 #include "GeneralPTA.h"
 #include "DataGenerator.h"
+// #define PROFILE
+
 
 const aby3::si64 GET_ZERO_SHARE = [] {
     aby3::si64 dval;
@@ -28,6 +30,12 @@ public:
     aby3::Sh3Runtime* runtime;
     aby3::Sh3Evaluator* eval;
 
+    double eq_time = 0;
+    double mul_time = 0;
+    double other_time = 0;
+
+    std::string logging_file = "";
+
     using SubTask<NUMX, NUMY, NUMT, NUMR>::SubTask;
 
     CipherIndex(const size_t optimal_block, const int task_id, const int pIdx,
@@ -41,11 +49,20 @@ public:
             this->have_selective = true;
     }
 
+    void set_logging_file(std::string log_file){
+        this->logging_file = log_file;
+    }
+
     virtual void compute_local_table(std::vector<NUMX>& expandX, std::vector<NUMY>& expandY, std::vector<NUMT>& local_table, BlockInfo* binfo) override {
+        
+        auto stamp1 = std::chrono::high_resolution_clock::now();
+
         aby3::u64 block_length = binfo->block_len;
         // pairwise comparison
         aby3::sbMatrix partTable(block_length, 1); 
         vector_cipher_eq(this->pIdx, expandX, expandY, partTable, *(this->eval), *(this->runtime));
+
+        auto stamp2 = std::chrono::high_resolution_clock::now();
 
         // pairwise abmul.
         aby3::si64Matrix expandV(block_length, 1), p_v_after_mul(block_length, 1);
@@ -54,13 +71,37 @@ public:
             expandV.mShares[1](i, 0) = this->selectV[binfo->t_start + i].mData[1];
         }
 
+        auto stamp3 = std::chrono::high_resolution_clock::now();
+
         cipher_mul(this->pIdx, expandV, partTable, p_v_after_mul, *this->eval, *this->enc, *this->runtime);
+
+        auto stamp4 = std::chrono::high_resolution_clock::now();
 
         //trans to local_table.
         for (size_t i = 0; i < block_length; i++) {
             local_table[i].mData[0] = p_v_after_mul.mShares[0](i, 0);
             local_table[i].mData[1] = p_v_after_mul.mShares[1](i, 0);
         }
+
+        auto stamp5 = std::chrono::high_resolution_clock::now();
+
+#ifdef PROFILE
+        eq_time = std::chrono::duration_cast<std::chrono::milliseconds>(stamp2 - stamp1).count();
+        mul_time = std::chrono::duration_cast<std::chrono::milliseconds>(stamp4 - stamp3).count();
+        other_time = std::chrono::duration_cast<std::chrono::milliseconds>(stamp5 - stamp4).count();
+
+        if(this->task_id == 0){
+            std::ofstream ofs(this->logging_file, ios::app);
+            ofs << "eq_time: " << eq_time << " ms" << endl;
+            ofs << "eq processing time: " << comp_process_time.count() / 1000 << " ms" << endl;
+            ofs << "eq comm time: " << comp_comm_time.count() / 1000 << " ms" << endl;
+            ofs << "mul_time: " << mul_time << " ms" << endl;
+            ofs << "other_time: " << other_time << " ms" << endl;
+            ofs << "----------" << endl;
+            ofs.close();
+        }
+
+#endif
     }
 
     virtual void partical_reduction(std::vector<NUMR>& resLeft,

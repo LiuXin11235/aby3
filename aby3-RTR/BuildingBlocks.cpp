@@ -15,8 +15,8 @@ using namespace oc;
 // #define LOCAL_TEST
 
 static int BASEPORT=4000;
-#define P0_IP "10.90.0.27"
-#define P1_IP "10.90.0.26"
+#define P0_IP "10.90.0.26"
+#define P1_IP "10.90.0.27"
 
 double synchronized_time(int pIdx, double& time_slot, Sh3Runtime &runtime){
   // double sync_time = time_slot;
@@ -772,6 +772,7 @@ int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& 
       circuitInput0.mShares[0].setZero();
     }
   }
+  auto middle = std::chrono::high_resolution_clock::now();
 
   runtime.mComm.mNext.asyncSendCopy(circuitInput0.mShares[0].data(),
                                 circuitInput0.mShares[0].size());
@@ -781,7 +782,9 @@ int vector_cipher_eq(int pIdx, std::vector<aby3::si64>& intA, std::vector<int>& 
   fetch_eq_res(pIdx, circuitInput0, circuitInput1, res, eval, runtime);
 
   auto end = std::chrono::high_resolution_clock::now();
-  comp_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  comp_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  comp_process_time = std::chrono::duration_cast<std::chrono::microseconds>(middle - start);
+  comp_comm_time = std::chrono::duration_cast<std::chrono::microseconds>(end - middle);
 
   return 0;
 }

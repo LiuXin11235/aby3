@@ -51,6 +51,8 @@ int test_cipher_index_pta(oc::CLP& cmd){
     ptaTask->circuit_construct({n}, {m});
     timer.end("time_setup");
 
+    ptaTask->subTask->set_logging_file(logging_file);
+
     timer.start("time_data_prepare");
     // data loading.
     std::vector<si64> inputX; std::vector<int> inputY; 
@@ -72,6 +74,7 @@ int test_cipher_index_pta(oc::CLP& cmd){
         timer.print_total("milliseconds", stream);
         ptaTask->print_time_profile(stream);
         stream.close();
+        // ptaTask->subTask->print_timers(logging_file);
     }
 
     return 0;

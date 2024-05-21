@@ -12,10 +12,8 @@ else
 fi
 
 ulimit -n 65536;
-taskset -c 9-255 mpirun -np $task_num -bind-to hwthread:1 $USER_FOLDER/out/build/linux/frontend/frontend -role 1 ${args_list} >> ./log 2>&1 &
-ssh sosp1 "ulimit -n 65536; taskset -c 9-255  mpirun -np $task_num -bind-to hwthread:1 $USER_FOLDER/out/build/linux/frontend/frontend -role 0 ${args_list} &" &
-ssh sosp2 "ulimit -n 65536; taskset -c 9-255  mpirun -np $task_num -bind-to hwthread:1 $USER_FOLDER/out/build/linux/frontend/frontend -role 2 ${args_list} &" &
-# mpirun -np $task_num $USER_FOLDER/out/build/linux/frontend/frontend -role 1 ${args_list} >> ./log 2>&1 &
-# mpirun -np $task_num $USER_FOLDER/out/build/linux/frontend/frontend -role 2 ${args_list} >> ./log 2>&1 &
+taskset -c 0-255 mpirun -np $task_num $USER_FOLDER/out/build/linux/frontend/frontend -role 0 ${args_list} >> ./log 2>&1 &
+ssh sosp1 "ulimit -n 65536; taskset -c 0-255 mpirun -np $task_num $USER_FOLDER/out/build/linux/frontend/frontend -role 1 ${args_list} &" &
+ssh sosp2 "ulimit -n 65536; taskset -c 0-255 mpirun -np $task_num $USER_FOLDER/out/build/linux/frontend/frontend -role 2 ${args_list} &" &
 
 wait;

@@ -1,11 +1,10 @@
 USER_FOLDER=/home/tsingj_ubuntu/fanxy/PtA/aby3
-# USER_FOLDER=/home/ubuntu/configuration/aby3
 
-times=1
+times=5
 
 for i in $(seq 1 $times); do
-    python ${USER_FOLDER}/PtA_deploy/task_execution.py --exhv
-    python ${USER_FOLDER}/PtA_deploy/task_analysis.py --exhv
+    python ${USER_FOLDER}/PtA_deploy/task_execution.py --config
+    python ${USER_FOLDER}/PtA_deploy/task_analysis.py --config
     mv ${USER_FOLDER}/Record ${USER_FOLDER}/Record_${i}
 done
 
