@@ -227,6 +227,7 @@ struct GraphAdj {
             }
         }
     }
+
 };
 
 class GraphQueryEngine{
@@ -421,6 +422,6 @@ aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_bl
 
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,AdjGraphQueryEngine &GQEngine);
 
-aby3::sbMatrix outting_edge_count(int node_index, int logical_node_index, AdjGraphQueryEngine &GQEngine);
+aby3::sbMatrix outting_edge_count(boolIndex boolIndex, AdjGraphQueryEngine &GQEngine);
 
-aby3::sbMatrix outting_neighbors(int node_index, int logical_node_index, AdjGraphQueryEngine &GQEngine);
+aby3::sbMatrix outting_neighbors(boolIndex node_index,AdjGraphQueryEngine &GQEngine);

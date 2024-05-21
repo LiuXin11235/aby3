@@ -14,8 +14,6 @@ using namespace oc;
 using namespace aby3;
 using namespace std;
 
-// #define DEBUG_TEST
-
 const int TEST_SIZE = 16;
 const int TEST_UNIT_SIZE = 10;
 

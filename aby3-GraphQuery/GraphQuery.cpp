@@ -29,7 +29,6 @@ aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix&
 
 
 // functions using GraphQueryEngine (based on Graph2D).
-
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
                          boolIndex logical_edge_block_index,
                          GraphQueryEngine &GQEngine) {

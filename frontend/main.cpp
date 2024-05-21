@@ -54,6 +54,7 @@ int main(int argc, char** argv) {
 		graph_block_fetch_test(cmd);
 		basic_graph_query_test(cmd);
 		neighbors_find_test(cmd);
+		adj_basic_graph_query_test(cmd);
 	}
 
 	if(cmd.isSet("Sort")){

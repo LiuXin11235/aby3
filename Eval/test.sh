@@ -27,7 +27,7 @@ done
 # test_args=" -Graph -GraphQuery -Sort"
 # test_args=" -Sort -GraphQuery"
 # test_args=" -Sort"
-test_args=" -Graph"
+test_args=" -Graph -GraphQuery"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

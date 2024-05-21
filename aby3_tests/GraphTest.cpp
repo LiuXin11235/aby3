@@ -294,3 +294,66 @@ int adj_graph_loading_test(oc::CLP& cmd){
 
     return 0;
 }
+
+
+int adj_basic_graph_query_test(oc::CLP& cmd){
+
+    TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN AdjGraph basic query TEST");
+    }
+
+    // filenames.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string meta_file = "adj_tmp_adj_meta.txt";
+    std::string data_file = "adj_tmp_edge_list.txt";
+
+    // load the graph.
+    plainGraphAdj plainGraph(graph_data_folder + meta_file, graph_data_folder + data_file);
+    plainGraph.generate_adj_list();
+
+    GraphAdj adjGraph(graph_data_folder + meta_file, graph_data_folder + data_file, party_info);
+
+    // build the query engine.
+    AdjGraphQueryEngine adjGQEngine(party_info, graph_data_folder + meta_file, graph_data_folder + data_file);
+
+    size_t stash_size = 8;
+    size_t pack_size = 4;
+
+    adjGQEngine.edge_oram_initialization(stash_size, pack_size);
+    adjGQEngine.node_oram_initialization(stash_size, pack_size);
+
+    // edge existence query.
+    int starting_node = 0, ending_node = 1;
+    boolIndex priv_starting_node = boolIndex(starting_node, role);
+    boolIndex priv_ending_node = boolIndex(ending_node, role);
+    
+    boolShare res1 = edge_existance(priv_starting_node, priv_ending_node, adjGQEngine);
+    bool ref_res1 = plainGraph.edge_existence(starting_node, ending_node);
+
+    // outting edges count query
+    aby3::sbMatrix neighbor_count = outting_edge_count(priv_starting_node, adjGQEngine);
+    int ref_neighbor_count = plainGraph.outting_neighbors_count(starting_node);
+
+    // neighbor find query.
+    aby3::sbMatrix neighbors = outting_neighbors(priv_starting_node, adjGQEngine);
+    std::vector<int> ref_neighbors_ = plainGraph.get_outting_neighbors(starting_node);
+    aby3::i64Matrix ref_neighbors(ref_neighbors_.size(), 1);
+    for(size_t i=0; i<ref_neighbors_.size(); i++){
+        ref_neighbors(i, 0) = ref_neighbors_[i];
+    }
+
+    // check the results.
+    bool test_res1 = back2plain(role, res1, enc, eval, runtime);
+    aby3::i64Matrix test_neighbor_count = back2plain(role, neighbor_count, enc, eval, runtime);
+    aby3::i64Matrix test_neighbors = back2plain(role, neighbors, enc, eval, runtime);
+
+    if(role == 0){
+        check_result("AdjGraph basic query edge existence test", test_res1, ref_res1);
+        check_result("AdjGraph basic query neighbor count test", test_neighbor_count(0, 0), ref_neighbor_count);
+        check_result("AdjGraph basic query neighbor find test", test_neighbors, ref_neighbors);
+    }
+
+    return 0;
+}

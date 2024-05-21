@@ -127,6 +127,8 @@ typename std::enable_if<std::is_pod<T>::value, bool>::type check_result(
         debug_info("expected result: ");
         debug_output_value(res);
 #endif
+    } else{
+        debug_info("\033[32m" + func_name + " SUCCESS!" + "\033[0m\n");
     }
     return check_flag;
 }

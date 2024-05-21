@@ -160,6 +160,28 @@ struct plainGraphAdj{
         return;
     }
 
+    bool edge_existence(int starting_node, int ending_node){
+        return adj_list[starting_node*v + ending_node] > 0;
+    }
+
+    int outting_neighbors_count(int starting_node){
+        int count = 0;
+        for(size_t i=0; i<v; i++){
+            count += adj_list[starting_node*v + i];
+        }
+        return count;
+    }
+
+    std::vector<int> get_outting_neighbors(int starting_node){
+        std::vector<int> neighbors(v, 0);
+        for(size_t i=0; i<v; i++){
+            if(adj_list[starting_node*v + i] > 0){
+                neighbors[i] = 1;
+            }
+        }
+        return neighbors;
+    }
+
     void printGraphMeta(){
         std::cout << "v: " << this->v << std::endl;
         std::cout << "unique_edges: " << this->unique_edges << std::endl;
