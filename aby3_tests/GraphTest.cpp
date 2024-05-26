@@ -283,7 +283,7 @@ int adj_graph_loading_test(oc::CLP& cmd){
 
     // filenames.
     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
-    std::string meta_file = "adj_tmp_adj_meta.txt";
+    std::string meta_file = "adj_tmp_edge_list_meta.txt";
     std::string data_file = "adj_tmp_edge_list.txt";
 
     // load the graph.
@@ -295,7 +295,6 @@ int adj_graph_loading_test(oc::CLP& cmd){
     return 0;
 }
 
-
 int adj_basic_graph_query_test(oc::CLP& cmd){
 
     TEST_INIT
@@ -306,7 +305,7 @@ int adj_basic_graph_query_test(oc::CLP& cmd){
 
     // filenames.
     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
-    std::string meta_file = "adj_tmp_adj_meta.txt";
+    std::string meta_file = "adj_tmp_edge_list_meta.txt";
     std::string data_file = "adj_tmp_edge_list.txt";
 
     // load the graph.
@@ -353,6 +352,58 @@ int adj_basic_graph_query_test(oc::CLP& cmd){
         check_result("AdjGraph basic query edge existence test", test_res1, ref_res1);
         check_result("AdjGraph basic query neighbor count test", test_neighbor_count(0, 0), ref_neighbor_count);
         check_result("AdjGraph basic query neighbor find test", test_neighbors, ref_neighbors);
+    }
+
+    return 0;
+}
+
+// edge-list query test.
+int node_edge_list_basic_graph_query_test(oc::CLP& cmd){
+
+    TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN Node-Edge List Basic Query TEST");
+    }
+
+    // filenames.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string meta_file = "adj_tmp_edge_list_meta.txt";
+    std::string data_file = "adj_tmp_edge_list.txt";
+
+    // load the graph.
+    plainGraphList plainGraph(graph_data_folder + meta_file, graph_data_folder + data_file);
+    ListGraphQueryEngine nodeEdgeListGraph(party_info, graph_data_folder + meta_file, graph_data_folder + data_file);
+
+    // if(role == 0) debug_info("after data loading");
+
+    // basic tests.
+    // 1) edge-existence query.
+    int starting_node = 0, ending_node = 1;
+    boolIndex priv_starting_node = boolIndex(starting_node, role);
+    boolIndex priv_ending_node = boolIndex(ending_node, role);
+    
+    boolShare res1 = edge_existance(priv_starting_node, priv_ending_node, nodeEdgeListGraph);
+    bool ref_res1 = plainGraph.edge_existence(starting_node, ending_node);
+
+    // if(role == 0) debug_info("after edge existence query");
+
+    // 2) neighbors count query.
+    aby3::sbMatrix neighbor_count = outting_edge_count(priv_starting_node, nodeEdgeListGraph);
+    int ref_neighbor_count = plainGraph.outting_neighbors_count(starting_node);
+
+    // if(role == 0) debug_info("after neighbor count query"); 
+
+    // // 3) neighbors find query.
+    // aby3::sbMatrix neighbors = outting_neighbors(priv_starting_node, nodeEdgeListGraph);
+    // std::vector<int> ref_neighbors_ = plainGraph.get_outting_neighbors(starting_node);
+
+    bool test1 = back2plain(role, res1, enc, eval, runtime);
+    aby3::i64Matrix test2 = back2plain(role, neighbor_count, enc, eval, runtime);
+
+    if(role == 0){
+        check_result("Node-Edge List basic query edge existence test", test1, ref_res1);
+        check_result("Node-Edge List basic query neighbor count test", test2(0, 0), ref_neighbor_count);
     }
 
     return 0;

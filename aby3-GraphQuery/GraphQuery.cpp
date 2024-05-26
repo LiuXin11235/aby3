@@ -27,7 +27,6 @@ aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix&
     return eq_res;
 }
 
-
 // functions using GraphQueryEngine (based on Graph2D).
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
                          boolIndex logical_edge_block_index,
@@ -193,10 +192,8 @@ aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_bl
     // shuffle the masks and target nodes for privacy.
     efficient_shuffle(filtered_nodes, GQEngine.party_info->pIdx, filtered_nodes, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
 
-    // return std::make_pair(filtered_nodes, eq_res);
     return filtered_nodes;
 }
-
 
 // functions using AdjGraphQueryEngine.
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,AdjGraphQueryEngine &GQEngine){
@@ -226,7 +223,6 @@ aby3::sbMatrix outting_edge_count(boolIndex node_index, AdjGraphQueryEngine &GQE
     zero_share.mShares[0](0, 0) = 0;
     zero_share.mShares[1](0, 0) = 0;
 
-    // aby3::si64Matrix edge_info = GQEngine.get_target_node(node_index);
     aby3::sbMatrix node_info = GQEngine.get_target_node(node_index);
 
     bool_aggregation(GQEngine.party_info->pIdx, node_info, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
@@ -245,4 +241,124 @@ aby3::sbMatrix outting_neighbors(boolIndex node_index, AdjGraphQueryEngine &GQEn
     }
     bool_cipher_lt(GQEngine.party_info->pIdx, zero_share, res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
     return res;
+}
+
+
+boolShare edge_existance(boolIndex starting_node, boolIndex ending_node, ListGraphQueryEngine &GQEngine){
+    aby3::sbMatrix expand_starting_node(GQEngine.e, BITSIZE);
+    aby3::sbMatrix expand_ending_node(GQEngine.e, BITSIZE);
+    for(size_t i=0; i<GQEngine.e; i++){
+        expand_starting_node.mShares[0](i, 0) = starting_node.indexShares[0];
+        expand_starting_node.mShares[1](i, 0) = starting_node.indexShares[1];
+        expand_ending_node.mShares[0](i, 0) = ending_node.indexShares[0];
+        expand_ending_node.mShares[1](i, 0) = ending_node.indexShares[1];
+    }
+
+    aby3::sbMatrix eq_res_starts, eq_res_ends;
+    bool_cipher_eq(GQEngine.party_info->pIdx, GQEngine.starting_node_list, expand_starting_node, eq_res_starts, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+    bool_cipher_eq(GQEngine.party_info->pIdx, GQEngine.ending_node_list, expand_ending_node, eq_res_ends, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    aby3::sbMatrix full_comp_res;
+    bool_cipher_and(GQEngine.party_info->pIdx, eq_res_starts, eq_res_ends, full_comp_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    aby3::sbMatrix res(1, 1);
+    bool_aggregation(GQEngine.party_info->pIdx, full_comp_res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "OR");
+
+    boolShare query_res;
+    query_res.from_matrix(res.mShares[0](0, 0), res.mShares[1](0, 0));
+
+    return query_res;
+}
+
+aby3::sbMatrix outting_edge_count(boolIndex boolIndex, ListGraphQueryEngine &GQEngine){
+    aby3::sbMatrix expand_starting_node(GQEngine.e, BITSIZE);
+    for(size_t i=0; i<GQEngine.e; i++){
+        expand_starting_node.mShares[0](i, 0) = boolIndex.indexShares[0];
+        expand_starting_node.mShares[1](i, 0) = boolIndex.indexShares[1];
+    }
+
+    aby3::sbMatrix eq_res;
+    bool_cipher_eq(GQEngine.party_info->pIdx, GQEngine.starting_node_list, expand_starting_node, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+    eq_res.resize(eq_res.rows(), BITSIZE);
+    for(size_t i=0; i<eq_res.rows(); i++){
+        for(int j=0; j<2; j++){
+            eq_res.mShares[j](i, 0) = (eq_res.mShares[j](i, 0) == 1) ? 1 : 0;
+        }
+    }
+
+    aby3::sbMatrix res(1, BITSIZE);
+    bool_aggregation(GQEngine.party_info->pIdx, eq_res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
+
+    return res;
+}
+
+aby3::sbMatrix outting_neighbors(boolIndex node_index, ListGraphQueryEngine &GQEngine){
+
+    aby3::sbMatrix expand_starting_node(GQEngine.e, BITSIZE);
+    for(size_t i=0; i<GQEngine.e; i++){
+        expand_starting_node.mShares[0](i, 0) = node_index.indexShares[0];
+        expand_starting_node.mShares[1](i, 0) = node_index.indexShares[1];
+    }
+
+    aby3::sbMatrix eq_res;
+    bool_cipher_eq(GQEngine.party_info->pIdx, GQEngine.starting_node_list, expand_starting_node, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+    eq_res.resize(eq_res.rows(), BITSIZE);
+    for(size_t i=0; i<eq_res.rows(); i++){
+        for(int j=0; j<2; j++){
+            eq_res.mShares[j](i, 0) = (eq_res.mShares[j](i, 0) == 1) ? -1 : 0;
+        }
+    }
+
+    aby3::sbMatrix outting_mask(GQEngine.e, BITSIZE);
+    bool_cipher_and(GQEngine.party_info->pIdx, eq_res, GQEngine.ending_node_list, outting_mask, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    // sort the ending nodes for grouping.
+    std::vector<aby3::sbMatrix> masked_nodes(GQEngine.e);
+    for(size_t i=0; i<GQEngine.e; i++){
+        masked_nodes[i].resize(1, BITSIZE);
+        for(int j=0; j<2; j++){
+            masked_nodes[i].mShares[j](0, 0) = outting_mask.mShares[j](i, 0);
+        }
+    }
+
+    quick_sort(masked_nodes, GQEngine.party_info->pIdx, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), 32);
+
+    // different EQ to filter out the fliping nodes.
+    aby3::sbMatrix left_shifted_nodes(GQEngine.e-1, BITSIZE);
+    aby3::sbMatrix right_shifted_nodes(GQEngine.e-1, BITSIZE);
+    for (size_t i = 0; i < GQEngine.e-1; i++)
+    {
+        left_shifted_nodes.mShares[0](i, 0) = masked_nodes[i].mShares[0](0, 0);
+        left_shifted_nodes.mShares[1](i, 0) = masked_nodes[i].mShares[1](0, 0);
+        right_shifted_nodes.mShares[0](i, 0) = masked_nodes[i+1].mShares[0](0, 0);
+        right_shifted_nodes.mShares[1](i, 0) = masked_nodes[i+1].mShares[1](0, 0);
+    }
+
+    bool_cipher_eq(GQEngine.party_info->pIdx, left_shifted_nodes, right_shifted_nodes, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+    eq_res.resize(eq_res.rows(), BITSIZE);
+    for(size_t i=0; i<eq_res.rows(); i++){
+        for(int j=0; j<2; j++){
+            eq_res.mShares[j](i, 0) = (eq_res.mShares[j](i, 0) == 1) ? -1 : 0;
+        }
+    }
+    eq_res.resize(eq_res.rows()+1, BITSIZE);
+    boolIndex true_share(0, GQEngine.party_info->pIdx);
+    eq_res.mShares[0](eq_res.rows()-1, 0) = true_share.indexShares[0];
+    eq_res.mShares[1](eq_res.rows()-1, 0) = true_share.indexShares[1];
+
+    bool_cipher_not(GQEngine.party_info->pIdx, eq_res, eq_res);
+
+    for(size_t i=0; i<GQEngine.e; i++){
+        for(int j=0; j<2; j++){
+            outting_mask.mShares[j](i, 0) = masked_nodes[i].mShares[j](0, 0);
+        }
+    }
+
+    aby3::sbMatrix filtered_nodes(GQEngine.e, BITSIZE);
+    bool_cipher_and(GQEngine.party_info->pIdx, eq_res, outting_mask, filtered_nodes, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    // shuffle the masks and target nodes for privacy.
+    efficient_shuffle(filtered_nodes, GQEngine.party_info->pIdx, filtered_nodes, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    return filtered_nodes;
 }

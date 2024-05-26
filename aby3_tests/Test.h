@@ -70,7 +70,9 @@ int neighbors_find_test(oc::CLP& cmd);
 // 2) AdjGraph test.
 int adj_graph_loading_test(oc::CLP& cmd);
 int adj_basic_graph_query_test(oc::CLP& cmd);
-int adj_neighbors_find_test(oc::CLP& cmd);
+
+// 3) node-edge list test.
+int node_edge_list_basic_graph_query_test(oc::CLP& cmd);
 
 // sort tests
 int bc_sort_test(oc::CLP& cmd);

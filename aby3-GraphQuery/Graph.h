@@ -410,6 +410,48 @@ public:
 
 };
 
+class ListGraphQueryEngine{
+    public:
+        aby3Info *party_info;
+        size_t v;
+        size_t e;
+        aby3::sbMatrix starting_node_list;
+        aby3::sbMatrix ending_node_list;
+
+        ListGraphQueryEngine(){}
+
+        ListGraphQueryEngine(aby3Info &party_info, const std::string& meta_data_file, const std::string& data_file){
+            plainGraphList plain_graph(meta_data_file, data_file);
+            v = plain_graph.v;
+            e = plain_graph.e;
+            this->party_info = &party_info;
+
+            // convert the plain graph to secure graph.
+            aby3::i64Matrix plain_starting_nodes(e, 1);
+            aby3::i64Matrix plain_ending_nodes(e, 1);
+            for(size_t i=0; i<e; i++){
+                plain_starting_nodes(i, 0) = plain_graph.starting_node_list[i];
+                plain_ending_nodes(i, 0) = plain_graph.ending_node_list[i];
+            }
+            
+            starting_node_list.resize(e, BITSIZE);
+            ending_node_list.resize(e, BITSIZE);
+
+            // encrypt the nodes.
+            if(party_info.pIdx == 0){
+                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_starting_nodes, starting_node_list).get();
+                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_ending_nodes, ending_node_list).get();
+            }
+            else{
+                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), starting_node_list).get();
+                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), ending_node_list).get();
+            }
+            return;
+        }
+
+
+};
+
 aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix& node_block, aby3Info &party_info);
 
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
@@ -425,3 +467,9 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,AdjGraph
 aby3::sbMatrix outting_edge_count(boolIndex boolIndex, AdjGraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index,AdjGraphQueryEngine &GQEngine);
+
+boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,ListGraphQueryEngine &GQEngine);
+
+aby3::sbMatrix outting_edge_count(boolIndex boolIndex, ListGraphQueryEngine &GQEngine);
+
+aby3::sbMatrix outting_neighbors(boolIndex node_index, ListGraphQueryEngine &GQEngine);

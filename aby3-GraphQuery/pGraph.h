@@ -7,6 +7,8 @@
 #include <array>
 #include <cassert>
 #include <string>
+#include <unordered_map>  
+#include <algorithm>  
 
 struct plainGraph2d{
     size_t v, e;
@@ -185,5 +187,65 @@ struct plainGraphAdj{
     void printGraphMeta(){
         std::cout << "v: " << this->v << std::endl;
         std::cout << "unique_edges: " << this->unique_edges << std::endl;
+    }
+};
+
+struct plainGraphList{
+    size_t v;
+    size_t e;
+
+    std::vector<int> starting_node_list;
+    std::vector<int> ending_node_list;
+
+    plainGraphList(){}; // default constructor
+
+    plainGraphList(const std::string& meta_data_file, const std::string& edge_list_file){
+        // load the graph meta data.
+        std::ifstream meta(meta_data_file);
+        meta >> v >> e;
+        starting_node_list.resize(e);
+        ending_node_list.resize(e);
+
+        // load the edges.
+        std::ifstream edge_list(edge_list_file);
+        for (size_t i = 0; i < e; i++) {
+            edge_list >> starting_node_list[i] >> ending_node_list[i];
+        }
+        
+        return;
+    }
+
+    bool edge_existence(int starting_node, int ending_node){
+        for(size_t i=0; i<e; i++){
+            if(starting_node_list[i] == starting_node && ending_node_list[i] == ending_node){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    int outting_neighbors_count(int starting_node){
+        int count = 0;
+        for(size_t i=0; i<e; i++){
+            if(starting_node_list[i] == starting_node){
+                count++;
+            }
+        }
+        return count;
+    }
+
+    std::vector<int> get_outting_neighbors(int starting_node){
+        std::vector<int> edge_list(e, 0);
+        std::unordered_map<int, bool> mp;
+
+        for(size_t i=0; i<e; i++){
+            if(mp.find(ending_node_list[i]) == mp.end() && starting_node_list[i] == starting_node){
+                edge_list[i] = ending_node_list[i];
+                mp[ending_node_list[i]] = true;
+            }
+        }
+        std::sort(edge_list.begin(), edge_list.end());
+
+        return edge_list;
     }
 };
