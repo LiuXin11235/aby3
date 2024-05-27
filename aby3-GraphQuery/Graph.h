@@ -454,6 +454,8 @@ class ListGraphQueryEngine{
 
 aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix& node_block, aby3Info &party_info);
 
+aby3::sbMatrix get_target_edge_mask(boolIndex target_start_node, boolIndex target_end_node, aby3::sbMatrix& edge_block, aby3Info &party_info);
+
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
                          boolIndex logical_edge_block_index,
                          GraphQueryEngine &GQEngine);

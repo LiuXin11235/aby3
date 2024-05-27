@@ -375,8 +375,6 @@ int node_edge_list_basic_graph_query_test(oc::CLP& cmd){
     plainGraphList plainGraph(graph_data_folder + meta_file, graph_data_folder + data_file);
     ListGraphQueryEngine nodeEdgeListGraph(party_info, graph_data_folder + meta_file, graph_data_folder + data_file);
 
-    // if(role == 0) debug_info("after data loading");
-
     // basic tests.
     // 1) edge-existence query.
     int starting_node = 0, ending_node = 1;
@@ -386,24 +384,27 @@ int node_edge_list_basic_graph_query_test(oc::CLP& cmd){
     boolShare res1 = edge_existance(priv_starting_node, priv_ending_node, nodeEdgeListGraph);
     bool ref_res1 = plainGraph.edge_existence(starting_node, ending_node);
 
-    // if(role == 0) debug_info("after edge existence query");
-
     // 2) neighbors count query.
     aby3::sbMatrix neighbor_count = outting_edge_count(priv_starting_node, nodeEdgeListGraph);
     int ref_neighbor_count = plainGraph.outting_neighbors_count(starting_node);
 
-    // if(role == 0) debug_info("after neighbor count query"); 
-
-    // // 3) neighbors find query.
-    // aby3::sbMatrix neighbors = outting_neighbors(priv_starting_node, nodeEdgeListGraph);
-    // std::vector<int> ref_neighbors_ = plainGraph.get_outting_neighbors(starting_node);
+    // 3) neighbors find query.
+    aby3::sbMatrix neighbors = outting_neighbors(priv_starting_node, nodeEdgeListGraph);
+    std::vector<int> ref_neighbors_ = plainGraph.get_outting_neighbors(starting_node);
 
     bool test1 = back2plain(role, res1, enc, eval, runtime);
     aby3::i64Matrix test2 = back2plain(role, neighbor_count, enc, eval, runtime);
+    aby3::i64Matrix test_neighbors = back2plain(role, neighbors, enc, eval, runtime);
+    std::vector<int> test_vec_neighbors(ref_neighbors_.size());
+    for(size_t i=0; i<ref_neighbors_.size(); i++){
+        test_vec_neighbors[i] = test_neighbors(i, 0);
+    }
+    std::sort(test_vec_neighbors.begin(), test_vec_neighbors.end());
 
     if(role == 0){
         check_result("Node-Edge List basic query edge existence test", test1, ref_res1);
         check_result("Node-Edge List basic query neighbor count test", test2(0, 0), ref_neighbor_count);
+        check_result("Node-Edge List basic query neighbor find test", test_vec_neighbors, ref_neighbors_);
     }
 
     return 0;
