@@ -240,6 +240,8 @@ namespace aby3
 		u64 size() const { return mShares[0].size(); }
 
 		Ref<Share<T>> operator()(u64 x, u64 y) const;
+		void operator()(u64 x, u64 y, Share<T> val);
+		// void operator()(int x, int y, Share<T> val);
 		Ref<Share<T>> operator()(u64 xy) const;
 		sMatrix operator+(const sMatrix& B) const;
 		sMatrix operator-(const sMatrix& B) const;
@@ -784,6 +786,26 @@ namespace aby3
 			(T&)mShares[0](x, y),
 			(T&)mShares[1](x, y));
 	}
+	
+	
+	template<typename T>
+	inline void sMatrix<T>::operator()(u64 x, u64 y, Share<T> val)
+	{
+		mShares[0](x, y) = val.mData[0];
+		mShares[1](x, y) = val.mData[1];
+	}
+
+	// template<typename T>
+	// inline void sMatrix<T>::operator()(int x, int y, Share<T> val)
+	// {
+	// 	(*this)(static_cast<u64>(x), static_cast<u64>(y), val);
+	// }
+
+	// template<typename T>
+	// inline void sMatrix<T>::operator()(size_t x, size_t y, Ref<Share<T>>& val)
+	// {
+	// 	(*this)(static_cast<u64>(x), static_cast<u64>(y), val);
+	// }
 
 	template<typename T>
 	inline Ref<Share<T>> sMatrix<T>::operator()(u64 xy) const

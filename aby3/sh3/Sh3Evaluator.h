@@ -119,10 +119,12 @@ namespace aby3
 		// shared seed with the next party. 
 		// Us and them must be the sender or helper.
 		SharedOT mOtPrevRecver;
+		// SharedOT mOtPrev = mOtPrevRecver;
 
 		// shared seed with the previous party. 
 		// Us and them must be the sender or helper.
 		SharedOT mOtNextRecver;
+		// SharedOT mOtNext = mOtNextRecver;
     };
 
 
