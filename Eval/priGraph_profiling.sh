@@ -5,7 +5,6 @@ cp ./frontend/main.pgp ./frontend/main.cpp
 python build.py
 
 # config_params.
-# gtype_list=("random" "complete" "star" "powerlaw" "bipartite")
 gtype_list=("random" "star" "powerlaw" "bipartite" "complete")
 folder_prefix="/root/aby3/aby3-GraphQuery/data/profiling.igraph/"
 tool="igraph"
@@ -14,7 +13,7 @@ if [ ! -d ${folder_prefix} ]; then
     mkdir -p ${folder_prefix}
 fi
 
-for count in $(seq 1 5); do
+for count in $(seq 1 3); do
 
     for gtype in ${gtype_list[@]}; do
         nExp=10; n=`echo "2^$nExp" | bc`;

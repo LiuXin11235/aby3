@@ -124,7 +124,7 @@ struct plainGraph2d{
 };
 
 struct plainGraphAdj{
-    size_t v;
+    size_t v, e;
     size_t unique_edges = 0;
     std::vector<int> starting_node_list;
     std::vector<int> ending_node_list;  
@@ -135,13 +135,13 @@ struct plainGraphAdj{
     plainGraphAdj(const std::string& meta_data_file, const std::string& edge_list_file){
         // load the graph meta data.
         std::ifstream meta(meta_data_file);
-        meta >> v;
-        starting_node_list.resize(v);
-        ending_node_list.resize(v);
+        meta >> v >> e;
+        starting_node_list.resize(e);
+        ending_node_list.resize(e);
 
         // load the edges.
         std::ifstream edge_list(edge_list_file);
-        for (size_t i = 0; i < v; i++) {
+        for (size_t i = 0; i < e; i++) {
             edge_list >> starting_node_list[i] >> ending_node_list[i];
         }
         return;
@@ -153,11 +153,11 @@ struct plainGraphAdj{
 
         adj_list.resize(v*v, 0);
         for(size_t i=0; i<starting_node_list.size(); i++){
-            int s = starting_node_list[i], e = ending_node_list[i];
-            if(adj_list[s*v + e] == 0){
+            int start = starting_node_list[i], end = ending_node_list[i];
+            if(adj_list[start*v + end] == 0){
                 unique_edges++;
             }
-            adj_list[s*v + e] += 1;
+            adj_list[start*v + end] += 1;
         }
         return;
     }

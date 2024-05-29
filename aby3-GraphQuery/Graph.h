@@ -156,7 +156,7 @@ struct Graph2d {
 };
 
 struct GraphAdj {
-    size_t v;
+    size_t v, e;
     size_t adj_size;
     std::vector<aby3::sbMatrix> adj_list;
 
@@ -168,6 +168,7 @@ struct GraphAdj {
         // check the adj graph.
         plain_graph.generate_adj_list();
         v = plain_graph.v;
+        e = plain_graph.e;
         adj_size = plain_graph.adj_list.size();
         adj_list.resize(adj_size);
 
@@ -408,6 +409,15 @@ public:
     
     }
 
+    void print_configs(std::ostream& stream){
+        stream << "v : " << graph->v << std::endl;
+        stream << "e : " << graph->e << std::endl;
+        stream << "se : " << edge_oram->S << std::endl;
+        stream << "pe : " << edge_oram->pack << std::endl;
+        stream << "sn : " << node_oram->S << std::endl;
+        stream << "pn : " << node_oram->pack << std::endl;
+    }
+
 };
 
 class ListGraphQueryEngine{
@@ -420,8 +430,7 @@ class ListGraphQueryEngine{
 
         ListGraphQueryEngine(){}
 
-        ListGraphQueryEngine(aby3Info &party_info, const std::string& meta_data_file, const std::string& data_file){
-            plainGraphList plain_graph(meta_data_file, data_file);
+        ListGraphQueryEngine(aby3Info& party_info, const plainGraphList& plain_graph){
             v = plain_graph.v;
             e = plain_graph.e;
             this->party_info = &party_info;
@@ -449,6 +458,14 @@ class ListGraphQueryEngine{
             return;
         }
 
+        ListGraphQueryEngine(aby3Info &party_info, const std::string& meta_data_file, const std::string& data_file) : ListGraphQueryEngine(party_info, plainGraphList(meta_data_file, data_file)){
+            return;
+        }
+
+        void print_configs(std::ostream& stream){
+            stream << "v : " << v << std::endl;
+            stream << "e : " << e << std::endl;
+        }
 
 };
 

@@ -16,4 +16,6 @@
 #include "../aby3-RTR/BuildingBlocks.h"
 #include "Graph.h"
 
-int performance_profiling(oc::CLP& cmd);
+int privGraph_performance_profiling(oc::CLP& cmd);
+int adj_performance_profiling(oc::CLP& cmd);
+int list_performance_profiling(oc::CLP& cmd);
