@@ -513,8 +513,22 @@ int efficient_shuffle_with_random_permutation(
         // the following is for the shared permutation.
         // receive the sharedRY1 from P1.
         i64Matrix sharedRY1_matrix(len, bit_count);
-        runtime.mComm.mNext.recv(sharedRY1_matrix.data(),
-                                 sharedRY1_matrix.size());
+        // runtime.mComm.mNext.recv(sharedRY1_matrix.data(),
+                                //  sharedRY1_matrix.size());
+        round = (size_t)ceil(len / (double)MAX_COMM_SIZE);
+        last_len = len - (round - 1) * MAX_COMM_SIZE;
+        for(size_t i=0; i<round; i++){
+            size_t _len = (i == round - 1) ? last_len : MAX_COMM_SIZE;
+            aby3::i64Matrix _recv_buffer(_len, 1);
+
+            auto recvFu = runtime.mComm.mNext.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
+            recvFu.get();
+            sharedRY1_matrix.block(i * MAX_COMM_SIZE, 0, _len, 1) = _recv_buffer;
+        }
+
+#ifdef DEBUG_SHUFFLE2
+    partyfs << "permutation share 1" << std::endl;
+#endif
 
         // compute the sharedRY2.
         std::vector<i64> sharedRY2(len);
@@ -534,10 +548,29 @@ int efficient_shuffle_with_random_permutation(
         for (size_t i = 0; i < len; i++) {
             maskRB2(i, 0) = sharedRY3[i] ^ maskRA(i, 0);
         }
-        runtime.mComm.mNext.asyncSendCopy(maskRB2.data(), maskRB2.size());
+
+        // runtime.mComm.mNext.asyncSendCopy(maskRB2.data(), maskRB2.size());
 
         i64Matrix maskRB1(len, bit_count);
-        runtime.mComm.mNext.recv(maskRB1.data(), maskRB1.size());
+        // runtime.mComm.mNext.recv(maskRB1.data(), maskRB1.size());
+
+        round = (size_t)ceil(len / (double)MAX_COMM_SIZE);
+        last_len = len - (round - 1) * MAX_COMM_SIZE;
+        for(size_t i=0; i<round; i++){
+            size_t _len = (i == round - 1) ? last_len : MAX_COMM_SIZE;
+            aby3::i64Matrix _recv_buffer(_len, 1);
+            aby3::i64Matrix _data = maskRB2.block(i * MAX_COMM_SIZE, 0, _len, 1);
+
+            auto sendFu = runtime.mComm.mNext.asyncSendFuture(_data.data(), _data.size());
+            auto recvFu = runtime.mComm.mNext.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
+            sendFu.get();
+            recvFu.get();
+            maskRB1.block(i * MAX_COMM_SIZE, 0, _len, 1) = _recv_buffer;
+        }
+
+#ifdef DEBUG_SHUFFLE2
+    partyfs << "permutation RB2" << std::endl;
+#endif
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {
@@ -678,12 +711,31 @@ int efficient_shuffle_with_random_permutation(
             sharedRY1[i] = Pi[i].mData[1] ^ next_maskRZ(i, 0);
         }
         plain_permutate(next_inverse_permutation, sharedRY1);
-        runtime.mComm.mPrev.asyncSendCopy(sharedRY1.data(), sharedRY1.size());
+        // runtime.mComm.mPrev.asyncSendCopy(sharedRY1.data(), sharedRY1.size());
 
         // receive the sharedRX2 from the next party.
         i64Matrix sharedRX2_matrix(len, bit_count);
-        runtime.mComm.mNext.recv(sharedRX2_matrix.data(),
-                                 sharedRX2_matrix.size());
+        // runtime.mComm.mNext.recv(sharedRX2_matrix.data(),
+                                //  sharedRX2_matrix.size());
+        round = (size_t)ceil(len / (double)MAX_COMM_SIZE);
+        last_len = len - (round - 1) * MAX_COMM_SIZE;
+
+        for(size_t i=0; i<round; i++){
+            size_t _len = (i == round - 1) ? last_len : MAX_COMM_SIZE;
+            aby3::i64Matrix _recv_buffer(_len, 1);
+            // aby3::i64Matrix _data = sharedRY1.block(i * MAX_COMM_SIZE, 0, _len, 1);
+            std::vector<i64> _data(sharedRY1.begin() + i*MAX_COMM_SIZE, sharedRY1.begin() + i*MAX_COMM_SIZE + _len);
+            auto sendFu = runtime.mComm.mPrev.asyncSendFuture(_data.data(), _data.size());
+            auto recvFu = runtime.mComm.mNext.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
+            sendFu.get();
+            recvFu.get();
+            sharedRX2_matrix.block(i * MAX_COMM_SIZE, 0, _len, 1) = _recv_buffer;
+        }
+
+#ifdef DEBUG_SHUFFLE2
+    partyfs << "permutation sharedRX2 " << round << " length = " << last_len << std::endl;
+#endif
+
 
         // compute the sharedRX3.
         std::vector<i64> sharedRX3(len);
@@ -697,11 +749,28 @@ int efficient_shuffle_with_random_permutation(
         for (size_t i = 0; i < len; i++) {
             maskRB1(i, 0) = sharedRX3[i] ^ maskRC(i, 0);
         }
-        runtime.mComm.mPrev.asyncSendCopy(maskRB1.data(), maskRB1.size());
+        // runtime.mComm.mPrev.asyncSendCopy(maskRB1.data(), maskRB1.size());
 
 
         i64Matrix maskRB2(len, bit_count);
-        runtime.mComm.mPrev.recv(maskRB2.data(), maskRB2.size());
+        // runtime.mComm.mPrev.recv(maskRB2.data(), maskRB2.size());
+        round = (size_t)ceil(len / (double)MAX_COMM_SIZE);
+        last_len = len - (round - 1) * MAX_COMM_SIZE;
+        for(size_t i=0; i<round; i++){
+            size_t _len = (i == round - 1) ? last_len : MAX_COMM_SIZE;
+            aby3::i64Matrix _recv_buffer(_len, 1);
+            aby3::i64Matrix _data = maskRB1.block(i * MAX_COMM_SIZE, 0, _len, 1);
+
+            auto sendFu = runtime.mComm.mPrev.asyncSendFuture(_data.data(), _data.size());
+            auto recvFu = runtime.mComm.mPrev.asyncRecv(_recv_buffer.data(), _recv_buffer.size());
+            sendFu.get();
+            recvFu.get();
+            maskRB2.block(i * MAX_COMM_SIZE, 0, _len, 1) = _recv_buffer;
+        }
+
+#ifdef DEBUG_SHUFFLE2
+    partyfs << "permutation maskRB2 " << round << " length = " << last_len << std::endl;
+#endif
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {
@@ -835,7 +904,19 @@ int efficient_shuffle_with_random_permutation(
         }
         plain_permutate(next_inverse_permutation, sharedRX2);
 
-        runtime.mComm.mPrev.asyncSendCopy(sharedRX2.data(), sharedRX2.size());
+        // runtime.mComm.mPrev.asyncSendCopy(sharedRX2.data(), sharedRX2.size());
+        round = (size_t)ceil(len / (double)MAX_COMM_SIZE);
+        last_len = len - (round - 1) * MAX_COMM_SIZE;
+        for(size_t i=0; i<round; i++){
+            size_t _len = (i == round - 1) ? last_len : MAX_COMM_SIZE;
+            std::vector<i64> _data(sharedRX2.begin() + i*MAX_COMM_SIZE, sharedRX2.begin() + i*MAX_COMM_SIZE + _len);
+            auto sendFu = runtime.mComm.mPrev.asyncSendFuture(_data.data(), _data.size());
+            sendFu.get();
+        }
+
+#ifdef DEBUG_SHUFFLE2
+    partyfs << "after sharedRX2" << std::endl;
+#endif
 
         // compute the final shares.
         for (size_t i = 0; i < len; i++) {

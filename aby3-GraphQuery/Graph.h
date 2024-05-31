@@ -8,6 +8,8 @@
 #include "aby3-Basic/SqrtOram.h"
 #include "aby3-Basic/Sort.h"
 
+static size_t MAX_COMM_SIZE = 1 << 25;
+
 struct aby3Info{
     int pIdx;
     aby3::Sh3Encryptor *enc;
@@ -180,11 +182,20 @@ struct GraphAdj {
         aby3::sbMatrix full_adj_matrix_sec(adj_size, BITSIZE);
 
         // encrypt the adj graph
-        if(party_info.pIdx == 0){
-            party_info.enc->localBinMatrix(*(party_info.runtime), full_adj_matrix, full_adj_matrix_sec).get();
-        }
-        else{
-            party_info.enc->remoteBinMatrix(*(party_info.runtime), full_adj_matrix_sec).get();
+        size_t round = (size_t)ceil(adj_size / (double)MAX_COMM_SIZE);
+        size_t last_len = adj_size - (round - 1) * MAX_COMM_SIZE;
+        for(size_t i=0; i<round; i++){
+            size_t len = (i == round - 1) ? last_len : MAX_COMM_SIZE;
+            aby3::i64Matrix adj_matrix = full_adj_matrix.block(i*MAX_COMM_SIZE, 0, len, 1);
+            aby3::sbMatrix adj_matrix_sec(len, BITSIZE);
+            if(party_info.pIdx == 0){
+                party_info.enc->localBinMatrix(*(party_info.runtime), adj_matrix, adj_matrix_sec).get();
+            }
+            else{
+                party_info.enc->remoteBinMatrix(*(party_info.runtime), adj_matrix_sec).get();
+            }
+            std::memcpy(full_adj_matrix_sec.mShares[0].data() + i*MAX_COMM_SIZE, adj_matrix_sec.mShares[0].data(), len * sizeof(full_adj_matrix_sec.mShares[0](0, 0)));
+            std::memcpy(full_adj_matrix_sec.mShares[1].data() + i*MAX_COMM_SIZE, adj_matrix_sec.mShares[1].data(), len * sizeof(full_adj_matrix_sec.mShares[0](0, 0)));
         }
 
         for(size_t i=0; i<adj_size; i++){
