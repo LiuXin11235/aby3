@@ -117,33 +117,33 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     size_t b2 = secGraphEngine.graph->edge_list_size;
     size_t v = secGraphEngine.graph->v;
 
-    // edge block fetch
-    for(int i=0; i<eoram_stash_size; i++){
-        boolIndex tar_ind = boolIndex((i % b2), role);
-        std::string timer_key = timer.get_key("EdgeBlockFetch");
-        timer.start(timer_key);
-        secGraphEngine.get_edge_block(tar_ind);
-        timer.end(timer_key);
-    }
+    // // edge block fetch
+    // for(int i=0; i<eoram_stash_size; i++){
+    //     boolIndex tar_ind = boolIndex((i % b2), role);
+    //     std::string timer_key = timer.get_key("EdgeBlockFetch");
+    //     timer.start(timer_key);
+    //     secGraphEngine.get_edge_block(tar_ind);
+    //     timer.end(timer_key);
+    // }
 
-    if(role == 0) debug_info("Edge block fetch success");
+    // if(role == 0) debug_info("Edge block fetch success");
 
-    // node edges block fetch
-    for(int i=0; i<noram_stash_size; i++){
-        boolIndex tar_ind = boolIndex((i % b), role);
-        std::string timer_key = timer.get_key("NodeEdgesBlockFetch");
-        timer.start(timer_key);
-        secGraphEngine.get_node_edges(tar_ind);
-        timer.end(timer_key);
-    }
+    // // node edges block fetch
+    // for(int i=0; i<noram_stash_size; i++){
+    //     boolIndex tar_ind = boolIndex((i % b), role);
+    //     std::string timer_key = timer.get_key("NodeEdgesBlockFetch");
+    //     timer.start(timer_key);
+    //     secGraphEngine.get_node_edges(tar_ind);
+    //     timer.end(timer_key);
+    // }
 
-    if(role == 0) debug_info("node block fetch success");
+    // if(role == 0) debug_info("node block fetch success");
     
-    // reinit secGraphEngine.
-    secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
-    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+    // // reinit secGraphEngine.
+    // secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
+    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
 
-    if(role == 0) debug_info("reinit success");
+    // if(role == 0) debug_info("reinit success");
 
     // basic graph query process.
     size_t ps = 0, pe = v-1;
@@ -154,22 +154,44 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     // 1) edge existence query.
     timer.start("EdgeExistQuery");
-    boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);
+    for(int i=0; i<eoram_stash_size; i++){
+        boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);   
+    }
     timer.end("EdgeExistQuery");
 
     if(role == 0) debug_info("Edge existence query success");
 
     // 2) outting edges count query.
     timer.start("OuttingEdgesCountQuery");
-    aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
+    for(int i=0; i<noram_stash_size; i++){
+        aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
+    }
     timer.end("OuttingEdgesCountQuery");
 
     if(role == 0) debug_info("Outting edges count query success");
 
+    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+
     // 3) neighbors get query.
     timer.start("NeighborsGetQuery");
-    aby3::sbMatrix neighbors = outting_neighbors(snode, snode_log_idx, secGraphEngine);
+    for(size_t i=0; i<noram_stash_size; i++){
+        aby3::sbMatrix neighbors = outting_neighbors(snode, snode_log_idx, secGraphEngine);
+    }
     timer.end("NeighborsGetQuery");
+
+    // 4) sorted neighbors get.
+    // rebuild the graph.
+    // GraphQueryEngine secGraphEngine(party_info, meta_file, graph_data_file);
+    plainGraph2d plainGraph(meta_file, graph_data_file);
+    plainGraph.per_block_sort();
+    secGraphEngine.rebuild(party_info, plainGraph);
+    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+
+    timer.start("SortedNeighborsGetQuery");
+    for(size_t i=0; i<noram_stash_size; i++){
+        aby3::sbMatrix neighbors = outting_neighbors_sorted(snode, snode_log_idx, secGraphEngine);
+    }
+    timer.end("SortedNeighborsGetQuery");
 
     // print the timer records.
     if(role == 0){
@@ -300,19 +322,25 @@ int adj_performance_profiling(oc::CLP& cmd){
     boolIndex enode = boolIndex(pe, role);
 
     timer.start("EdgeExistQuery");
-    boolShare flag = edge_existance(snode, enode, adjGraphEngine);
+    for(int i=0; i<eoram_stash_size; i++){
+        boolShare flag = edge_existance(snode, enode, adjGraphEngine);
+    }
     timer.end("EdgeExistQuery");
 
     if(role == 0) debug_info("Edge existence query success");
 
     // 2) outting edges count query.
     timer.start("OuttingEdgesCountQuery");
-    aby3::sbMatrix out_edges = outting_edge_count(snode, adjGraphEngine);
+    for(int i=0; i<noram_stash_size; i++){
+        aby3::sbMatrix out_edges = outting_edge_count(snode, adjGraphEngine);
+    }
     timer.end("OuttingEdgesCountQuery");
 
     // 3) neighbors get query.
     timer.start("NeighborsGetQuery");
-    aby3::sbMatrix neighbors = outting_neighbors(snode, adjGraphEngine);
+    for(size_t i=0; i<noram_stash_size; i++){
+        aby3::sbMatrix neighbors = outting_neighbors(snode, adjGraphEngine);
+    }
     timer.end("NeighborsGetQuery");
 
     // print the timer records.
@@ -407,6 +435,13 @@ int list_performance_profiling(oc::CLP& cmd){
     timer.start("NeighborsGetQuery");
     aby3::sbMatrix neighbors = outting_neighbors(snode, listGraphEngine);
     timer.end("NeighborsGetQuery");
+
+    // 4) sorted neighbors get query.
+    plainGraph.list_sort();
+    listGraphEngine.rebuild(party_info, plainGraph);
+    timer.start("SortedNeighborsGetQuery");
+    aby3::sbMatrix neighbors_sorted = outting_neighbors_sorted(snode, listGraphEngine);
+    timer.end("SortedNeighborsGetQuery");
 
     // print the timer records.
     if(role == 0){

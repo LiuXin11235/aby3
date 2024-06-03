@@ -38,6 +38,19 @@ struct plainGraph2d{
         }
         return;
     }
+
+    void per_block_sort(){
+        for(size_t i=0; i<edge_list_size; i++){
+            std::vector<std::array<int, 2>> vec(edge_block_list[i].begin(), edge_block_list[i].end());
+            std::sort(vec.begin(), vec.end(), [](const std::array<int, 2>& a, const std::array<int, 2>& b) {
+                if (a[0] == b[0]) {
+                    return a[1] < b[1];
+                }
+                return a[0] < b[0];
+            });
+        }
+        return;
+    }
     
     plainGraph2d(const std::string& meta_data_file, const std::string& edge_block_file, const std::string& node_chunk_file) : plainGraph2d(meta_data_file, edge_block_file)
     {
@@ -232,6 +245,26 @@ struct plainGraphList{
             }
         }
         return count;
+    }
+
+    void list_sort(){
+        std::vector<std::array<int, 2>> edge_list(e);
+        for(size_t i=0; i<e; i++){
+            edge_list[i][0] = starting_node_list[i];
+            edge_list[i][1] = ending_node_list[i];
+        }
+        std::sort(edge_list.begin(), edge_list.end(), [](const std::array<int, 2>& a, const std::array<int, 2>& b) {
+            if (a[0] == b[0]) {
+                return a[1] < b[1];
+            }
+            return a[0] < b[0];
+        });
+
+        for(size_t i=0; i<e; i++){
+            starting_node_list[i] = edge_list[i][0];
+            ending_node_list[i] = edge_list[i][1];
+        }
+        return;
     }
 
     std::vector<int> get_outting_neighbors(int starting_node){

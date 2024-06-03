@@ -262,11 +262,29 @@ int neighbors_find_test(oc::CLP& cmd){
     plainGraph2d pGraph(graph_data_folder + meta_file, graph_data_folder + graph_data_file);
     std::vector<int> true_neighbors = pGraph.get_outting_neighbors(starting_node);
 
-
     std::sort(queried_neighbors.begin(), queried_neighbors.end(), std::greater<int>());
     std::sort(true_neighbors.begin(), true_neighbors.end(), std::greater<int>());
     if(role == 0){
         check_result("Basic graph query neighbors test", queried_neighbors, true_neighbors);
+    }
+
+    // load the data and sort.
+    pGraph.per_block_sort();
+    GraphQueryEngine GQEngineSort(party_info, graph_data_folder + meta_file, graph_data_folder + graph_data_file, stash_size, pack_size, stash_size, pack_size);
+    
+    // query for the result.
+    aby3::sbMatrix masked_neighbors_sort = outting_neighbors_sorted(priv_node_index,    priv_logical_index, GQEngineSort);
+    aby3::i64Matrix test_neighbors_sort(masked_neighbors_sort.rows(), 1);
+    enc.revealAll(runtime, masked_neighbors_sort, test_neighbors_sort).get();
+    std::vector<int> queried_neighbors_sort;
+    for(size_t i=0; i<test_neighbors_sort.rows(); i++){
+        if(test_neighbors_sort(i, 0) != 0){
+            queried_neighbors_sort.push_back(test_neighbors_sort(i, 0));
+        }
+    }
+    std::sort(queried_neighbors_sort.begin(), queried_neighbors_sort.end(), std::greater<int>());
+    if(role == 0){
+        check_result("Basic graph query neighbors sort test", queried_neighbors_sort, true_neighbors);
     }
     
     return 0;
@@ -334,6 +352,7 @@ int adj_basic_graph_query_test(oc::CLP& cmd){
     // outting edges count query
     aby3::sbMatrix neighbor_count = outting_edge_count(priv_starting_node, adjGQEngine);
     int ref_neighbor_count = plainGraph.outting_neighbors_count(starting_node);
+    // aby3::si64Matrix arith_neighbor_cound = outting_edge_count_arith(priv_starting_node, adjGQEngine);
 
     // neighbor find query.
     aby3::sbMatrix neighbors = outting_neighbors(priv_starting_node, adjGQEngine);
@@ -346,11 +365,14 @@ int adj_basic_graph_query_test(oc::CLP& cmd){
     // check the results.
     bool test_res1 = back2plain(role, res1, enc, eval, runtime);
     aby3::i64Matrix test_neighbor_count = back2plain(role, neighbor_count, enc, eval, runtime);
+    // aby3::i64Matrix test_neighbor_count_arith;
+    // enc.revealAll(runtime, arith_neighbor_cound, test_neighbor_count_arith).get();
     aby3::i64Matrix test_neighbors = back2plain(role, neighbors, enc, eval, runtime);
 
     if(role == 0){
         check_result("AdjGraph basic query edge existence test", test_res1, ref_res1);
         check_result("AdjGraph basic query neighbor count test", test_neighbor_count(0, 0), ref_neighbor_count);
+        // check_result("AdjGraph basic query neighbor count arith test", test_neighbor_count_arith(0, 0), ref_neighbor_count);
         check_result("AdjGraph basic query neighbor find test", test_neighbors, ref_neighbors);
     }
 
@@ -401,10 +423,22 @@ int node_edge_list_basic_graph_query_test(oc::CLP& cmd){
     }
     std::sort(test_vec_neighbors.begin(), test_vec_neighbors.end());
 
+    // 4) sorted neighbors find query.
+    plainGraph.list_sort();
+    ListGraphQueryEngine nodeEdgeListGraphSort(party_info, plainGraph);
+    aby3::sbMatrix neighbors_sorted = outting_neighbors_sorted(priv_starting_node, nodeEdgeListGraphSort);
+    aby3::i64Matrix test_neighbors_sorted = back2plain(role, neighbors_sorted, enc, eval, runtime);
+    std::vector<int> test_vec_neighbors_sorted(ref_neighbors_.size());
+    for(size_t i=0; i<ref_neighbors_.size(); i++){
+        test_vec_neighbors_sorted[i] = test_neighbors_sorted(i, 0);
+    }
+    std::sort(test_vec_neighbors_sorted.begin(), test_vec_neighbors_sorted.end());
+
     if(role == 0){
         check_result("Node-Edge List basic query edge existence test", test1, ref_res1);
         check_result("Node-Edge List basic query neighbor count test", test2(0, 0), ref_neighbor_count);
         check_result("Node-Edge List basic query neighbor find test", test_vec_neighbors, ref_neighbors_);
+        check_result("Node-Edge List basic query neighbor find sort test", test_vec_neighbors_sorted, ref_neighbors_);
     }
 
     return 0;

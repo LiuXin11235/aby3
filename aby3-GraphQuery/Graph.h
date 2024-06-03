@@ -36,6 +36,39 @@ struct Graph2d {
 
     Graph2d(){}; // default constructor
 
+    Graph2d(plainGraph2d& plain_graph, aby3Info &party_info){
+        v = plain_graph.v;
+        e = plain_graph.e;
+        b = plain_graph.b;
+        k = plain_graph.k;
+        l = plain_graph.l;
+        edge_list_size = plain_graph.edge_list_size;
+
+        // convert plain graph to secure graph.
+        edge_block_list.resize(edge_list_size);
+
+        for(size_t i=0; i<edge_list_size; i++){
+            aby3::i64Matrix nodes_list(2*l, 1);
+
+            for(size_t j=0; j<l; j++){
+                nodes_list(j, 0) = plain_graph.edge_block_list[i][j][0];
+                nodes_list(j+l, 0) = plain_graph.edge_block_list[i][j][1];
+            }
+
+            // the sbMatrix must be initialized with the correct size.
+            edge_block_list[i].resize(2*l, BITSIZE);
+
+            // TODO - optimize
+            if(party_info.pIdx == 0){
+                party_info.enc->localBinMatrix(*(party_info.runtime), nodes_list, edge_block_list[i]).get();
+            }
+            else{
+                party_info.enc->remoteBinMatrix(*(party_info.runtime), edge_block_list[i]).get();
+            }
+        }
+        return;
+    };
+
     Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info &party_info){
         plainGraph2d plain_graph(meta_data_file, edge_block_file);
         v = plain_graph.v;
@@ -267,6 +300,20 @@ class GraphQueryEngine{
             return;
         }
 
+        GraphQueryEngine(plainGraph2d& plain_graph, aby3Info& party_info){
+            graph = new Graph2d(plain_graph, party_info);
+            this->party_info = &party_info;
+
+            if(!checkPowerOfTwo(graph->b) || !checkPowerOfTwo(graph->k)){
+                THROW_RUNTIME_ERROR("The block size and the chunk size must be power of 2.");
+            }
+
+            logb = log2(graph->b);
+            logk = log2(graph->k);
+
+            return;
+        }
+
         void edge_block_oram_initialization(const int stash_size, const int pack_size){
             edge_block_oram = new ABY3SqrtOram(graph->edge_list_size, stash_size, pack_size, party_info->pIdx, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
             edge_block_oram->initiate(graph->edge_block_list);
@@ -290,10 +337,35 @@ class GraphQueryEngine{
             return;
         }
 
+        GraphQueryEngine(aby3Info& party_info, plainGraph2d& plain_graph, const size_t edge_oram_stash_size, const size_t edge_oram_pack_size, const size_t node_oram_stash_size, const size_t node_oram_pack_size) : GraphQueryEngine(plain_graph, party_info)
+        {
+            edge_block_oram_initialization(edge_oram_stash_size, edge_oram_pack_size);
+            node_edges_oram_initialization(node_oram_stash_size, node_oram_pack_size);
+            return;
+        }
+
         ~GraphQueryEngine(){
             delete graph;
             delete edge_block_oram;
             delete node_edges_oram;
+        }
+
+        void rebuild(aby3Info& party_info, plainGraph2d& plain_graph){
+            delete graph;
+            delete edge_block_oram;
+            delete node_edges_oram;
+
+            graph = new Graph2d(plain_graph, party_info);
+            this->party_info = &party_info;
+
+            if(!checkPowerOfTwo(graph->b) || !checkPowerOfTwo(graph->k)){
+                THROW_RUNTIME_ERROR("The block size and the chunk size must be power of 2.");
+            }
+
+            logb = log2(graph->b);
+            logk = log2(graph->k);
+
+            return;
         }
 
         boolIndex get_block_index(boolIndex node_index){
@@ -473,6 +545,34 @@ class ListGraphQueryEngine{
             return;
         }
 
+        void rebuild(aby3Info& party_info, plainGraphList& plain_graph){
+            v = plain_graph.v;
+            e = plain_graph.e;
+            this->party_info = &party_info;
+
+            // convert the plain graph to secure graph.
+            aby3::i64Matrix plain_starting_nodes(e, 1);
+            aby3::i64Matrix plain_ending_nodes(e, 1);
+            for(size_t i=0; i<e; i++){
+                plain_starting_nodes(i, 0) = plain_graph.starting_node_list[i];
+                plain_ending_nodes(i, 0) = plain_graph.ending_node_list[i];
+            }
+            
+            starting_node_list.resize(e, BITSIZE);
+            ending_node_list.resize(e, BITSIZE);
+
+            // encrypt the nodes.
+            if(party_info.pIdx == 0){
+                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_starting_nodes, starting_node_list).get();
+                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_ending_nodes, ending_node_list).get();
+            }
+            else{
+                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), starting_node_list).get();
+                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), ending_node_list).get();
+            }
+            return;
+        }
+
         void print_configs(std::ostream& stream){
             stream << "v : " << v << std::endl;
             stream << "e : " << e << std::endl;
@@ -492,9 +592,13 @@ aby3::si64Matrix outting_edge_count(boolIndex node_index, boolIndex logical_node
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
 
+aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
+
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,AdjGraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_edge_count(boolIndex boolIndex, AdjGraphQueryEngine &GQEngine);
+
+aby3::si64Matrix outting_edge_count_arith(boolIndex boolIndex, AdjGraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index,AdjGraphQueryEngine &GQEngine);
 
@@ -503,3 +607,5 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,ListGrap
 aby3::sbMatrix outting_edge_count(boolIndex boolIndex, ListGraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index, ListGraphQueryEngine &GQEngine);
+
+aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, ListGraphQueryEngine &GQEngine);
