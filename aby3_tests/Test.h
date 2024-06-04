@@ -42,7 +42,7 @@
     aby3Info party_info = aby3Info(role, enc, eval, runtime);
 
 
-// #define SHOW_TEST_CASE
+#define SHOW_TEST_CASE
 
 int arith_basic_test(oc::CLP& cmd);
 int bool_basic_test(oc::CLP& cmd);
@@ -80,6 +80,7 @@ int bc_sort_corner_test(oc::CLP& cmd);
 int bc_sort_multiple_times(oc::CLP& cmd);
 int quick_sort_test(oc::CLP& cmd);
 int quick_sort_with_duplicate_elements_test(oc::CLP& cmd);
+int odd_even_merge_test(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);

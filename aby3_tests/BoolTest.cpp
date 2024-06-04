@@ -325,10 +325,14 @@ int bool_basic_test2(oc::CLP &cmd) {
 
     aby3::i64Matrix trueVal(TEST_SIZE, 1);
     aby3::i64Matrix falseVal(TEST_SIZE, 1);
+    aby3::i64Matrix max_ref(TEST_SIZE, 1);
+    aby3::i64Matrix min_ref(TEST_SIZE, 1);
 
     for (int i = 0; i < TEST_SIZE; i++) {
         trueVal(i, 0) = 5;
         falseVal(i, 0) = 16;
+        max_ref(i, 0) = 16;
+        min_ref(i, 0) = 5;
     }
 
     boolShare tflag(true, role);
@@ -355,14 +359,36 @@ int bool_basic_test2(oc::CLP &cmd) {
     bool_cipher_selector(role, fflag, shared_true, shared_false, test_false,
                          enc, eval, runtime);
 
+    aby3::sbMatrix max_res, min_res;
+    bool_cipher_max(role, shared_true, shared_false, max_res, enc, eval,
+                    runtime);
+    bool_cipher_min(role, shared_true, shared_false, min_res, enc, eval,
+                    runtime);
+
     aby3::i64Matrix res_true(TEST_SIZE, 1);
     aby3::i64Matrix res_false(TEST_SIZE, 1);
     enc.revealAll(runtime, test_true, res_true).get();
     enc.revealAll(runtime, test_false, res_false).get();
 
+    aby3::i64Matrix max_test(TEST_SIZE, 1);
+    aby3::i64Matrix min_test(TEST_SIZE, 1);
+    enc.revealAll(runtime, max_res, max_test).get();
+    enc.revealAll(runtime, min_res, min_test).get();
+
     if (role == 0) {
         check_result("bool selector true", res_true, trueVal);
         check_result("bool selector false", res_false, falseVal);
+        check_result("bool max", max_test, max_ref);
+        check_result("bool min", min_test, min_ref);
+    }
+
+    bool_cipher_max_min_split(role, shared_true, shared_false, max_res, min_res,
+                              enc, eval, runtime);
+    enc.revealAll(runtime, max_res, max_test).get();
+    enc.revealAll(runtime, min_res, min_test).get();
+    if(role == 0){
+        check_result("bool max split", max_test, max_ref);
+        check_result("bool min split", min_test, min_ref);
     }
 
     return 0;

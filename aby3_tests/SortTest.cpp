@@ -345,18 +345,93 @@ int quick_sort_with_duplicate_elements_test(oc::CLP& cmd){
     aby3::i64Matrix test(data_size, 1);
     enc.revealAll(runtime, enc_test, test).get();
 
-    // if(role == 0){
-    //     debug_info("sorted result: ");
-    //     debug_output_matrix(test);
-    // }
-
-    // if(role == 0){
-    //     debug_info("target result: ");
-    //     debug_output_matrix(data_res);
-    // }
-
     if(role == 0){
         check_result("Quick Sort with Duplicated Elements Test", test, data_res);
     }
+    return 0;
+}
+
+int odd_even_merge_test(oc::CLP& cmd){
+
+    BASIC_TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN ODD EVEN MERGE SORT!");
+    }
+
+    // prepare the data.
+    size_t arr1_len = 50, arr2_len = 98, arr3_len = 60, arr4_len = 80;
+
+    aby3::i64Matrix arr1(arr1_len, 1);
+    aby3::i64Matrix arr2(arr2_len, 1);
+    aby3::i64Matrix arr3(arr3_len, 1);
+    aby3::i64Matrix arr4(arr4_len, 1);
+
+    std::vector<int> ref_res(arr1_len + arr2_len);
+    aby3::i64Matrix res_res_(arr1_len + arr2_len, 1);
+
+    std::vector<int> multi_ref_res(arr1_len + arr2_len + arr3_len + arr4_len);
+    aby3::i64Matrix multi_res_res_(arr1_len + arr2_len + arr3_len + arr4_len, 1);
+
+    for(size_t i=0; i<arr1_len; i++){
+        arr1(i, 0) = i + 10;
+        ref_res[i] = i + 10;
+        multi_ref_res[i] = i + 10;
+    }
+    for(size_t i=0; i<arr2_len; i++){
+        arr2(i, 0) = i + 20;
+        ref_res[i + arr1_len] = i + 20;
+        multi_ref_res[i + arr1_len] = i + 20;
+    }
+    for(size_t i=0; i<arr3_len; i++){
+        arr3(i, 0) = i + 30;
+        multi_ref_res[i + arr1_len + arr2_len] = i + 30;
+    }
+    for(size_t i=0; i<arr4_len; i++){
+        arr4(i, 0) = i + 40;
+        multi_ref_res[i + arr1_len + arr2_len + arr3_len] = i + 40;
+    }
+
+    std::sort(ref_res.begin(), ref_res.end());
+    for(size_t i=0; i<arr1_len + arr2_len; i++) res_res_(i, 0) = ref_res[i];
+
+    std::sort(multi_ref_res.begin(), multi_ref_res.end());
+    for(size_t i=0; i<arr1_len + arr2_len + arr3_len + arr4_len; i++) multi_res_res_(i, 0) = multi_ref_res[i];
+    
+    // enc the data.
+    aby3::sbMatrix enc_arr1(arr1_len, 64);
+    aby3::sbMatrix enc_arr2(arr2_len, 64);
+    aby3::sbMatrix enc_arr3(arr3_len, 64);
+    aby3::sbMatrix enc_arr4(arr4_len, 64);
+    if(role == 0){
+        enc.localBinMatrix(runtime, arr1, enc_arr1).get();
+        enc.localBinMatrix(runtime, arr2, enc_arr2).get();
+        enc.localBinMatrix(runtime, arr3, enc_arr3).get();
+        enc.localBinMatrix(runtime, arr4, enc_arr4).get();
+    }else{
+        enc.remoteBinMatrix(runtime, enc_arr1).get();
+        enc.remoteBinMatrix(runtime, enc_arr2).get();
+        enc.remoteBinMatrix(runtime, enc_arr3).get();
+        enc.remoteBinMatrix(runtime, enc_arr4).get();
+    }
+
+    aby3::sbMatrix sort_test;
+    odd_even_merge(enc_arr1, enc_arr2, sort_test, role, enc, eval, runtime);
+
+    aby3::i64Matrix test(arr1_len + arr2_len, 1);
+    enc.revealAll(runtime, sort_test, test).get();
+
+    aby3::sbMatrix multi_sort_test;
+    std::vector<aby3::sbMatrix> enc_data_vec = {enc_arr1, enc_arr2, enc_arr3, enc_arr4};
+    odd_even_multi_merge(enc_data_vec, multi_sort_test, role, enc, eval, runtime);
+
+    aby3::i64Matrix multi_test(arr1_len + arr2_len + arr3_len + arr4_len, 1);
+    enc.revealAll(runtime, multi_sort_test, multi_test).get();
+
+    if(role == 0){
+        check_result("Odd Even Merge Sort Test", test, res_res_);
+        check_result("Odd Even Multi Merge Sort Test", multi_test, multi_res_res_);
+    }
+
     return 0;
 }

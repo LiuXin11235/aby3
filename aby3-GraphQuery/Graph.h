@@ -36,7 +36,7 @@ struct Graph2d {
 
     Graph2d(){}; // default constructor
 
-    Graph2d(plainGraph2d& plain_graph, aby3Info &party_info){
+    Graph2d(const plainGraph2d& plain_graph, aby3Info &party_info){
         v = plain_graph.v;
         e = plain_graph.e;
         b = plain_graph.b;
@@ -47,59 +47,44 @@ struct Graph2d {
         // convert plain graph to secure graph.
         edge_block_list.resize(edge_list_size);
 
+        // encrypt the edge block list in a single round of communication.
+        aby3::i64Matrix full_edge_block_list(2*l*edge_list_size, 1);
+        aby3::sbMatrix full_edge_block_list_sec(2*l*edge_list_size, BITSIZE);
         for(size_t i=0; i<edge_list_size; i++){
-            aby3::i64Matrix nodes_list(2*l, 1);
-
             for(size_t j=0; j<l; j++){
-                nodes_list(j, 0) = plain_graph.edge_block_list[i][j][0];
-                nodes_list(j+l, 0) = plain_graph.edge_block_list[i][j][1];
-            }
-
-            // the sbMatrix must be initialized with the correct size.
-            edge_block_list[i].resize(2*l, BITSIZE);
-
-            // TODO - optimize
-            if(party_info.pIdx == 0){
-                party_info.enc->localBinMatrix(*(party_info.runtime), nodes_list, edge_block_list[i]).get();
-            }
-            else{
-                party_info.enc->remoteBinMatrix(*(party_info.runtime), edge_block_list[i]).get();
+                full_edge_block_list(i*2*l+j, 0) = plain_graph.edge_block_list[i][j][0]; // starting_nodes.
+                full_edge_block_list(i*2*l+j+l, 0) = plain_graph.edge_block_list[i][j][1]; // ending_nodes.
             }
         }
+
+        // encrypt the edge block list.
+        size_t round = (size_t)ceil(edge_list_size * 2 * l / (double)MAX_COMM_SIZE);
+        size_t last_len = edge_list_size * 2 * l - (round - 1) * MAX_COMM_SIZE;
+        for(size_t i=0; i<round; i++){
+            size_t len = (i == round - 1) ? last_len : MAX_COMM_SIZE;
+            aby3::i64Matrix edge_block_list = full_edge_block_list.block(i*MAX_COMM_SIZE, 0, len, 1);
+            aby3::sbMatrix edge_block_list_sec(len, BITSIZE);
+            if(party_info.pIdx == 0){
+                party_info.enc->localBinMatrix(*(party_info.runtime), edge_block_list, edge_block_list_sec).get();
+            }
+            else{
+                party_info.enc->remoteBinMatrix(*(party_info.runtime), edge_block_list_sec).get();
+            }
+            std::memcpy(full_edge_block_list_sec.mShares[0].data() + i*MAX_COMM_SIZE, edge_block_list_sec.mShares[0].data(), len * sizeof(full_edge_block_list_sec.mShares[0](0, 0)));
+            std::memcpy(full_edge_block_list_sec.mShares[1].data() + i*MAX_COMM_SIZE, edge_block_list_sec.mShares[1].data(), len * sizeof(full_edge_block_list_sec.mShares[0](0, 0)));
+        }
+
+        // split the edge block list to the standard format.
+        for(size_t i=0; i<edge_list_size; i++){
+            edge_block_list[i].resize(2*l, BITSIZE);
+            std::memcpy(edge_block_list[i].mShares[0].data(), full_edge_block_list_sec.mShares[0].data() + i*2*l, 2*l * sizeof(full_edge_block_list_sec.mShares[0](0, 0)));
+            std::memcpy(edge_block_list[i].mShares[1].data(), full_edge_block_list_sec.mShares[1].data() + i*2*l, 2*l * sizeof(full_edge_block_list_sec.mShares[1](0, 0)));
+        }
+
         return;
     };
 
-    Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info &party_info){
-        plainGraph2d plain_graph(meta_data_file, edge_block_file);
-        v = plain_graph.v;
-        e = plain_graph.e;
-        b = plain_graph.b;
-        k = plain_graph.k;
-        l = plain_graph.l;
-        edge_list_size = plain_graph.edge_list_size;
-
-        // convert plain graph to secure graph.
-        edge_block_list.resize(edge_list_size);
-
-        for(size_t i=0; i<edge_list_size; i++){
-            aby3::i64Matrix nodes_list(2*l, 1);
-
-            for(size_t j=0; j<l; j++){
-                nodes_list(j, 0) = plain_graph.edge_block_list[i][j][0];
-                nodes_list(j+l, 0) = plain_graph.edge_block_list[i][j][1];
-            }
-
-            // the sbMatrix must be initialized with the correct size.
-            edge_block_list[i].resize(2*l, BITSIZE);
-
-            // TODO - optimize
-            if(party_info.pIdx == 0){
-                party_info.enc->localBinMatrix(*(party_info.runtime), nodes_list, edge_block_list[i]).get();
-            }
-            else{
-                party_info.enc->remoteBinMatrix(*(party_info.runtime), edge_block_list[i]).get();
-            }
-        }
+    Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info& party_info) : Graph2d(plainGraph2d(meta_data_file, edge_block_file), party_info){
         return;
     }
 
@@ -122,6 +107,15 @@ struct Graph2d {
             }
         }
 
+        return;
+    }
+
+    Graph2d(const std::vector<plainGraph2d>& plain_graph_vec, aby3Info &party_info){
+        throw std::runtime_error("Not implemented yet.");
+        // generate the k (source-dest)-nodes list.
+        // merge sort.
+        // split it to soure, dests.
+        // fit with the Graph2d format.
         return;
     }
 

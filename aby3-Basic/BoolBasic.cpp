@@ -162,6 +162,28 @@ void bool_cipher_add(int pIdx, sbMatrix &sharedA, sbMatrix &sharedB,
     dep.get();
 }
 
+void bool_cipher_sub(int pIdx, sbMatrix &sharedA, sbMatrix &sharedB,
+                     sbMatrix &res, Sh3Encryptor &enc, Sh3Evaluator &eval,
+                     Sh3Runtime &runtime) {
+    Sh3BinaryEvaluator binEng;
+    CircuitLibrary lib;
+
+    int bitSize = sharedA.bitCount();
+    int i64Size = sharedA.i64Size();
+
+    auto cir = lib.int_int_subtract(bitSize, bitSize, bitSize);
+
+    binEng.setCir(cir, i64Size, eval.mShareGen);
+    binEng.setInput(0, sharedA);
+    binEng.setInput(1, sharedB);
+
+    auto dep = binEng.asyncEvaluate(runtime).then([&](Sh3Task self) {
+        res.resize(i64Size, bitSize);
+        binEng.getOutput(0, res);
+    });
+    dep.get();
+}
+
 void bool_cipher_and(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
                      aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
                      aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime) {
@@ -202,6 +224,93 @@ void bool_cipher_and(int pIdx, boolShare &sharedA, boolShare &sharedB,
 
     return;
 }
+
+void bool_cipher_max(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
+                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime){
+    
+    aby3::sbMatrix comp;
+    bool_cipher_lt(pIdx, sharedA, sharedB, comp, enc, eval, runtime);
+    aby3::sbMatrix tmp1, tmp2;
+
+    comp.resize(comp.rows(), BITSIZE);
+    for(size_t i=0; i<comp.rows(); i++){
+        comp.mShares[0](i, 0) = (comp.mShares[0](i, 0) == 1) ? -1 : -0;
+        comp.mShares[1](i, 0) = (comp.mShares[1](i, 0) == 1) ? -1 : -0;
+    }
+    bool_cipher_and(pIdx, comp, sharedB, tmp1, enc, eval, runtime);
+    bool_cipher_not(pIdx, comp, comp);
+    bool_cipher_and(pIdx, comp, sharedA, tmp2, enc, eval, runtime);
+    res.resize(sharedA.rows(), BITSIZE);
+    for(size_t i=0; i<tmp1.rows(); i++){
+        res.mShares[0](i, 0) = tmp1.mShares[0](i, 0) ^ tmp2.mShares[0](i, 0);
+        res.mShares[1](i, 0) = tmp1.mShares[1](i, 0) ^ tmp2.mShares[1](i, 0);
+    }
+    return;
+}
+
+void bool_cipher_min(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
+                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime){
+    aby3::sbMatrix comp;
+    bool_cipher_lt(pIdx, sharedA, sharedB, comp, enc, eval, runtime);
+    aby3::sbMatrix tmp1, tmp2;
+
+    comp.resize(comp.rows(), BITSIZE);
+    for(size_t i=0; i<comp.rows(); i++){
+        comp.mShares[0](i, 0) = (comp.mShares[0](i, 0) == 1) ? -1 : -0;
+        comp.mShares[1](i, 0) = (comp.mShares[1](i, 0) == 1) ? -1 : -0;
+    }
+    bool_cipher_and(pIdx, comp, sharedA, tmp1, enc, eval, runtime);
+    bool_cipher_not(pIdx, comp, comp);
+    bool_cipher_and(pIdx, comp, sharedB, tmp2, enc, eval, runtime);
+    res.resize(sharedA.rows(), BITSIZE);
+    for(size_t i=0; i<tmp1.rows(); i++){
+        res.mShares[0](i, 0) = tmp1.mShares[0](i, 0) ^ tmp2.mShares[0](i, 0);
+        res.mShares[1](i, 0) = tmp1.mShares[1](i, 0) ^ tmp2.mShares[1](i, 0);
+    }
+    return;
+}
+
+void bool_cipher_max_min_split(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
+                     aby3::sbMatrix &res_max, aby3::sbMatrix &res_min, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime){
+    aby3::sbMatrix comp;
+    bool_cipher_lt(pIdx, sharedA, sharedB, comp, enc, eval, runtime);
+
+    aby3::sbMatrix extend_comp(sharedA.rows()*2, BITSIZE);
+    for(size_t i=0; i<sharedA.rows(); i++){
+        extend_comp.mShares[0](i, 0) = (comp.mShares[0](i, 0) == 1) ? -1 : 0;
+        extend_comp.mShares[1](i, 0) = (comp.mShares[1](i, 0) == 1) ? -1 : 0;
+        extend_comp.mShares[0](i+sharedA.rows(), 0) = (comp.mShares[0](i, 0) == 1) ? -1 : 0;
+        extend_comp.mShares[1](i+sharedA.rows(), 0) = (comp.mShares[1](i, 0) == 1) ? -1 : 0;
+    }
+
+    aby3::sbMatrix extend_AB(sharedA.rows()*2, BITSIZE);
+    for(size_t i=0; i<sharedA.rows(); i++){
+        extend_AB.mShares[0](i, 0) = sharedA.mShares[0](i, 0);
+        extend_AB.mShares[1](i, 0) = sharedA.mShares[1](i, 0);
+        extend_AB.mShares[0](i+sharedA.rows(), 0) = sharedB.mShares[0](i, 0);
+        extend_AB.mShares[1](i+sharedA.rows(), 0) = sharedB.mShares[1](i, 0);
+    }
+
+    aby3::sbMatrix tmp1, tmp2;
+    bool_cipher_and(pIdx, extend_comp, extend_AB, tmp1, enc, eval, runtime);
+    bool_cipher_not(pIdx, extend_comp, extend_comp);
+    bool_cipher_and(pIdx, extend_comp, extend_AB, tmp2, enc, eval, runtime);
+
+    res_max.resize(sharedA.rows(), BITSIZE);
+    res_min.resize(sharedA.rows(), BITSIZE);
+    for(size_t i=0; i<sharedA.rows(); i++){
+        res_min.mShares[0](i, 0) = tmp1.mShares[0](i, 0) ^ tmp2.mShares[0](i + sharedA.rows(), 0);
+        res_min.mShares[1](i, 0) = tmp1.mShares[1](i, 0) ^ tmp2.mShares[1](i + sharedA.rows(), 0);
+        res_max.mShares[0](i, 0) = tmp1.mShares[0](i + sharedA.rows(), 0) ^ tmp2.mShares[0](i, 0);
+        res_max.mShares[1](i, 0) = tmp1.mShares[1](i + sharedA.rows(), 0) ^ tmp2.mShares[1](i, 0);
+    }
+
+    return;
+}
+
 
 void bool_cipher_not(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &res) {
     int i64Size = sharedA.i64Size();

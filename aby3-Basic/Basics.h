@@ -215,12 +215,28 @@ void bool_cipher_add(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
                      aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
                      aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
+void bool_cipher_sub(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
+                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
 void bool_cipher_and(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
                      aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
                      aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
 void bool_cipher_and(int pIdx, boolShare &sharedA, boolShare &sharedB,
                      boolShare &res, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+void bool_cipher_max(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
+                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+void bool_cipher_min(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
+                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+void bool_cipher_max_min_split(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
+                     aby3::sbMatrix &res_max, aby3::sbMatrix &res_min, aby3::Sh3Encryptor &enc,
                      aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
 
 void bool_cipher_not(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &res);
