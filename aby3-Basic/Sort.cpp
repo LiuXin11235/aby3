@@ -326,6 +326,7 @@ int quick_sort(std::vector<aby3::sbMatrix> &data, int pIdx, aby3::Sh3Encryptor& 
 }
 
 int odd_even_merge(aby3::sbMatrix& data1, aby3::sbMatrix& data2, aby3::sbMatrix& res, int pIdx, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+
     int arr1_length = data1.rows();
     int arr2_length = data2.rows();
     int length = std::max(arr1_length, arr2_length);
@@ -405,6 +406,11 @@ int odd_even_merge(aby3::sbMatrix& data1, aby3::sbMatrix& data2, aby3::sbMatrix&
     return 0;
 }
 
+/*
+    The odd_even_multi_merge function is used to merge the data sets in the data vector.
+    The data vector contains the data sets to be merged.
+    The sorted_res is the result of the merge.
+*/
 int odd_even_multi_merge(std::vector<aby3::sbMatrix> &data, aby3::sbMatrix& sorted_res, int pIdx, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
 
     int k = data.size();
@@ -426,6 +432,150 @@ int odd_even_multi_merge(std::vector<aby3::sbMatrix> &data, aby3::sbMatrix& sort
     }
 
     sorted_res = data[0];
+
+    return 0;
+}
+
+int high_dimensional_odd_even_merge(std::vector<aby3::sbMatrix> &data1, std::vector<aby3::sbMatrix>& data2, std::vector<aby3::sbMatrix>& sorted_res, int pIdx, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+    size_t dim = data1.size();
+    if(dim != data2.size()){
+        THROW_RUNTIME_ERROR("The dimensions of the two data sets are not equal!");
+    }
+
+    int arr1_length = data1[0].rows();
+    int arr2_length = data2[0].rows();
+    int length = std::max(arr1_length, arr2_length);
+
+    // init the result.
+    std::vector<sbMatrix> result(dim);
+    for(size_t i=0; i<dim; i++){
+        result[i].resize(length*2, BITSIZE);
+    }
+
+    sbMatrix max_ele, max1, max2;
+    max1.resize(dim, BITSIZE);
+    max2.resize(dim, BITSIZE);
+    for(size_t i=0; i<dim; i++){
+        max1.mShares[0](i, 0) = data1[i].mShares[0](arr1_length - 1, 0);
+        max1.mShares[1](i, 0) = data1[i].mShares[1](arr1_length - 1, 0);
+        max2.mShares[0](i, 0) = data2[i].mShares[0](arr2_length - 1, 0);
+        max2.mShares[1](i, 0) = data2[i].mShares[1](arr2_length - 1, 0);
+    }
+    bool_cipher_max(pIdx, max1, max2, max_ele, enc, eval, runtime);
+
+    for(size_t i=0; i<dim; i++){
+        std::fill(result[i].mShares[0].data(), result[i].mShares[0].data() + result[i].mShares[0].size(), max_ele.mShares[0](i, 0));
+        std::fill(result[i].mShares[1].data(), result[i].mShares[1].data() + result[i].mShares[1].size(), max_ele.mShares[1](i, 0));
+    }
+
+    // organize the result
+    for(size_t i=0; i<dim; i++){
+        for(size_t k=0; k<arr1_length; k++){
+            result[i].mShares[0](k*2, 0) = data1[i].mShares[0](k, 0);
+            result[i].mShares[1](k*2, 0) = data1[i].mShares[1](k, 0);
+        }
+        for(size_t k=0; k<arr2_length; k++){
+            result[i].mShares[0](k*2 + 1, 0) = data2[i].mShares[0](k, 0);
+            result[i].mShares[1](k*2 + 1, 0) = data2[i].mShares[1](k, 0);
+        }
+    }
+
+    // begin the high-dimensional odd_even merge sort.
+    size_t t = (size_t) std::ceil((std::log2((double)length)) + 1);
+    size_t q = std::pow(2, t-1);
+    size_t d = 1;
+    size_t r = 0;
+
+    while(d > 0){
+        std::vector<int> x_mask, y_mask;
+        for(int i=r; i<length*2 - d; i+=2){
+            x_mask.push_back(i);
+            y_mask.push_back(i + d);
+        }
+        size_t unit_mask_len = x_mask.size();
+
+        // get the result into the sbMatrix.
+        sbMatrix x_mask_mat(unit_mask_len * dim, BITSIZE);
+        sbMatrix y_mask_mat(unit_mask_len * dim, BITSIZE);
+        for(size_t i=0; i<dim; i++){
+            for(size_t j=0; j<unit_mask_len; j++){
+                x_mask_mat.mShares[0](i*unit_mask_len + j, 0) = result[i].mShares[0](x_mask[j], 0);
+                x_mask_mat.mShares[1](i*unit_mask_len + j, 0) = result[i].mShares[1](x_mask[j], 0);
+                y_mask_mat.mShares[0](i*unit_mask_len + j, 0) = result[i].mShares[0](y_mask[j], 0);
+                y_mask_mat.mShares[1](i*unit_mask_len + j, 0) = result[i].mShares[1](y_mask[j], 0);
+            }
+        }
+        sbMatrix max_mat, min_mat;
+        bool_cipher_max_min_split(pIdx, x_mask_mat, y_mask_mat, max_mat, min_mat, enc, eval, runtime);
+
+        // update the result.
+        for(size_t i=0; i<dim; i++){
+            for(size_t j=0; j<unit_mask_len; j++){
+                result[i].mShares[0](x_mask[j], 0) = min_mat.mShares[0](i*unit_mask_len + j, 0);
+                result[i].mShares[1](x_mask[j], 0) = min_mat.mShares[1](i*unit_mask_len + j, 0);
+                result[i].mShares[0](y_mask[j], 0) = max_mat.mShares[0](i*unit_mask_len + j, 0);
+                result[i].mShares[1](y_mask[j], 0) = max_mat.mShares[1](i*unit_mask_len + j, 0);
+            }
+        }
+
+        // update the d, r.
+        d = (size_t) (q - 1);
+        q = q >> 1;
+        r = 1;
+    }
+
+    sorted_res.resize(dim);
+    for(size_t i=0; i<dim; i++){
+        sorted_res[i].resize(arr1_length+arr2_length, BITSIZE);
+        for(size_t j=0; j<arr1_length+arr2_length; j++){
+            sorted_res[i].mShares[0](j, 0) = result[i].mShares[0](j, 0);
+            sorted_res[i].mShares[1](j, 0) = result[i].mShares[1](j, 0);
+        }
+    }
+
+    return 0;
+}
+
+int high_dimensional_odd_even_multi_merge(std::vector<std::vector<aby3::sbMatrix>> &data,std::vector<aby3::sbMatrix>& sorted_res, int pIdx, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+
+    size_t dim = data.size();
+    size_t k = data[0].size(); // the number of data sets in each dimension.
+
+    while(k!=1){
+        if(k%2 != 0){
+            std::vector<aby3::sbMatrix> res;
+            std::vector<aby3::sbMatrix> data1(dim), data2(dim);
+            for(size_t i=0; i<dim; i++){
+                data1[i] = data[i][k-2];
+                data2[i] = data[i][k-1];
+            }
+            high_dimensional_odd_even_merge(data1, data2, res, pIdx, enc, eval, runtime);
+            for(size_t i=0; i<dim; i++){
+                data[i][k-2] = res[i];
+            }
+        }
+        else{
+            for(size_t i=0; i<k; i+=2){
+                std::vector<aby3::sbMatrix> res;
+                std::vector<aby3::sbMatrix> data1(dim), data2(dim);
+                for(size_t j=0; j<dim; j++){
+                    data1[j] = data[j][i];
+                    data2[j] = data[j][i+1];
+                }
+                high_dimensional_odd_even_merge(data1, data2, res, pIdx, enc, eval, runtime);
+                for(size_t j=0; j<dim; j++){
+                    data[j][i/2] = res[j];
+                }
+            }
+        }
+        k = k>>1;
+    }
+
+    // sorted_res = data1[0];
+    sorted_res.resize(dim);
+    for(size_t i=0; i<dim; i++){
+        sorted_res[i] = data[i][0];
+    }
 
     return 0;
 }

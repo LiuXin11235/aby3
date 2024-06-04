@@ -71,7 +71,6 @@ bool check_result(const std::string& func_name, std::vector<aby3::i64Matrix> tes
     }
 }
 
-
 int arith_basic_test(CLP &cmd) {
     // get the configs.
     int role = -1;

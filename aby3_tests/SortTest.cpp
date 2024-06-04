@@ -360,7 +360,7 @@ int odd_even_merge_test(oc::CLP& cmd){
     }
 
     // prepare the data.
-    size_t arr1_len = 50, arr2_len = 98, arr3_len = 60, arr4_len = 80;
+    size_t arr1_len = 50, arr2_len = 98, arr3_len = 50, arr4_len = 98;
 
     aby3::i64Matrix arr1(arr1_len, 1);
     aby3::i64Matrix arr2(arr2_len, 1);
@@ -432,6 +432,57 @@ int odd_even_merge_test(oc::CLP& cmd){
         check_result("Odd Even Merge Sort Test", test, res_res_);
         check_result("Odd Even Multi Merge Sort Test", multi_test, multi_res_res_);
     }
+
+    std::vector<sbMatrix> enc_data_vec1 = {enc_arr1, enc_arr3};
+    std::vector<sbMatrix> enc_data_vec2 = {enc_arr3, enc_arr1};
+    std::vector<sbMatrix> high_dim_res(2);
+    high_dimensional_odd_even_merge(enc_data_vec1, enc_data_vec2, high_dim_res, role, enc, eval, runtime);
+
+    aby3::i64Matrix high_dim_test1(arr1_len + arr3_len, 1);
+    enc.revealAll(runtime, high_dim_res[0], high_dim_test1).get();
+    aby3::i64Matrix high_dim_test2(arr1_len + arr3_len, 1);
+    enc.revealAll(runtime, high_dim_res[1], high_dim_test2).get();
+
+    std::vector<int> high_dim_res1(arr1_len + arr3_len);
+    for(size_t i=0; i<arr1_len; i++) high_dim_res1[i] = arr1(i, 0);
+    for(size_t i=0; i<arr3_len; i++) high_dim_res1[i + arr1_len] = arr3(i, 0);
+    std::sort(high_dim_res1.begin(), high_dim_res1.end());
+    aby3::i64Matrix high_dim_res1_(arr1_len + arr3_len, 1);
+    for(size_t i=0; i<arr1_len + arr3_len; i++) high_dim_res1_(i, 0) = high_dim_res1[i];
+
+    if(role == 0){
+        check_result("High Dimensional Odd Even Merge Sort Test 1", high_dim_test1, high_dim_res1_);
+        check_result("High Dimensional Odd Even Merge Sort Test 2", high_dim_test2, high_dim_res1_);
+    }
+
+    // std::vector<std::vector<>>
+    std::vector<sbMatrix> multi_enc_data_vec_1 = {enc_arr1, enc_arr2};
+    std::vector<sbMatrix> multi_enc_data_vec_2 = {enc_arr3, enc_arr4};
+    std::vector<std::vector<sbMatrix>> hd_multi_enc_data_vec(2);
+    for(size_t i=0; i<2; i++){
+        hd_multi_enc_data_vec[i] = (i == 0) ? multi_enc_data_vec_1 : multi_enc_data_vec_2;
+    }
+
+    std::vector<sbMatrix> hd_multi_res(2);
+    high_dimensional_odd_even_multi_merge(hd_multi_enc_data_vec, hd_multi_res, role, enc, eval, runtime);
+
+    aby3::i64Matrix hd_multi_test1(arr1_len + arr2_len, 1);
+    enc.revealAll(runtime, hd_multi_res[0], hd_multi_test1).get();
+    aby3::i64Matrix hd_multi_test2(arr3_len + arr4_len, 1);
+    enc.revealAll(runtime, hd_multi_res[1], hd_multi_test2).get();
+
+    std::vector<int> hd_multi_res2(arr3_len + arr4_len);
+    for(size_t i=0; i<arr3_len; i++) hd_multi_res2[i] = arr3(i, 0);
+    for(size_t i=0; i<arr4_len; i++) hd_multi_res2[i + arr3_len] = arr4(i, 0);
+    std::sort(hd_multi_res2.begin(), hd_multi_res2.end());
+    aby3::i64Matrix hd_multi_res2_(arr3_len + arr4_len, 1);
+    for(size_t i=0; i<arr3_len + arr4_len; i++) hd_multi_res2_(i, 0) = hd_multi_res2[i];
+
+    if(role == 0){
+        check_result("High Dimensional Odd Even Multi Merge Sort Test 1", hd_multi_test1, res_res_);
+        check_result("High Dimensional Odd Even Multi Merge Sort Test 2", hd_multi_test2, hd_multi_res2_);
+    }
+
 
     return 0;
 }
