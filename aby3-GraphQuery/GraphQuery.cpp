@@ -1,5 +1,7 @@
 #include "Graph.h"
 
+static const size_t MAX_UNIT_SIZE = 1 << 25;
+
 aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix& node_block, aby3Info &party_info){
 
     // check whether node_block contains even rows.
@@ -322,9 +324,6 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,AdjGraph
 
 aby3::sbMatrix outting_edge_count(boolIndex node_index, AdjGraphQueryEngine &GQEngine){
     aby3::sbMatrix res(1, 1);
-    aby3::sbMatrix zero_share(1, 1);
-    zero_share.mShares[0](0, 0) = 0;
-    zero_share.mShares[1](0, 0) = 0;
 
     aby3::sbMatrix node_info = GQEngine.get_target_node(node_index);
 
@@ -416,15 +415,22 @@ aby3::si64Matrix outting_edge_count_arith(boolIndex boolIndex, ListGraphQueryEng
 
     aby3::sbMatrix eq_res;
     bool_cipher_eq(GQEngine.party_info->pIdx, GQEngine.starting_node_list, expand_starting_node, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
-    // eq_res.resize(eq_res.rows(), BITSIZE);
-    // for(size_t i=0; i<eq_res.rows(); i++){
-    //     for(int j=0; j<2; j++){
-    //         eq_res.mShares[j](i, 0) = (eq_res.mShares[j](i, 0) == 1) ? 1 : 0;
-    //     }
-    // }
 
     aby3::si64Matrix eq_res_arith(eq_res.rows(), 1);
-    bool2arith(GQEngine.party_info->pIdx, eq_res, eq_res_arith, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+    size_t round = (size_t)ceil(eq_res.rows() / (double)MAX_UNIT_SIZE);
+    size_t last_len = eq_res.rows() - (round - 1) * MAX_UNIT_SIZE;
+
+    for(size_t i=0; i<round; i++){
+        size_t unit_len = (i == round - 1) ? last_len : MAX_UNIT_SIZE;
+        aby3::sbMatrix data_(unit_len, BITSIZE);
+        std::memcpy(data_.mShares[0].data(), eq_res.mShares[0].data() + i * MAX_UNIT_SIZE, unit_len * sizeof(eq_res.mShares[0](0, 0)));
+        std::memcpy(data_.mShares[1].data(), eq_res.mShares[1].data() + i * MAX_UNIT_SIZE, unit_len * sizeof(eq_res.mShares[1](0, 0)));
+        aby3::si64Matrix encrypted_data(unit_len, 1);
+        bool2arith(GQEngine.party_info->pIdx, data_, encrypted_data, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+        std::memcpy(eq_res_arith.mShares[0].data() + i * MAX_UNIT_SIZE, encrypted_data.mShares[0].data(), unit_len * sizeof(encrypted_data.mShares[0](0, 0)));
+        std::memcpy(eq_res_arith.mShares[1].data() + i * MAX_UNIT_SIZE, encrypted_data.mShares[1].data(), unit_len * sizeof(encrypted_data.mShares[1](0, 0)));
+    }
 
     aby3::si64Matrix res(1, BITSIZE);
     arith_aggregation(GQEngine.party_info->pIdx, eq_res_arith, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");

@@ -538,3 +538,56 @@ int bool_aggregation_test(oc::CLP& cmd){
 
     return 0;
 }
+
+int share_conversion_test(oc::CLP& cmd){
+
+    BASIC_TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN Share conversion test !");
+    }
+
+    // check the bool2arith share conversion.
+    aby3::i64Matrix input_x(TEST_SIZE, 1);
+    aby3::i64Matrix input_y(TEST_SIZE, 1);
+    aby3::i64Matrix lt_res(TEST_SIZE, 1);
+    for(size_t i=0; i<TEST_SIZE; i++){
+        input_x(i, 0) = i;
+        input_y(i, 0) = TEST_SIZE - i;
+        lt_res(i, 0) = (i < (TEST_SIZE - i))? 1: 0;
+    }
+
+    aby3::sbMatrix bsharedX(TEST_SIZE, 64);
+    aby3::sbMatrix bsharedY(TEST_SIZE, 64);
+    aby3::sbMatrix bsharedRes(TEST_SIZE, 1);
+
+    if(role == 0){
+        enc.localBinMatrix(runtime, input_x, bsharedX).get();
+        enc.localBinMatrix(runtime, input_y, bsharedY).get();
+    }
+    else{
+        enc.remoteBinMatrix(runtime, bsharedX).get();
+        enc.remoteBinMatrix(runtime, bsharedY).get();
+    }
+
+    bool_cipher_lt(role, bsharedX, bsharedY, bsharedRes, enc, eval, runtime);
+
+    aby3::si64Matrix test_lt_res(TEST_SIZE, 1);
+    aby3::si64Matrix test_b2a(TEST_SIZE, 1);
+
+    bool2arith(role, bsharedRes, test_lt_res, enc, eval, runtime);
+    bool2arith(role, bsharedX, test_b2a, enc, eval, runtime);
+
+    aby3::i64Matrix res_lt(TEST_SIZE, 1);
+    enc.revealAll(runtime, test_lt_res, res_lt).get();
+
+    aby3::i64Matrix res_b2a(TEST_SIZE, 1);
+    enc.revealAll(runtime, test_b2a, res_b2a).get();
+
+    if(role == 0){
+        check_result("bool2arith lt", res_lt, lt_res);
+        check_result("bool2arith conversion", res_b2a, input_x);
+    }
+
+    return 0;
+}

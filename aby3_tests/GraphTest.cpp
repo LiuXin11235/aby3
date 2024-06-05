@@ -352,7 +352,7 @@ int adj_basic_graph_query_test(oc::CLP& cmd){
     // outting edges count query
     aby3::sbMatrix neighbor_count = outting_edge_count(priv_starting_node, adjGQEngine);
     int ref_neighbor_count = plainGraph.outting_neighbors_count(starting_node);
-    // aby3::si64Matrix arith_neighbor_cound = outting_edge_count_arith(priv_starting_node, adjGQEngine);
+    aby3::si64Matrix arith_neighbor_cound = outting_edge_count_arith(priv_starting_node, adjGQEngine);
 
     // neighbor find query.
     aby3::sbMatrix neighbors = outting_neighbors(priv_starting_node, adjGQEngine);
@@ -365,14 +365,14 @@ int adj_basic_graph_query_test(oc::CLP& cmd){
     // check the results.
     bool test_res1 = back2plain(role, res1, enc, eval, runtime);
     aby3::i64Matrix test_neighbor_count = back2plain(role, neighbor_count, enc, eval, runtime);
-    // aby3::i64Matrix test_neighbor_count_arith;
-    // enc.revealAll(runtime, arith_neighbor_cound, test_neighbor_count_arith).get();
+    aby3::i64Matrix test_neighbor_count_arith;
+    enc.revealAll(runtime, arith_neighbor_cound, test_neighbor_count_arith).get();
     aby3::i64Matrix test_neighbors = back2plain(role, neighbors, enc, eval, runtime);
 
     if(role == 0){
         check_result("AdjGraph basic query edge existence test", test_res1, ref_res1);
         check_result("AdjGraph basic query neighbor count test", test_neighbor_count(0, 0), ref_neighbor_count);
-        // check_result("AdjGraph basic query neighbor count arith test", test_neighbor_count_arith(0, 0), ref_neighbor_count);
+        check_result("AdjGraph basic query neighbor count arith test", test_neighbor_count_arith(0, 0), ref_neighbor_count);
         check_result("AdjGraph basic query neighbor find test", test_neighbors, ref_neighbors);
     }
 

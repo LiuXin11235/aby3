@@ -1078,6 +1078,19 @@ int communication_test(oc::CLP &cmd){
         check_result("Single Communication test ROLE " + std::to_string(role), new_buf, buffer);
     }
 
+    // large-scale communication test, between p1 and p0.
+    if(role == 1){
+        large_data_sending(role, test_a, runtime, false);
+    }
+    if(role == 0){
+        aby3::i64Matrix from1_test(test_size, 1);
+        large_data_receiving(role, from1_test, runtime, false);
+        aby3::i64Matrix res(test_size, 1);
+        std::fill_n(res.data(), test_size, 1);
+        check_result("Large-scale Communication test ROLE " + std::to_string(role), from1_test, res);
+    }
+    double testd = 0;
+    synchronized_time(role, testd, runtime);
 
     return 0;
 }

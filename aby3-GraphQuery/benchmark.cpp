@@ -117,6 +117,9 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     size_t b2 = secGraphEngine.graph->edge_list_size;
     size_t v = secGraphEngine.graph->v;
 
+    eoram_stash_size = secGraphEngine.edge_block_oram->S;
+    noram_stash_size = secGraphEngine.node_edges_oram->S;
+
     // // edge block fetch
     // for(int i=0; i<eoram_stash_size; i++){
     //     boolIndex tar_ind = boolIndex((i % b2), role);
@@ -170,14 +173,14 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Outting edges count query success");
 
-    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
 
-    // 3) neighbors get query.
-    timer.start("NeighborsGetQuery");
-    for(size_t i=0; i<noram_stash_size; i++){
-        aby3::sbMatrix neighbors = outting_neighbors(snode, snode_log_idx, secGraphEngine);
-    }
-    timer.end("NeighborsGetQuery");
+    // // 3) neighbors get query.
+    // timer.start("NeighborsGetQuery");
+    // for(size_t i=0; i<noram_stash_size; i++){
+    //     aby3::sbMatrix neighbors = outting_neighbors(snode, snode_log_idx, secGraphEngine);
+    // }
+    // timer.end("NeighborsGetQuery");
 
     // 4) sorted neighbors get.
     // rebuild the graph.
@@ -187,11 +190,15 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     secGraphEngine.rebuild(party_info, plainGraph);
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
 
-    timer.start("SortedNeighborsGetQuery");
+    if(role == 0) debug_info("?????????");
+
+    timer.start("NeighborsGetQuery");
     for(size_t i=0; i<noram_stash_size; i++){
         aby3::sbMatrix neighbors = outting_neighbors_sorted(snode, snode_log_idx, secGraphEngine);
     }
-    timer.end("SortedNeighborsGetQuery");
+    timer.end("NeighborsGetQuery");
+
+    if(role == 0) debug_info("Neighbors get query success");
 
     // print the timer records.
     if(role == 0){
@@ -313,6 +320,9 @@ int adj_performance_profiling(oc::CLP& cmd){
     adjGraphEngine.node_oram_initialization(noram_stash_size, noram_pack_size);
     timer.end("NodeOramInit");
 
+    eoram_stash_size = adjGraphEngine.edge_oram->S;
+    noram_stash_size = adjGraphEngine.node_oram->S;
+
     if(role == 0) debug_info("Noram init success");
 
     // 1) edge existence query.
@@ -337,6 +347,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     timer.end("OuttingEdgesCountQuery");
 
     // 3) neighbors get query.
+    adjGraphEngine.node_oram_initialization(noram_stash_size, noram_pack_size);
     timer.start("NeighborsGetQuery");
     for(size_t i=0; i<noram_stash_size; i++){
         aby3::sbMatrix neighbors = outting_neighbors(snode, adjGraphEngine);
@@ -434,19 +445,19 @@ int list_performance_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Outting edges count query success");
 
-    // 3) neighbors get query.
-    timer.start("NeighborsGetQuery");
-    aby3::sbMatrix neighbors = outting_neighbors(snode, listGraphEngine);
-    timer.end("NeighborsGetQuery");
+    // // 3) neighbors get query.
+    // timer.start("NeighborsGetQuery");
+    // aby3::sbMatrix neighbors = outting_neighbors(snode, listGraphEngine);
+    // timer.end("NeighborsGetQuery");
 
     if(role == 0) debug_info("Neighbors get query success");
 
     // 4) sorted neighbors get query.
     plainGraph.list_sort();
     listGraphEngine.rebuild(party_info, plainGraph);
-    timer.start("SortedNeighborsGetQuery");
+    timer.start("NeighborsGetQuery");
     aby3::sbMatrix neighbors_sorted = outting_neighbors_sorted(snode, listGraphEngine);
-    timer.end("SortedNeighborsGetQuery");
+    timer.end("NeighborsGetQuery");
 
     if(role == 0) debug_info("Sorted Neighbors get query success");
 

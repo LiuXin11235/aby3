@@ -381,15 +381,33 @@ class GraphQueryEngine{
         }
 
         ~GraphQueryEngine(){
-            delete graph;
-            delete edge_block_oram;
-            delete node_edges_oram;
+            if(graph != nullptr) {
+                delete graph;
+                graph = nullptr;
+            }
+            if(edge_block_oram != nullptr) {
+                delete edge_block_oram;
+                edge_block_oram = nullptr;
+            }
+            if(node_edges_oram != nullptr) {
+                delete node_edges_oram;
+                node_edges_oram = nullptr;
+            }
         }
 
         void rebuild(aby3Info& party_info, plainGraph2d& plain_graph){
-            delete graph;
-            delete edge_block_oram;
-            delete node_edges_oram;
+            if(graph != nullptr) {
+                delete graph;
+                graph = nullptr;
+            }
+            if(edge_block_oram != nullptr) {
+                delete edge_block_oram;
+                edge_block_oram = nullptr;
+            }
+            if(node_edges_oram != nullptr) {
+                delete node_edges_oram;
+                node_edges_oram = nullptr;
+            }
 
             graph = new Graph2d(plain_graph, party_info);
             this->party_info = &party_info;
@@ -564,18 +582,6 @@ class ListGraphQueryEngine{
             
             starting_node_list.resize(e, BITSIZE);
             ending_node_list.resize(e, BITSIZE);
-
-            // // encrypt the nodes.
-            // if(party_info.pIdx == 0){
-            //     this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_starting_nodes, starting_node_list).get();
-            //     this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_ending_nodes, ending_node_list).get();
-            // }
-            // else{
-            //     this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), starting_node_list).get();
-            //     this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), ending_node_list).get();
-            // }
-
-            if(party_info.pIdx == 0) debug_info("before edgelist encryption!");
 
             large_data_encryption(party_info.pIdx, plain_starting_nodes, starting_node_list, *(party_info.enc), *(party_info.runtime));
             large_data_encryption(party_info.pIdx, plain_ending_nodes, ending_node_list, *(party_info.enc), *(party_info.runtime));

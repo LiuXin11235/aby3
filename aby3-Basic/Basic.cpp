@@ -1,6 +1,6 @@
 #include "Basics.h"
 
-static const size_t MAX_SENDING_SIZE = 1 << 27;
+static const size_t MAX_SENDING_SIZE = 1 << 25;
 
 int large_data_sending(int pIdx, aby3::i64Matrix &sharedA,
                        aby3::Sh3Runtime &runtime, bool toNext) {
@@ -8,30 +8,27 @@ int large_data_sending(int pIdx, aby3::i64Matrix &sharedA,
     size_t round = (size_t)ceil(len / (double)MAX_SENDING_SIZE);
     size_t last_len = len - (round - 1) * MAX_SENDING_SIZE;
 
-    if (pIdx == 0)
-        debug_info("In sending - len = " + std::to_string(len) +
-                   ", round = " + std::to_string(round) +
-                   ", last_len = " + std::to_string(last_len));
+    // std::ofstream party_fs(PARTY_FILE + std::to_string(pIdx) + ".txt", std::ios::app);
 
-    if (round == 1) {
-        if (toNext)
-            runtime.mComm.mNext.asyncSendCopy(sharedA.data(), sharedA.size());
-        else
-            runtime.mComm.mPrev.asyncSendCopy(sharedA.data(), sharedA.size());
-        return 0;
+    if (toNext){
+        for(size_t i=0; i<round; i++){
+            size_t sending_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
+            aby3::i64Matrix sending_data = sharedA.block(i * MAX_SENDING_SIZE, 0, sending_len, 1);
+            auto sendFu = runtime.mComm.mNext.asyncSendFuture(sending_data.data(), sending_data.size());
+            sendFu.get();
+        }
+    }
+    else{
+        for(size_t i=0; i<round; i++){
+            size_t sending_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
+            aby3::i64Matrix sending_data = sharedA.block(i * MAX_SENDING_SIZE, 0, sending_len, 1);
+            auto sendFu = runtime.mComm.mPrev.asyncSendFuture(sending_data.data(), sending_data.size());
+            sendFu.get();
+            // debug_info("success send round-" + std::to_string(i), party_fs);
+        }
     }
 
-    for (size_t i = 0; i < round; i++) {
-        size_t sending_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
-        aby3::i64Matrix sending_data =
-            sharedA.block(i * MAX_SENDING_SIZE, 0, sending_len, 1);
-        if (toNext)
-            runtime.mComm.mNext.asyncSendCopy(sending_data.data(),
-                                              sending_data.size());
-        else
-            runtime.mComm.mPrev.asyncSendCopy(sending_data.data(),
-                                              sending_data.size());
-    }
+    // party_fs.close();
 
     return 0;
 }
@@ -42,29 +39,23 @@ int large_data_receiving(int pIdx, aby3::i64Matrix &res,
     size_t round = (size_t)ceil(len / (double)MAX_SENDING_SIZE);
     size_t last_len = len - (round - 1) * MAX_SENDING_SIZE;
 
-    if (pIdx == 0)
-        debug_info("In receving - len = " + std::to_string(len) +
-                   ", round = " + std::to_string(round) +
-                   ", last_len = " + std::to_string(last_len));
-
-    if (round == 1) {
-        if (fromPrev)
-            runtime.mComm.mPrev.recv(res.data(), res.size());
-        else
-            runtime.mComm.mNext.recv(res.data(), res.size());
-        return 0;
+    if(fromPrev){
+        for(size_t i=0; i<round; i++){
+            size_t recv_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
+            aby3::i64Matrix receiving_data(recv_len, 1);
+            auto recvFu = runtime.mComm.mPrev.asyncRecv(receiving_data.data(), receiving_data.size());
+            recvFu.get();
+            res.block(i * MAX_SENDING_SIZE, 0, recv_len, 1) = receiving_data;
+        }
     }
-
-    for (size_t i = 0; i < round; i++) {
-        size_t sending_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
-        aby3::i64Matrix receiving_data(sending_len, 1);
-        if (fromPrev)
-            runtime.mComm.mPrev.recv(receiving_data.data(),
-                                     receiving_data.size());
-        else
-            runtime.mComm.mNext.recv(receiving_data.data(),
-                                     receiving_data.size());
-        res.block(i * MAX_SENDING_SIZE, 0, sending_len, 1) = receiving_data;
+    else{
+        for(size_t i=0; i<round; i++){
+            size_t recv_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
+            aby3::i64Matrix receiving_data(recv_len, 1);
+            auto recvFu = runtime.mComm.mNext.asyncRecv(receiving_data.data(), receiving_data.size());
+            recvFu.get();
+            res.block(i * MAX_SENDING_SIZE, 0, recv_len, 1) = receiving_data;
+        }
     }
 
     return 0;
@@ -129,8 +120,8 @@ int large_data_encryption(int pIdx, aby3::i64Matrix &plainA,
         else{
             enc.remoteBinMatrix(runtime, encrypted_data).get();
         }
-        std::memcpy(sharedA.mShares[0].data() + i * MAX_SENDING_SIZE * BITSIZE, encrypted_data.mShares[0].data(), sending_len * sizeof(encrypted_data.mShares[0](0, 0)));
-        std::memcpy(sharedA.mShares[1].data() + i * MAX_SENDING_SIZE * BITSIZE, encrypted_data.mShares[1].data(), sending_len * sizeof(encrypted_data.mShares[1](0, 0)));
+        std::memcpy(sharedA.mShares[0].data() + i * MAX_SENDING_SIZE, encrypted_data.mShares[0].data(), sending_len * sizeof(encrypted_data.mShares[0](0, 0)));
+        std::memcpy(sharedA.mShares[1].data() + i * MAX_SENDING_SIZE, encrypted_data.mShares[1].data(), sending_len * sizeof(encrypted_data.mShares[1](0, 0)));
     }
 
     return 0;

@@ -49,6 +49,7 @@ int bool_basic_test(oc::CLP& cmd);
 int bool_basic_test2(oc::CLP& cmd);
 int bool_aggregation_test(oc::CLP& cmd);
 int get_first_zero_test(oc::CLP& cmd);
+int share_conversion_test(oc::CLP& cmd);
 
 int initialization_test(oc::CLP& cmd);
 int shuffle_test(oc::CLP& cmd);

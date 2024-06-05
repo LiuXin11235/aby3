@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
 		bool_basic_test2(cmd);
 		get_first_zero_test(cmd);
 		bool_aggregation_test(cmd);
+		share_conversion_test(cmd);
 	}
 
 	if (cmd.isSet("Arith")){
