@@ -190,7 +190,6 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     secGraphEngine.rebuild(party_info, plainGraph);
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
 
-    if(role == 0) debug_info("?????????");
 
     timer.start("NeighborsGetQuery");
     for(size_t i=0; i<noram_stash_size; i++){
