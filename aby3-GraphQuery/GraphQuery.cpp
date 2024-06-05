@@ -407,6 +407,31 @@ aby3::sbMatrix outting_edge_count(boolIndex boolIndex, ListGraphQueryEngine &GQE
     return res;
 }
 
+aby3::si64Matrix outting_edge_count_arith(boolIndex boolIndex, ListGraphQueryEngine &GQEngine){
+    aby3::sbMatrix expand_starting_node(GQEngine.e, BITSIZE);
+    for(size_t i=0; i<GQEngine.e; i++){
+        expand_starting_node.mShares[0](i, 0) = boolIndex.indexShares[0];
+        expand_starting_node.mShares[1](i, 0) = boolIndex.indexShares[1];
+    }
+
+    aby3::sbMatrix eq_res;
+    bool_cipher_eq(GQEngine.party_info->pIdx, GQEngine.starting_node_list, expand_starting_node, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+    // eq_res.resize(eq_res.rows(), BITSIZE);
+    // for(size_t i=0; i<eq_res.rows(); i++){
+    //     for(int j=0; j<2; j++){
+    //         eq_res.mShares[j](i, 0) = (eq_res.mShares[j](i, 0) == 1) ? 1 : 0;
+    //     }
+    // }
+
+    aby3::si64Matrix eq_res_arith(eq_res.rows(), 1);
+    bool2arith(GQEngine.party_info->pIdx, eq_res, eq_res_arith, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    aby3::si64Matrix res(1, BITSIZE);
+    arith_aggregation(GQEngine.party_info->pIdx, eq_res_arith, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
+
+    return res;
+}
+
 aby3::sbMatrix outting_neighbors(boolIndex node_index, ListGraphQueryEngine &GQEngine){
 
     return get_unique_ending_nodes_in_edge_list(node_index, GQEngine.starting_node_list, GQEngine.ending_node_list, *(GQEngine.party_info));

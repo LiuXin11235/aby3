@@ -520,10 +520,16 @@ void bool2arith(int pIdx, aby3::sbMatrix &boolInput, aby3::si64Matrix &res,
     size_t len = boolInput.rows();
     size_t bitSize = boolInput.bitCount();
 
-    aby3::i64Matrix plainInput(len, 1);
-    for(size_t i=0; i<len; i++) plainInput(i, 0) = 1;
-
-    pi_cb_mul(pIdx, plainInput, boolInput, res, eval, enc, runtime);
+    if(bitSize == 1){
+        aby3::i64Matrix plainInput(len, 1);
+        for(size_t i=0; i<len; i++) plainInput(i, 0) = 1;
+        pi_cb_mul(pIdx, plainInput, boolInput, res, eval, enc, runtime);
+    }
+    else{
+        THROW_RUNTIME_ERROR("The bitSize of boolInput must be 1!");
+        // if(pIdx < 2){ // 1) parties 0 and 1 generate the correlated random r.
+        // }
+    }
 
     return;
 }

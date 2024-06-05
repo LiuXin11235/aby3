@@ -111,8 +111,50 @@ struct Graph2d {
     }
 
     Graph2d(const std::vector<plainGraph2d>& plain_graph_vec, aby3Info &party_info){
-        throw std::runtime_error("Not implemented yet.");
-        // generate the k (source-dest)-nodes list.
+        // throw std::runtime_error("Not implemented yet.");
+        // get the configurations.
+        int N = plain_graph_vec.size(); // how many graphs -> data_providers.
+        v = 0, e = 0, l = 0;
+        for(size_t i=0; i<N; i++){
+            v += plain_graph_vec[i].v;
+            e += plain_graph_vec[i].e;
+            l += plain_graph_vec[i].l;
+        }
+        b = plain_graph_vec[0].b;
+        k = plain_graph_vec[0].k;
+        edge_list_size = b * b;
+
+        // encrypt the origional graphs.
+        aby3::i64Matrix full_edge_block_list(l*edge_list_size, 1);
+        aby3::sbMatrix full_edge_block_list_sec(l*edge_list_size, BITSIZE);
+        size_t offset = 0;
+        for(size_t i=0; i<N; i++){
+            size_t li = plain_graph_vec[i].l;
+            for(size_t j=0; j<edge_list_size; j++){
+                for(size_t k=0; k<li; k++){
+                    full_edge_block_list(offset + j*li + k, 0) = plain_graph_vec[i].edge_block_list[j][k][0] << 30 | plain_graph_vec[i].edge_block_list[j][k][1];
+                }
+            }
+            offset += edge_list_size * li;
+        }
+
+        // encrypt the edge block list.
+        large_data_encryption(party_info.pIdx, full_edge_block_list, full_edge_block_list_sec, *(party_info.enc), *(party_info.runtime));
+
+        // generate the k (source-dest)-nodes list in encrypted format.
+        std::vector<std::vector<aby3::sbMatrix>> target_edge_list(N);
+        offset = 0;
+        for(size_t i=0; i<N; i++){
+            target_edge_list[i].resize(edge_list_size);
+            int li = plain_graph_vec[i].l;
+            for(size_t j=0; j<edge_list_size; j++){
+                aby3::sbMatrix edge_block(li, BITSIZE);
+                std::memcpy(edge_block.mShares[0].data(), full_edge_block_list_sec.mShares[0].data() + offset, li * sizeof(full_edge_block_list_sec.mShares[0](0, 0)));
+                std::memcpy(edge_block.mShares[1].data(), full_edge_block_list_sec.mShares[1].data() + offset, li * sizeof(full_edge_block_list_sec.mShares[1](0, 0)));
+                target_edge_list[i][j] = edge_block;
+            }
+            offset += edge_list_size * li;
+        }
         // merge sort.
         // split it to soure, dests.
         // fit with the Graph2d format.
@@ -523,15 +565,20 @@ class ListGraphQueryEngine{
             starting_node_list.resize(e, BITSIZE);
             ending_node_list.resize(e, BITSIZE);
 
-            // encrypt the nodes.
-            if(party_info.pIdx == 0){
-                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_starting_nodes, starting_node_list).get();
-                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_ending_nodes, ending_node_list).get();
-            }
-            else{
-                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), starting_node_list).get();
-                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), ending_node_list).get();
-            }
+            // // encrypt the nodes.
+            // if(party_info.pIdx == 0){
+            //     this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_starting_nodes, starting_node_list).get();
+            //     this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_ending_nodes, ending_node_list).get();
+            // }
+            // else{
+            //     this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), starting_node_list).get();
+            //     this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), ending_node_list).get();
+            // }
+
+            if(party_info.pIdx == 0) debug_info("before edgelist encryption!");
+
+            large_data_encryption(party_info.pIdx, plain_starting_nodes, starting_node_list, *(party_info.enc), *(party_info.runtime));
+            large_data_encryption(party_info.pIdx, plain_ending_nodes, ending_node_list, *(party_info.enc), *(party_info.runtime));
             return;
         }
 
@@ -556,14 +603,8 @@ class ListGraphQueryEngine{
             ending_node_list.resize(e, BITSIZE);
 
             // encrypt the nodes.
-            if(party_info.pIdx == 0){
-                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_starting_nodes, starting_node_list).get();
-                this->party_info->enc->localBinMatrix(*(this->party_info->runtime), plain_ending_nodes, ending_node_list).get();
-            }
-            else{
-                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), starting_node_list).get();
-                this->party_info->enc->remoteBinMatrix(*(this->party_info->runtime), ending_node_list).get();
-            }
+            large_data_encryption(party_info.pIdx, plain_starting_nodes, starting_node_list, *(party_info.enc), *(party_info.runtime));
+            large_data_encryption(party_info.pIdx, plain_ending_nodes, ending_node_list, *(party_info.enc), *(party_info.runtime));
             return;
         }
 
@@ -599,6 +640,8 @@ aby3::sbMatrix outting_neighbors(boolIndex node_index,AdjGraphQueryEngine &GQEng
 boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,ListGraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_edge_count(boolIndex boolIndex, ListGraphQueryEngine &GQEngine);
+
+aby3::si64Matrix outting_edge_count_arith(boolIndex boolIndex, ListGraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index, ListGraphQueryEngine &GQEngine);
 

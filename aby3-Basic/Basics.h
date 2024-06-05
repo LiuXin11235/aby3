@@ -190,6 +190,8 @@ int large_data_sending(int pIdx, aby3::i64Matrix &sharedA, aby3::Sh3Runtime &run
 // if fromPrev is true, receive from the previous party, otherwise receive from the next party.
 int large_data_receiving(int pIdx, aby3::i64Matrix &res, aby3::Sh3Runtime &runtime, bool fromPrev);
 
+int large_data_encryption(int pIdx, aby3::i64Matrix &plainA, aby3::sbMatrix &sharedA,
+                          aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime);
 
 void bool_cipher_lt(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &sharedB,
                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,

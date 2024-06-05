@@ -391,7 +391,7 @@ int list_performance_profiling(oc::CLP& cmd){
     std::string graph_data_file = graph_data_folder + file_prefix + "_edge_list.txt";
     std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
 
-    if (role == 0) debug_info("Profiling the Mat Query Engine...");
+    if (role == 0) debug_info("Profiling the Edgelist Query Engine...");
 
     // setup communications.
     IOService ios;
@@ -428,13 +428,18 @@ int list_performance_profiling(oc::CLP& cmd){
 
     // 2) outting edges count query.
     timer.start("OuttingEdgesCountQuery");
-    aby3::sbMatrix out_edges = outting_edge_count(snode, listGraphEngine);
+    // aby3::sbMatrix out_edges = outting_edge_count(snode, listGraphEngine);
+    aby3::si64Matrix out_edges = outting_edge_count_arith(snode, listGraphEngine);
     timer.end("OuttingEdgesCountQuery");
+
+    if(role == 0) debug_info("Outting edges count query success");
 
     // 3) neighbors get query.
     timer.start("NeighborsGetQuery");
     aby3::sbMatrix neighbors = outting_neighbors(snode, listGraphEngine);
     timer.end("NeighborsGetQuery");
+
+    if(role == 0) debug_info("Neighbors get query success");
 
     // 4) sorted neighbors get query.
     plainGraph.list_sort();
@@ -442,6 +447,8 @@ int list_performance_profiling(oc::CLP& cmd){
     timer.start("SortedNeighborsGetQuery");
     aby3::sbMatrix neighbors_sorted = outting_neighbors_sorted(snode, listGraphEngine);
     timer.end("SortedNeighborsGetQuery");
+
+    if(role == 0) debug_info("Sorted Neighbors get query success");
 
     // print the timer records.
     if(role == 0){
