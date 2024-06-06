@@ -270,7 +270,8 @@ int efficient_shuffle(aby3::sbMatrix &T, int pIdx, aby3::sbMatrix &Tres, aby3::S
         plain_permutate(prev_permutation, sharedX2);
 
         // send the sharedX2 to P1.
-        runtime.mComm.mNext.asyncSendCopy(sharedX2.data(), sharedX2.size());
+        // runtime.mComm.mNext.asyncSendCopy(sharedX2.data(), sharedX2.size());
+        large_data_sending(pIdx, sharedX2, runtime, true);
 
         // compute the final shares.
         Tres.resize(len, unit_size);
@@ -291,10 +292,12 @@ int efficient_shuffle(aby3::sbMatrix &T, int pIdx, aby3::sbMatrix &Tres, aby3::S
         }
         plain_permutate(prev_permutation, sharedY1);
 
-        runtime.mComm.mNext.asyncSendCopy(sharedY1.data(), sharedY1.size());
+        // runtime.mComm.mNext.asyncSendCopy(sharedY1.data(), sharedY1.size());
+        large_data_sending(pIdx, sharedY1, runtime, true);
 
         i64Matrix sharedX2(len, unit_size);
-        runtime.mComm.mPrev.recv(sharedX2.data(), sharedX2.size());
+        // runtime.mComm.mPrev.recv(sharedX2.data(), sharedX2.size());
+        large_data_receiving(pIdx, sharedX2, runtime, true);
 
         // compute the sharedX3.
         i64Matrix sharedX3(len, unit_size);
@@ -303,15 +306,25 @@ int efficient_shuffle(aby3::sbMatrix &T, int pIdx, aby3::sbMatrix &Tres, aby3::S
         }
         plain_permutate(next_permutation, sharedX3);
 
+        // // compute the masked C1.
+        // i64Matrix maskedC1(len, unit_size);
+        // for(size_t i=0; i<len; i++){
+        //     maskedC1(i, 0) = sharedX3(i, 0) ^ maskB(i, 0);
+        // }
+        // // runtime.mComm.mNext.asyncSendCopy(maskedC1.data(), maskedC1.size());
+        // large_data_sending(pIdx, maskedC1, runtime, true);
+
+        i64Matrix maskedC2(len, unit_size);
+        // runtime.mComm.mNext.recv(maskedC2.data(), maskedC2.size());
+        large_data_receiving(pIdx, maskedC2, runtime, false);
+
         // compute the masked C1.
         i64Matrix maskedC1(len, unit_size);
         for(size_t i=0; i<len; i++){
             maskedC1(i, 0) = sharedX3(i, 0) ^ maskB(i, 0);
         }
-        runtime.mComm.mNext.asyncSendCopy(maskedC1.data(), maskedC1.size());
-
-        i64Matrix maskedC2(len, unit_size);
-        runtime.mComm.mNext.recv(maskedC2.data(), maskedC2.size());
+        // runtime.mComm.mNext.asyncSendCopy(maskedC1.data(), maskedC1.size());
+        large_data_sending(pIdx, maskedC1, runtime, true);
 
         // compute the final shares.
         Tres.resize(len, unit_size);
@@ -347,9 +360,12 @@ int efficient_shuffle(aby3::sbMatrix &T, int pIdx, aby3::sbMatrix &Tres, aby3::S
         for(size_t i=0; i<len; i++){
             maskedC2(i, 0) = sharedY3(i, 0) ^ maskA(i, 0);
         }
-        runtime.mComm.mPrev.asyncSendCopy(maskedC2.data(), maskedC2.size());
+        // runtime.mComm.mPrev.asyncSendCopy(maskedC2.data(), maskedC2.size());
+        large_data_sending(pIdx, maskedC2, runtime, false);
+
         i64Matrix maskedC1(len, unit_size);
-        runtime.mComm.mPrev.recv(maskedC1.data(), maskedC1.size());
+        // runtime.mComm.mPrev.recv(maskedC1.data(), maskedC1.size());
+        large_data_receiving(pIdx, maskedC1, runtime, true);
 
         i64Matrix maskC(len, unit_size);
         for(size_t i=0; i<len; i++){
