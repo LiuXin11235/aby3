@@ -270,10 +270,14 @@ int neighbors_find_test(oc::CLP& cmd){
 
     // load the data and sort.
     pGraph.per_block_sort();
-    GraphQueryEngine GQEngineSort(party_info, graph_data_folder + meta_file, graph_data_folder + graph_data_file, stash_size, pack_size, stash_size, pack_size);
-    
+    GraphQueryEngine GQEngineSort(party_info, pGraph, stash_size, pack_size, stash_size, pack_size);
+
     // query for the result.
     aby3::sbMatrix masked_neighbors_sort = outting_neighbors_sorted(priv_node_index,    priv_logical_index, GQEngineSort);
+
+    std::ofstream party_fs(PARTY_FILE + std::to_string(role) + ".txt", std::ios::app);
+    debug_info("finished neighbors find query.", party_fs);
+
     aby3::i64Matrix test_neighbors_sort(masked_neighbors_sort.rows(), 1);
     enc.revealAll(runtime, masked_neighbors_sort, test_neighbors_sort).get();
     std::vector<int> queried_neighbors_sort;

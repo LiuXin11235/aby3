@@ -81,6 +81,9 @@ struct Graph2d {
             std::memcpy(edge_block_list[i].mShares[1].data(), full_edge_block_list_sec.mShares[1].data() + i*2*l, 2*l * sizeof(full_edge_block_list_sec.mShares[1](0, 0)));
         }
 
+        std::ofstream party_fs(PARTY_FILE + std::to_string(party_info.pIdx) + ".txt");
+        debug_info(">>>> leave this func", party_fs);
+
         return;
     };
 
