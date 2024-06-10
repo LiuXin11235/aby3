@@ -15,9 +15,6 @@ int bc_sort_different(std::vector<aby3::sbMatrix> &data, std::vector<size_t> &lo
     }
     size_t valid_size = std::min(total_size, max_size);
 
-    // if(pIdx == 0){
-    //     debug_info("bc sorts - num_interval = " + std::to_string(num_interval) + ", total_size = " + std::to_string(total_size) + ", valid_size = " + std::to_string(valid_size));
-    // }
 
     // Prepare the tiling & repeating indices.
     std::vector<size_t> index_tile(valid_size, 0);
@@ -420,6 +417,7 @@ int odd_even_multi_merge(std::vector<aby3::sbMatrix> &data, aby3::sbMatrix& sort
             aby3::sbMatrix res;
             odd_even_merge(data[k-2], data[k-1], res, pIdx, enc, eval, runtime);
             data[k-2] = res;
+            k -=1;
         }
         else{
             for(int i=0; i<k; i+=2){
@@ -427,8 +425,8 @@ int odd_even_multi_merge(std::vector<aby3::sbMatrix> &data, aby3::sbMatrix& sort
                 odd_even_merge(data[i], data[i+1], res, pIdx, enc, eval, runtime);
                 data[i/2] = res;
             }
+            k = k>>1;
         }
-        k = k>>1;
     }
 
     sorted_res = data[0];
@@ -553,6 +551,7 @@ int high_dimensional_odd_even_multi_merge(std::vector<std::vector<aby3::sbMatrix
             for(size_t i=0; i<dim; i++){
                 data[i][k-2] = res[i];
             }
+            k -=1;
         }
         else{
             for(size_t i=0; i<k; i+=2){
@@ -567,8 +566,8 @@ int high_dimensional_odd_even_multi_merge(std::vector<std::vector<aby3::sbMatrix
                     data[j][i/2] = res[j];
                 }
             }
+            k = k>>1;
         }
-        k = k>>1;
     }
 
     // sorted_res = data1[0];

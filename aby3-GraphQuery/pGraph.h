@@ -41,8 +41,7 @@ struct plainGraph2d{
 
     void per_block_sort(){
         for(size_t i=0; i<edge_list_size; i++){
-            std::vector<std::array<int, 2>> vec(edge_block_list[i].begin(), edge_block_list[i].end());
-            std::sort(vec.begin(), vec.end(), [](const std::array<int, 2>& a, const std::array<int, 2>& b) {
+            std::sort(edge_block_list[i].begin(), edge_block_list[i].end(), [](const std::array<int, 2>& a, const std::array<int, 2>& b) {
                 if (a[0] == b[0]) {
                     return a[1] < b[1];
                 }

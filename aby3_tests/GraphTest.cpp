@@ -51,6 +51,35 @@ int graph_loading_test(oc::CLP &cmd){
     return 0;
 }
 
+int graph_sort_test(oc::CLP &cmd){
+    
+    TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN Multiple Graph Sort TEST");
+    }
+
+    // filenames for 2d-partition data.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string file_prefix = graph_data_folder + "random_n-16_k-2";
+    std::string meta_file = file_prefix + "_meta_multiparty.txt";
+
+    // load the graph.
+    Graph2d secGraph(meta_file, file_prefix, party_info, true);
+    // check the graph.
+    secGraph.check_graph(meta_file, file_prefix, party_info, true);
+
+    // check the edgelist graph.
+    file_prefix = graph_data_folder + "random_n-16";
+    meta_file = file_prefix + "_edge_list_meta_multiparty.txt";
+    ListGraphQueryEngine listEngine(party_info, meta_file, file_prefix, true);
+
+    if(party_info.pIdx == 0) debug_info("list generation ok!");
+    listEngine.check_graph(meta_file, file_prefix, party_info, true);
+
+    return 0;
+}
+
 int graph_block_fetch_test(oc::CLP& cmd){
     // get the configs.
     int role = -1;
@@ -313,6 +342,13 @@ int adj_graph_loading_test(oc::CLP& cmd){
 
     // check the graph.
     adjGraph.check_graph(graph_data_folder + meta_file, graph_data_folder + data_file, party_info);
+
+    graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string file_prefix = graph_data_folder + "random_n-16";
+    meta_file = file_prefix + "_edge_list_meta_multiparty.txt";
+
+    GraphAdj adjGraph2(meta_file, file_prefix, party_info, true);
+    adjGraph2.check_graph(meta_file, file_prefix, party_info, true);
 
     return 0;
 }

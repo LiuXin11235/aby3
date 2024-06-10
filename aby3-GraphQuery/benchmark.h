@@ -19,3 +19,7 @@
 int privGraph_performance_profiling(oc::CLP& cmd);
 int adj_performance_profiling(oc::CLP& cmd);
 int list_performance_profiling(oc::CLP& cmd);
+
+int privGraph_integration_profiling(oc::CLP& cmd);
+int adj_integration_profiling(oc::CLP& cmd);
+int list_integration_profiling(oc::CLP& cmd);

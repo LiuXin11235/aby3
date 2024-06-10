@@ -20,5 +20,15 @@ int main(int argc, char** argv) {
     list_performance_profiling(cmd);
   }
 
+  if(cmd.isSet("multi_privGraph")){
+    privGraph_integration_profiling(cmd);
+  }
+  if(cmd.isSet("multi_adjmat")){
+    adj_integration_profiling(cmd);
+  }
+  if(cmd.isSet("multi_edgelist")){
+    list_integration_profiling(cmd);
+  }
+
   return 0;
 }

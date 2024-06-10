@@ -126,3 +126,22 @@ int large_data_encryption(int pIdx, aby3::i64Matrix &plainA,
 
     return 0;
 }
+
+int large_data_decryption(int pIdx, aby3::sbMatrix &sharedA, aby3::i64Matrix &plainA,
+                          aby3::Sh3Encryptor &enc, aby3::Sh3Runtime &runtime){
+    size_t len = sharedA.rows();
+    size_t round = (size_t)ceil(len / (double)MAX_SENDING_SIZE);
+    size_t last_len = len - (round - 1) * MAX_SENDING_SIZE;
+
+    for(size_t i=0; i<round; i++){
+        size_t sending_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
+        aby3::sbMatrix encrypted_data(sending_len, 1);
+        std::memcpy(encrypted_data.mShares[0].data(), sharedA.mShares[0].data() + i * MAX_SENDING_SIZE, sending_len * sizeof(sharedA.mShares[0](0, 0)));
+        std::memcpy(encrypted_data.mShares[1].data(), sharedA.mShares[1].data() + i * MAX_SENDING_SIZE, sending_len * sizeof(sharedA.mShares[1](0, 0)));
+        aby3::i64Matrix decrypted_data(sending_len, 1);
+        enc.revealAll(runtime, encrypted_data, decrypted_data).get();
+        plainA.block(i * MAX_SENDING_SIZE, 0, sending_len, 1) = decrypted_data;
+    }
+
+    return 0;
+}

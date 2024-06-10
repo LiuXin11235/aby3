@@ -340,7 +340,8 @@ int efficient_shuffle(aby3::sbMatrix &T, int pIdx, aby3::sbMatrix &Tres, aby3::S
 
         // receive the sharedY1 from the previous party.
         i64Matrix sharedY1(len, unit_size);
-        runtime.mComm.mPrev.recv(sharedY1.data(), sharedY1.size());
+        // runtime.mComm.mPrev.recv(sharedY1.data(), sharedY1.size());
+        large_data_receiving(pIdx, sharedY1, runtime, true);
 
         // compute the sharedY2.
         i64Matrix sharedY2(len, unit_size);

@@ -11,7 +11,7 @@ MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
 
 # gtype_list = ["random", "star", "powerlaw", "bipartite", "tree"]
 # gtype_list = ["random"]
-gtype_list = ["random", "geometric", "powerlaw", "bipartite", "tree"]
+gtype_list = ["random", "geometric", "powerlaw", "bipartite"]
 
 format_configs = {
     "privGraph": {

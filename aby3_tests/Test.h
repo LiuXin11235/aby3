@@ -67,6 +67,7 @@ int graph_loading_test(oc::CLP& cmd);
 int graph_block_fetch_test(oc::CLP& cmd);
 int basic_graph_query_test(oc::CLP& cmd);
 int neighbors_find_test(oc::CLP& cmd);
+int graph_sort_test(oc::CLP &cmd);
 
 // 2) AdjGraph test.
 int adj_graph_loading_test(oc::CLP& cmd);

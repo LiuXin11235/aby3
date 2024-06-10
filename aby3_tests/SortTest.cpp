@@ -455,7 +455,6 @@ int odd_even_merge_test(oc::CLP& cmd){
         check_result("High Dimensional Odd Even Merge Sort Test 2", high_dim_test2, high_dim_res1_);
     }
 
-    // std::vector<std::vector<>>
     std::vector<sbMatrix> multi_enc_data_vec_1 = {enc_arr1, enc_arr2};
     std::vector<sbMatrix> multi_enc_data_vec_2 = {enc_arr3, enc_arr4};
     std::vector<std::vector<sbMatrix>> hd_multi_enc_data_vec(2);

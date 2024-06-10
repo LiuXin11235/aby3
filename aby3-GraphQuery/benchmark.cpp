@@ -3,6 +3,36 @@
 using namespace oc;
 using namespace aby3;
 
+
+#define SET_OR_DEFAULT(cmd, key, default_value) \
+    size_t key = default_value; \
+    if(cmd.isSet(#key)){ \
+        auto keys = cmd.getMany<size_t>(#key); \
+        key = keys[0]; \
+    } \
+    else{ \
+        debug_info(#key " is not set, using default value: " + std::to_string(key)); \
+    }
+
+#define CONFIG_INIT \
+    int role = -1; \
+    if (cmd.isSet("role")) { \
+        auto keys = cmd.getMany<int>("role"); \
+        role = keys[0]; \
+    } \
+    if (role == -1) { \
+        throw std::runtime_error(LOCATION); \
+    } \
+    IOService ios; \
+    Sh3Encryptor enc; \
+    Sh3Evaluator eval; \
+    Sh3Runtime runtime; \
+    basic_setup((u64)role, ios, enc, eval, runtime); \
+    aby3Info party_info(role, enc, eval, runtime); \
+    Timer& timer = Timer::getInstance(); \
+    timer.clear_records();
+
+
 int privGraph_performance_profiling(oc::CLP& cmd){
 
     // get the configs.
@@ -16,7 +46,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     }
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/profiling.igraph/";
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
     std::string file_prefix = "tmp";
     std::string record_folder = "/root/aby3/aby3-GraphQuery/record/privGraph/";
     int record_counter = -1;
@@ -467,6 +497,197 @@ int list_performance_profiling(oc::CLP& cmd){
         timer.print_total("milliseconds", stream);
     }
 
+
+    return 0;
+}
+
+int privGraph_integration_profiling(oc::CLP& cmd){
+    
+    // get the configs.
+    CONFIG_INIT
+
+    // get the graph file parameters.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record_offline/privGraph/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_meta_multiparty.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+
+    file_prefix = graph_data_folder + file_prefix;
+
+    SET_OR_DEFAULT(cmd, noram_stash_size, 1 << 4);
+    SET_OR_DEFAULT(cmd, noram_pack_size, 1 << 2);
+    SET_OR_DEFAULT(cmd, eoram_stash_size, 1 << 8);
+    SET_OR_DEFAULT(cmd, eoram_pack_size, 1 << 4);
+
+    // std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+
+    if (role == 0) debug_info("Profiling the privGraph Query Engine...");
+
+    // graph integration.
+    timer.start("GraphLoad");
+    GraphQueryEngine secGraphEngine(party_info, meta_file, file_prefix, true);
+    timer.end("GraphLoad");
+
+    if(role == 0) debug_info("Graph loaded successfully!");
+
+    // oram construction.
+    if(role == 0) debug_info("Eoram construction...");
+    timer.start("EdgeOramInit");
+    secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
+    timer.end("EdgeOramInit");
+
+    if(role == 0) debug_info("Eoram init success\nNoram construction...");
+
+    timer.start("NodeOramInit");
+    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+    timer.end("NodeOramInit");
+
+    if(role == 0) debug_info("Noram init success");
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        debug_info("Printing configs... " + record_file);
+        secGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        stream.close();
+    }
+
+    return 0;
+}
+
+int adj_integration_profiling(oc::CLP& cmd){
+
+    // get the configs.
+    CONFIG_INIT
+
+    // get the graph file parameters.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record_offline/adjmat/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta_multiparty.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+    file_prefix = graph_data_folder + file_prefix;
+
+    SET_OR_DEFAULT(cmd, noram_stash_size, 1 << 4);
+    SET_OR_DEFAULT(cmd, noram_pack_size, 1 << 2);
+    SET_OR_DEFAULT(cmd, eoram_stash_size, 1 << 8);
+    SET_OR_DEFAULT(cmd, eoram_pack_size, 1 << 4);
+
+    if (role == 0) debug_info("Profiling the Mat Query Engine...");
+
+    // graph integration.
+    timer.start("GraphLoad");
+    AdjGraphQueryEngine adjGraphEngine(party_info, meta_file, file_prefix, true);
+    timer.end("GraphLoad");
+
+    if(role == 0) debug_info("Graph loaded successfully!");
+
+    // oram construction.
+    if(role == 0) debug_info("Eoram construction...");
+    timer.start("EdgeOramInit");
+    adjGraphEngine.edge_oram_initialization(eoram_stash_size, eoram_pack_size);
+    timer.end("EdgeOramInit");
+
+    if(role == 0) debug_info("Eoram init success\nNoram construction...");
+
+    timer.start("NodeOramInit");
+    adjGraphEngine.node_oram_initialization(noram_stash_size, noram_pack_size);
+    timer.end("NodeOramInit");
+
+    if(role == 0) debug_info("Noram init success");
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        adjGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+    }
+
+    return 0;
+}
+
+int list_integration_profiling(oc::CLP& cmd){
+
+    // get the configs.
+    CONFIG_INIT
+
+    // get the graph file parameters.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record_offline/edgelist/";
+
+    int record_counter = -1;
+    
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta_multiparty.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+    file_prefix = graph_data_folder + file_prefix;
+
+    timer.start("GraphLoad");
+    ListGraphQueryEngine listGraphEngine(party_info, meta_file, file_prefix, true);
+    timer.end("GraphLoad");
+
+    if(role == 0) debug_info("Graph loaded successfully!");
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        listGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+    }
 
     return 0;
 }
