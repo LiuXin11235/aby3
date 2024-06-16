@@ -606,6 +606,9 @@ class GraphQueryEngine{
             this->party_info = &party_info;
 
             if(!checkPowerOfTwo(graph->b) || !checkPowerOfTwo(graph->k)){
+                if(party_info.pIdx == 0){
+                    debug_info("b = " + std::to_string(graph->b) + " k = " + std::to_string(graph->k) + "\n");
+                }
                 THROW_RUNTIME_ERROR("The block size and the chunk size must be power of 2.");
             }
 

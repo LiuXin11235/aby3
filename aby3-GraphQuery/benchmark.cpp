@@ -67,6 +67,17 @@ int privGraph_performance_profiling(oc::CLP& cmd){
         THROW_RUNTIME_ERROR("rcounter must be set!");
     }
 
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
 
     std::string meta_file = graph_data_folder + file_prefix + "_meta.txt";
     std::string graph_data_file = graph_data_folder + file_prefix + "_2dpartition.txt";
@@ -273,6 +284,18 @@ int adj_performance_profiling(oc::CLP& cmd){
         THROW_RUNTIME_ERROR("rcounter must be set!");
     }
 
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
+
     std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta.txt";
     std::string graph_data_file = graph_data_folder + file_prefix + "_edge_list.txt";
     std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
@@ -425,6 +448,17 @@ int list_performance_profiling(oc::CLP& cmd){
     }
     else{
         THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
     }
 
     std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta.txt";
