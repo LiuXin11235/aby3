@@ -1,6 +1,8 @@
 #include "Sort.h"
 #include <numeric>
 
+static const size_t MAX_SENDING_SIZE = 1 << 25;
+
 using namespace oc;
 using namespace aby3;
 
@@ -453,13 +455,36 @@ int high_dimensional_odd_even_merge(std::vector<aby3::sbMatrix> &data1, std::vec
     sbMatrix max_ele, max1, max2;
     max1.resize(dim, BITSIZE);
     max2.resize(dim, BITSIZE);
+    max_ele.resize(dim, BITSIZE);
     for(size_t i=0; i<dim; i++){
         max1.mShares[0](i, 0) = data1[i].mShares[0](arr1_length - 1, 0);
         max1.mShares[1](i, 0) = data1[i].mShares[1](arr1_length - 1, 0);
         max2.mShares[0](i, 0) = data2[i].mShares[0](arr2_length - 1, 0);
         max2.mShares[1](i, 0) = data2[i].mShares[1](arr2_length - 1, 0);
     }
-    bool_cipher_max(pIdx, max1, max2, max_ele, enc, eval, runtime);
+
+    size_t round = (size_t) ceil(dim / (double) MAX_SENDING_SIZE);
+    size_t last_len = dim - (round - 1) * MAX_SENDING_SIZE;
+
+    // if(pIdx == 0) debug_info("round = " + std::to_string(round) + " | last_len = " + std::to_string(last_len));
+    for(size_t i=0; i<round; i++){
+        size_t unit_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
+        sbMatrix max1_part(unit_len, BITSIZE);
+        sbMatrix max2_part(unit_len, BITSIZE);
+        sbMatrix max_ele_part(unit_len, BITSIZE);
+
+        std::memcpy(max1_part.mShares[0].data(), max1.mShares[0].data() + i * MAX_SENDING_SIZE, unit_len * sizeof(max1.mShares[0](0, 0)));
+        std::memcpy(max1_part.mShares[1].data(), max1.mShares[1].data() + i * MAX_SENDING_SIZE, unit_len * sizeof(max1.mShares[1](0, 0)));
+        std::memcpy(max2_part.mShares[0].data(), max2.mShares[0].data() + i * MAX_SENDING_SIZE, unit_len * sizeof(max2.mShares[0](0, 0)));
+        std::memcpy(max2_part.mShares[1].data(), max2.mShares[1].data() + i * MAX_SENDING_SIZE, unit_len * sizeof(max2.mShares[1](0, 0)));
+
+        bool_cipher_max(pIdx, max1_part, max2_part, max_ele_part, enc, eval, runtime);
+
+        std::memcpy(max_ele.mShares[0].data() + i * MAX_SENDING_SIZE, max_ele_part.mShares[0].data(), unit_len * sizeof(max_ele_part.mShares[0](0, 0)));
+        std::memcpy(max_ele.mShares[1].data() + i * MAX_SENDING_SIZE, max_ele_part.mShares[1].data(), unit_len * sizeof(max_ele_part.mShares[1](0, 0)));
+    }
+    // if(pIdx == 0) debug_info("after bool_max");
+    // bool_cipher_max(pIdx, max1, max2, max_ele, enc, eval, runtime);
 
     for(size_t i=0; i<dim; i++){
         std::fill(result[i].mShares[0].data(), result[i].mShares[0].data() + result[i].mShares[0].size(), max_ele.mShares[0](i, 0));
@@ -503,8 +528,31 @@ int high_dimensional_odd_even_merge(std::vector<aby3::sbMatrix> &data1, std::vec
                 y_mask_mat.mShares[1](i*unit_mask_len + j, 0) = result[i].mShares[1](y_mask[j], 0);
             }
         }
-        sbMatrix max_mat, min_mat;
-        bool_cipher_max_min_split(pIdx, x_mask_mat, y_mask_mat, max_mat, min_mat, enc, eval, runtime);
+        // sbMatrix max_mat, min_mat;
+        sbMatrix max_mat(unit_mask_len * dim, BITSIZE);
+        sbMatrix min_mat(unit_mask_len * dim, BITSIZE);
+        // bool_cipher_max_min_split(pIdx, x_mask_mat, y_mask_mat, max_mat, min_mat, enc, eval, runtime);
+        round = (size_t) ceil((unit_mask_len * dim) / (double)MAX_SENDING_SIZE);
+        last_len = unit_mask_len * dim - (round - 1) * MAX_SENDING_SIZE;
+        for(size_t i=0; i<round; i++){
+            size_t unit_len_ = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
+            sbMatrix x_mask_part(unit_len_, BITSIZE);
+            sbMatrix y_mask_part(unit_len_, BITSIZE);
+            sbMatrix max_part(unit_len_, BITSIZE);
+            sbMatrix min_part(unit_len_, BITSIZE);
+
+            std::memcpy(x_mask_part.mShares[0].data(), x_mask_mat.mShares[0].data() + i * MAX_SENDING_SIZE, unit_len_ * sizeof(x_mask_mat.mShares[0](0, 0)));
+            std::memcpy(x_mask_part.mShares[1].data(), x_mask_mat.mShares[1].data() + i * MAX_SENDING_SIZE, unit_len_ * sizeof(x_mask_mat.mShares[1](0, 0)));
+            std::memcpy(y_mask_part.mShares[0].data(), y_mask_mat.mShares[0].data() + i * MAX_SENDING_SIZE, unit_len_ * sizeof(y_mask_mat.mShares[0](0, 0)));
+            std::memcpy(y_mask_part.mShares[1].data(), y_mask_mat.mShares[1].data() + i * MAX_SENDING_SIZE, unit_len_ * sizeof(y_mask_mat.mShares[1](0, 0)));
+
+            bool_cipher_max_min_split(pIdx, x_mask_part, y_mask_part, max_part, min_part, enc, eval, runtime);
+
+            std::memcpy(max_mat.mShares[0].data() + i * MAX_SENDING_SIZE, max_part.mShares[0].data(), unit_len_ * sizeof(max_part.mShares[0](0, 0)));
+            std::memcpy(max_mat.mShares[1].data() + i * MAX_SENDING_SIZE, max_part.mShares[1].data(), unit_len_ * sizeof(max_part.mShares[1](0, 0)));
+            std::memcpy(min_mat.mShares[0].data() + i * MAX_SENDING_SIZE, min_part.mShares[0].data(), unit_len_ * sizeof(min_part.mShares[0](0, 0)));
+            std::memcpy(min_mat.mShares[1].data() + i * MAX_SENDING_SIZE, min_part.mShares[1].data(), unit_len_ * sizeof(min_part.mShares[1](0, 0)));
+        }
 
         // update the result.
         for(size_t i=0; i<dim; i++){
