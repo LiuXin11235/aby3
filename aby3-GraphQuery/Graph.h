@@ -1081,6 +1081,11 @@ class ListGraphQueryEngine{
 
 };
 
+
+size_t get_sending_bytes(aby3Info &party_info);
+
+size_t get_receiving_bytes(aby3Info &party_info);
+
 aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix& node_block, aby3Info &party_info);
 
 aby3::sbMatrix get_target_edge_mask(boolIndex target_start_node, boolIndex target_end_node, aby3::sbMatrix& edge_block, aby3Info &party_info);

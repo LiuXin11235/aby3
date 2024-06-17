@@ -32,6 +32,17 @@ using namespace aby3;
     Timer& timer = Timer::getInstance(); \
     timer.clear_records();
 
+size_t get_sending_bytes(aby3Info &party_info){
+    size_t send_next = party_info.runtime->mComm.mNext.getTotalDataSent();
+    size_t send_prev = party_info.runtime->mComm.mPrev.getTotalDataSent();
+    return send_next + send_prev;
+}
+
+size_t get_receiving_bytes(aby3Info &party_info){
+    size_t recv_next = party_info.runtime->mComm.mNext.getTotalDataRecv();
+    size_t recv_prev = party_info.runtime->mComm.mPrev.getTotalDataRecv();
+    return recv_next + recv_prev;
+}
 
 int privGraph_performance_profiling(oc::CLP& cmd){
 
@@ -134,23 +145,48 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     // load the graph.
     Timer& timer = Timer::getInstance();
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("sending_bytes = " + std::to_string(get_sending_bytes(party_info)) + " | reveiving_bytes = " + std::to_string(get_receiving_bytes(party_info)));
+
     timer.start("GraphLoad");
+
     GraphQueryEngine secGraphEngine(party_info, meta_file, graph_data_file);
+
     timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
     // oram construction.
     if(role == 0) debug_info("Eoram construction...");
+
+    cmeter.start("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("EdgeOramInit");
+
     secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
+
     timer.end("EdgeOramInit");
+    cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
+    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("NodeOramInit");
+
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size); 
+
     timer.end("NodeOramInit");
+    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Noram init success");
 
@@ -197,20 +233,29 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     boolIndex snode_log_idx = boolIndex(secGraphEngine.get_block_index(ps), role);
 
     // 1) edge existence query.
+    cmeter.start("EdgeExistQuery_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
     timer.start("EdgeExistQuery");
+
     for(int i=0; i<eoram_stash_size; i++){
         boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);   
     }
     timer.end("EdgeExistQuery");
+    cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Edge existence query success");
 
     // 2) outting edges count query.
+    cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
+    cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
     timer.start("OuttingEdgesCountQuery");
     for(int i=0; i<noram_stash_size; i++){
         aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     }
     timer.end("OuttingEdgesCountQuery");
+    cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
+    cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Outting edges count query success");
 
@@ -230,13 +275,17 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     plainGraph.per_block_sort();
     secGraphEngine.rebuild(party_info, plainGraph);
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+    secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
 
-
+    cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
+    cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
     timer.start("NeighborsGetQuery");
     for(size_t i=0; i<noram_stash_size; i++){
         aby3::sbMatrix neighbors = outting_neighbors_sorted(snode, snode_log_idx, secGraphEngine);
     }
     timer.end("NeighborsGetQuery");
+    cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
+    cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Neighbors get query success");
 
@@ -245,6 +294,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
     }
 
     return 0;
@@ -352,25 +402,38 @@ int adj_performance_profiling(oc::CLP& cmd){
     // get the timer.
     Timer& timer = Timer::getInstance();
     timer.clear_records();
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // graph loading.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
     timer.start("GraphLoad");
     AdjGraphQueryEngine adjGraphEngine(party_info, meta_file, graph_data_file);
     timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
     // oram construction.
     if(role == 0) debug_info("Eoram construction...");
+    cmeter.start("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("EdgeOramInit");
     adjGraphEngine.edge_oram_initialization(eoram_stash_size, eoram_pack_size);
     timer.end("EdgeOramInit");
+    cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
+    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("NodeOramInit");
     adjGraphEngine.node_oram_initialization(noram_stash_size, noram_pack_size);
     timer.end("NodeOramInit");
+    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
 
     eoram_stash_size = adjGraphEngine.edge_oram->S;
     noram_stash_size = adjGraphEngine.node_oram->S;
@@ -383,34 +446,47 @@ int adj_performance_profiling(oc::CLP& cmd){
     boolIndex snode = boolIndex(ps, role);
     boolIndex enode = boolIndex(pe, role);
 
+    cmeter.start("EdgeExistQuery_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
     timer.start("EdgeExistQuery");
     for(int i=0; i<eoram_stash_size; i++){
         boolShare flag = edge_existance(snode, enode, adjGraphEngine);
     }
     timer.end("EdgeExistQuery");
+    cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Edge existence query success");
 
     // 2) outting edges count query.
+    cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
+    cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
     timer.start("OuttingEdgesCountQuery");
     for(int i=0; i<noram_stash_size; i++){
         aby3::sbMatrix out_edges = outting_edge_count(snode, adjGraphEngine);
     }
     timer.end("OuttingEdgesCountQuery");
+    cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
+    cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
 
     // 3) neighbors get query.
     adjGraphEngine.node_oram_initialization(noram_stash_size, noram_pack_size);
+    cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
+    cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
     timer.start("NeighborsGetQuery");
     for(size_t i=0; i<noram_stash_size; i++){
         aby3::sbMatrix neighbors = outting_neighbors(snode, adjGraphEngine);
     }
     timer.end("NeighborsGetQuery");
+    cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
+    cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
 
     // print the timer records.
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         adjGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
     }
 
     return 0;
@@ -480,12 +556,17 @@ int list_performance_profiling(oc::CLP& cmd){
     // get the timer.
     Timer& timer = Timer::getInstance();
     timer.clear_records();
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // graph loading.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
     timer.start("GraphLoad");
     plainGraphList plainGraph(meta_file, graph_data_file);
     ListGraphQueryEngine listGraphEngine(party_info, plainGraph);
     timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -494,17 +575,26 @@ int list_performance_profiling(oc::CLP& cmd){
     size_t ps = 0, pe = v-1;
     boolIndex snode = boolIndex(ps, role);
     boolIndex enode = boolIndex(pe, role);
+
+    cmeter.start("EdgeExistQuery_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
     timer.start("EdgeExistQuery");
     boolShare flag = edge_existance(snode, enode, listGraphEngine);
     timer.end("EdgeExistQuery");
+    cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Edge existence query success");
 
     // 2) outting edges count query.
+    cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
+    cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));   
     timer.start("OuttingEdgesCountQuery");
     // aby3::sbMatrix out_edges = outting_edge_count(snode, listGraphEngine);
     aby3::si64Matrix out_edges = outting_edge_count_arith(snode, listGraphEngine);
     timer.end("OuttingEdgesCountQuery");
+    cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
+    cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Outting edges count query success");
 
@@ -518,9 +608,14 @@ int list_performance_profiling(oc::CLP& cmd){
     // 4) sorted neighbors get query.
     plainGraph.list_sort();
     listGraphEngine.rebuild(party_info, plainGraph);
+
+    cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
+    cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
     timer.start("NeighborsGetQuery");
     aby3::sbMatrix neighbors_sorted = outting_neighbors_sorted(snode, listGraphEngine);
     timer.end("NeighborsGetQuery");
+    cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
+    cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Sorted Neighbors get query success");
 
@@ -529,6 +624,7 @@ int list_performance_profiling(oc::CLP& cmd){
         std::ofstream stream(record_file, std::ios::app);
         listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
     }
 
 
@@ -539,6 +635,7 @@ int privGraph_integration_profiling(oc::CLP& cmd){
     
     // get the configs.
     CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // get the graph file parameters.
     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
@@ -577,23 +674,35 @@ int privGraph_integration_profiling(oc::CLP& cmd){
     if (role == 0) debug_info("Profiling the privGraph Query Engine...");
 
     // graph integration.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
     timer.start("GraphLoad");
     GraphQueryEngine secGraphEngine(party_info, meta_file, file_prefix, true);
     timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
     // oram construction.
     if(role == 0) debug_info("Eoram construction...");
+    cmeter.start("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("EdgeOramInit");
     secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
     timer.end("EdgeOramInit");
+    cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
+    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("NodeOramInit");
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
     timer.end("NodeOramInit");
+    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Noram init success");
 
@@ -603,6 +712,7 @@ int privGraph_integration_profiling(oc::CLP& cmd){
         debug_info("Printing configs... " + record_file);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
         stream.close();
     }
 
@@ -613,6 +723,7 @@ int adj_integration_profiling(oc::CLP& cmd){
 
     // get the configs.
     CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // get the graph file parameters.
     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
@@ -648,23 +759,35 @@ int adj_integration_profiling(oc::CLP& cmd){
     if (role == 0) debug_info("Profiling the Mat Query Engine...");
 
     // graph integration.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
     timer.start("GraphLoad");
     AdjGraphQueryEngine adjGraphEngine(party_info, meta_file, file_prefix, true);
     timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
     // oram construction.
     if(role == 0) debug_info("Eoram construction...");
+    cmeter.start("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("EdgeOramInit");
     adjGraphEngine.edge_oram_initialization(eoram_stash_size, eoram_pack_size);
     timer.end("EdgeOramInit");
+    cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
+    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
     timer.start("NodeOramInit");
     adjGraphEngine.node_oram_initialization(noram_stash_size, noram_pack_size);
     timer.end("NodeOramInit");
+    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Noram init success");
 
@@ -673,6 +796,7 @@ int adj_integration_profiling(oc::CLP& cmd){
         std::ofstream stream(record_file, std::ios::app);
         adjGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
     }
 
     return 0;
@@ -682,6 +806,7 @@ int list_integration_profiling(oc::CLP& cmd){
 
     // get the configs.
     CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // get the graph file parameters.
     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
@@ -710,9 +835,13 @@ int list_integration_profiling(oc::CLP& cmd){
     std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
     file_prefix = graph_data_folder + file_prefix;
 
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
     timer.start("GraphLoad");
     ListGraphQueryEngine listGraphEngine(party_info, meta_file, file_prefix, true);
     timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -721,6 +850,7 @@ int list_integration_profiling(oc::CLP& cmd){
         std::ofstream stream(record_file, std::ios::app);
         listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
     }
 
     return 0;

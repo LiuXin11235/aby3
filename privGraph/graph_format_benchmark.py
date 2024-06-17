@@ -10,8 +10,8 @@ from utils import get_k
 MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
 
 # gtype_list = ["random", "star", "powerlaw", "bipartite", "tree"]
-# gtype_list = ["random"]
-gtype_list = ["random", "geometric", "powerlaw", "bipartite"]
+gtype_list = ["random"]
+# gtype_list = ["random", "geometric", "powerlaw", "bipartite"]
 
 format_configs = {
     "privGraph": {
@@ -26,7 +26,7 @@ format_configs = {
         "e_stash_size": [1024],
         "e_pack_size": [32],
         "config_keys" : ["gtype", "n", "e", "k", "se", "pe", "sn", "pn"],
-        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery"],
+        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery", "GraphLoad_recv", "EdgeOramInit_recv", "NodeOramInit_recv", "EdgeExistQuery_recv", "OuttingEdgesCountQuery_recv", "NeighborsGetQuery_recv", "GraphLoad_send", "EdgeOramInit_send", "NodeOramInit_send", "EdgeExistQuery_send", "OuttingEdgesCountQuery_send", "NeighborsGetQuery_send"],
     },
     "adjmat":{
         "prefix": MAIN_FOLDER + "/data/baseline/",
@@ -39,20 +39,20 @@ format_configs = {
         "e_stash_size": [1024],
         "e_pack_size": [32],
         "config_keys" : ["gtype", "n", "e", "se", "pe", "sn", "pn"],
-        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery"],
+        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery", "GraphLoad_recv", "EdgeOramInit_recv", "NodeOramInit_recv", "EdgeExistQuery_recv", "OuttingEdgesCountQuery_recv", "NeighborsGetQuery_recv", "GraphLoad_send", "EdgeOramInit_send", "NodeOramInit_send", "EdgeExistQuery_send", "OuttingEdgesCountQuery_send", "NeighborsGetQuery_send"],
     },
     "edgelist":{
         "prefix": MAIN_FOLDER + "/data/baseline/",
         "record_folder": MAIN_FOLDER + "/record/edgelist/",
         "record_pattern": "(.*?)_n-(\d+)-(\d+)",
-        "n": [16384],
+        "n": [1024],
         "e": -1,
         "config_keys" : ["gtype", "n", "e"],
-        "performance_keys": ["GraphLoad", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery"],
+        "performance_keys": ["GraphLoad", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery", "GraphLoad_recv", "EdgeExistQuery_recv", "OuttingEdgesCountQuery_recv", "NeighborsGetQuery_recv", "GraphLoad_send", "EdgeExistQuery_send", "OuttingEdgesCountQuery_send", "NeighborsGetQuery_send"],
     },
 }
 
-REPEAT_TIMES = 0
+REPEAT_TIMES = 1
 
 if __name__ == "__main__":
     

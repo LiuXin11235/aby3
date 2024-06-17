@@ -124,3 +124,66 @@ private:
         }
     }
 };
+
+class CommunicationMeter {
+public:
+    // Singleton pattern.
+    static CommunicationMeter& getInstance() {
+        static CommunicationMeter instance; // Guaranteed to be destroyed.
+                                            // Instantiated on first use.
+        return instance;
+    }
+
+    CommunicationMeter(CommunicationMeter const&) = delete; // you can not copy CommunicationMeter instance.
+    void operator=(CommunicationMeter const&) = delete; // you can not assign CommunicationMeter instance.
+
+    void start(const std::string& key, int start_communication) {
+        start_communications[key] = start_communication;
+    }
+
+    void end(const std::string& key, int end_communication) {
+        int start_communication = start_communications[key];
+        communications[key] = end_communication - start_communication;
+    }
+
+    int getCommunication(const std::string& key) {
+        return communications[key];
+    }
+
+    void print(const std::string& key, const std::string& unit = "MB", std::ostream& os = std::cout) {
+        if(communications.find(key) == communications.end()){
+            THROW_RUNTIME_ERROR("Key: " + key + " not found in the timer");
+        }
+        
+        double comm = communications[key];
+        if (unit == "KB") {
+            comm /= 1000;
+        } else if (unit == "MB") {
+            comm /= 1000000;
+        } else if (unit == "GB") {
+            comm /= 1000000000;
+        }
+        os << "Communicaitions of by " << key << ": " << comm << " " << unit << std::endl;
+    }
+
+    void print_records(const std::string& key_prefix, const std::string& unit = "MB", std::ostream& os = std::cout){
+        for(auto& kv : communications){
+            if(kv.first.substr(0, key_prefix.size()) == key_prefix){
+                print(kv.first, unit, os);
+            }
+        }
+    }
+
+    void print_total(const std::string& unit = "MB", std::ostream& os = std::cout){
+        for(auto& kv : communications){
+            print(kv.first, unit, os);
+        }
+    }
+
+
+private:
+    CommunicationMeter() {}
+
+    std::unordered_map<std::string, int> start_communications;
+    std::unordered_map<std::string, int> communications;
+};

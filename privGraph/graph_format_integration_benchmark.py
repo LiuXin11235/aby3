@@ -7,7 +7,8 @@ from utils import get_k
 
 MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
 
-gtype_list = ["random", "geometric", "powerlaw", "bipartite"]
+# gtype_list = ["random", "geometric", "powerlaw", "bipartite"]
+gtype_list = ["geometric"]
 # data_provider_list = [2, 4, 8]
 data_provider_list = [2]
 
@@ -24,7 +25,7 @@ format_configs = {
         "e_stash_size": [1024],
         "e_pack_size": [32],
         "config_keys" : ["gtype", "n", "e", "k", "se", "pe", "sn", "pn"],
-        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit"],
+        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "GraphLoad_recv", "EdgeOramInit_recv", "NodeOramInit_recv", "GraphLoad_send", "EdgeOramInit_send", "NodeOramInit_send"],
     },
     "adjmat":{
         "prefix": MAIN_FOLDER + "/data/multiparty/",
@@ -37,16 +38,16 @@ format_configs = {
         "e_stash_size": [1024],
         "e_pack_size": [32],
         "config_keys" : ["gtype", "n", "e", "se", "pe", "sn", "pn"],
-        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit"],
+        "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "GraphLoad_recv", "EdgeOramInit_recv", "NodeOramInit_recv", "GraphLoad_send", "EdgeOramInit_send", "NodeOramInit_send"],
     },
     "edgelist":{
         "prefix": MAIN_FOLDER + "/data/multiparty/",
         "record_folder": MAIN_FOLDER + "/record_offline/edgelist/",
         "record_pattern": "(.*?)_n-(\d+)_p-(\d+)-(\d+)",
-        "n": [16384],
+        "n": [1024],
         "e": -1,
         "config_keys" : ["gtype", "n", "e"],
-        "performance_keys": ["GraphLoad"],
+        "performance_keys": ["GraphLoad", "GraphLoad_recv", "GraphLoad_send"],
     },
 }
 
@@ -85,7 +86,7 @@ if __name__ == "__main__":
                         data_exist = False
 
                     for p in range(data_providers):
-                        party_meta_file = f"{target_config['prefix']}{gtype}_n-{n}edge_list_meta_party-{p}.txt"
+                        party_meta_file = f"{target_config['prefix']}{gtype}_n-{n}_edge_list_meta_party-{p}.txt"
                         if not os.path.exists(party_meta_file):
                             data_exist = False
 
