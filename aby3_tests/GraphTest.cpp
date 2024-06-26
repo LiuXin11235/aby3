@@ -315,8 +315,10 @@ int neighbors_find_test(oc::CLP& cmd){
             queried_neighbors_sort.push_back(test_neighbors_sort(i, 0));
         }
     }
+
     std::sort(queried_neighbors_sort.begin(), queried_neighbors_sort.end(), std::greater<int>());
     if(role == 0){
+        debug_output_vector(queried_neighbors_sort);
         check_result("Basic graph query neighbors sort test", queried_neighbors_sort, true_neighbors);
     }
     

@@ -32,8 +32,6 @@ using namespace aby3;
     Timer& timer = Timer::getInstance(); \
     timer.clear_records();
 
-#define GRAPH_FILE_MACRO \
-
 
 size_t get_sending_bytes(aby3Info &party_info){
     size_t send_next = party_info.runtime->mComm.mNext.getTotalDataSent();
@@ -879,8 +877,10 @@ int cycle_detection_profiling(oc::CLP& cmd){
     CONFIG_INIT
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
+    if(role == 0) debug_info("in this function!!!");
+
     // init the EORAM.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
     std::string file_prefix = "tmp";
     std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
     int record_counter = -1;
@@ -912,12 +912,223 @@ int cycle_detection_profiling(oc::CLP& cmd){
         if(role == 0) debug_info("record_folder: " + record_folder);
     }
 
-    std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta.txt";
-    std::string graph_data_file = graph_data_folder + file_prefix + "_edge_list.txt";
+    std::string meta_file = graph_data_folder + file_prefix + "_meta.txt";
+    std::string graph_data_file = graph_data_folder + file_prefix + "_2dpartition.txt";
     std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
 
     SET_OR_DEFAULT(cmd, eoram_stash_size, 1 << 8);
     SET_OR_DEFAULT(cmd, eoram_pack_size, 1 << 4);
+
+    if (role == 0) debug_info("Profiling the cycle detection...");
+
+    if(role == 0){
+        debug_info("meta_file = " + meta_file);
+        debug_info("graph_data_file = " + graph_data_file);
+        debug_info("record_file = " + record_file);
+    }
+
+    // load the graph and construct the eoram.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("sending_bytes = " + std::to_string(get_sending_bytes(party_info)) + " | reveiving_bytes = " + std::to_string(get_receiving_bytes(party_info)));
+
+    timer.start("GraphLoad");
+
+    GraphQueryEngine secGraphEngine(party_info, meta_file, graph_data_file);
+
+    timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Graph loaded successfully!");
+
+    // oram construction.
+    cmeter.start("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("EdgeOramInit_recv", get_receiving_bytes(party_info));
+    timer.start("EdgeOramInit");
+
+    secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
+
+    timer.end("EdgeOramInit");
+    cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Eoram init success");
+
+    // cycle detection.
+    // set the six edges.
+    size_t node1 = 1, node2 = 2, node3 = 3;
+    boolIndex node1_ind = boolIndex(secGraphEngine.get_block_index(node1), role);
+    boolIndex node2_ind = boolIndex(secGraphEngine.get_block_index(node2), role);
+    boolIndex node3_ind = boolIndex(secGraphEngine.get_block_index(node3), role);
+
+    std::vector<std::tuple<boolIndex, boolIndex, boolIndex>> target_edges(6);
+    target_edges[0] = {boolIndex(secGraphEngine.get_edge_block_index(node1, node2), role), node1_ind, node2_ind};
+    target_edges[1] = {boolIndex(secGraphEngine.get_edge_block_index(node2, node3), role), node2_ind, node3_ind};
+    target_edges[2] = {boolIndex(secGraphEngine.get_edge_block_index(node3, node1), role), node3_ind, node1_ind};
+    target_edges[3] = {boolIndex(secGraphEngine.get_edge_block_index(node2, node1), role), node2_ind, node1_ind};
+    target_edges[4] = {boolIndex(secGraphEngine.get_edge_block_index(node3, node2), role), node3_ind, node2_ind};
+    target_edges[5] = {boolIndex(secGraphEngine.get_edge_block_index(node1, node3), role), node1_ind, node3_ind};
+
+    std::vector<boolShare> edge_flags;
+
+    if(role == 0) debug_info("Cycle detection...");
+
+    cmeter.start("CycleDetection_send", get_sending_bytes(party_info));
+    cmeter.start("CycleDetection_recv", get_receiving_bytes(party_info));
+    timer.start("CycleDetection");
+
+    for(auto& edge_info : target_edges){
+        auto& edge_index = std::get<0>(edge_info);
+        auto& node1_index = std::get<1>(edge_info);
+        auto& node2_index = std::get<2>(edge_info);
+
+        boolShare flag = edge_existance(node1_index, node2_index, edge_index, secGraphEngine);
+        edge_flags.push_back(flag);
+    }
+
+    timer.end("CycleDetection");
+    cmeter.end("CycleDetection_send", get_sending_bytes(party_info));
+    cmeter.end("CycleDetection_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Cycle detection success");
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        secGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
+    }
+
+    return 0;
+}
+
+int twohop_neighbor_profiling(oc::CLP& cmd){
+
+    CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    // init the NORAM.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/two_hop_neighbor/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_meta.txt";
+    std::string graph_data_file = graph_data_folder + file_prefix + "_2dpartition.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+
+    SET_OR_DEFAULT(cmd, noram_stash_size, 1 << 8);
+    SET_OR_DEFAULT(cmd, noram_pack_size, 1 << 4);
+
+    if(role == 0){
+        debug_info("meta_file = " + meta_file);
+        debug_info("graph_data_file = " + graph_data_file);
+        debug_info("record_file = " + record_file);
+    }
+
+    if (role == 0) debug_info("Profiling the two-hop neighbor query...");
+
+    // load the graph and construct the noram.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
+    timer.start("GraphLoad");
+
+    GraphQueryEngine secGraphEngine(party_info, meta_file, graph_data_file);
+
+    timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Graph loaded successfully!");
+
+    // oram construction.
+    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
+    timer.start("NodeOramInit");
+
+    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+
+    timer.end("NodeOramInit");
+    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Noram init success");
+
+    // 2-htop neighbor detection.
+    size_t node1 = 0;
+    boolIndex snode = boolIndex(node1, role);
+    boolIndex node1_ind = boolIndex(secGraphEngine.get_block_index(node1), role);
+
+
+    cmeter.start("twohop_neighbor_send", get_sending_bytes(party_info));
+    cmeter.start("twohop_neighbor_recv", get_receiving_bytes(party_info));
+    timer.start("twohop_neighbor");    
+
+    aby3::sbMatrix direct_neighbors = outting_neighbors_sorted(snode, node1_ind, secGraphEngine);
+
+    aby3::i64Matrix direct_neighbors_plain(direct_neighbors.rows(), 1);
+    enc.revealAll(runtime, direct_neighbors, direct_neighbors_plain).get();
+
+    size_t direct_neighbor_number = 0;
+    std::vector<size_t> direct_neighbors_list;
+    for(size_t i=0; i<direct_neighbors_plain.rows(); i++){
+        if(direct_neighbors_plain(i, 0) != 0){
+            direct_neighbor_number++;
+            direct_neighbors_list.push_back(i);
+        }
+    }
+
+    // 2-hop neighbor detection.
+    std::vector<size_t> two_hop_neighbors_list;
+    for(auto& neighbor : direct_neighbors_list){
+        boolIndex neighbor_id_ = boolIndex(neighbor, role);
+        boolIndex neighbor_ind_ = boolIndex(secGraphEngine.get_edge_block_index(node1, neighbor), role);
+        aby3::sbMatrix two_hop_neighbors = outting_neighbors_sorted(neighbor_id_, neighbor_ind_, secGraphEngine);
+    }
+
+    timer.end("twohop_neighbor");
+    cmeter.end("twohop_neighbor_send", get_sending_bytes(party_info));
+    cmeter.end("twohop_neighbor_recv", get_receiving_bytes(party_info));
+
+    // print the timer records.
+
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        debug_info("Direct neighbors of node " + std::to_string(direct_neighbor_number), stream);
+        secGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
+    }
 
     return 0;
 }

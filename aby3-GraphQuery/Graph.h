@@ -598,7 +598,7 @@ class GraphQueryEngine{
         aby3Info *party_info;
 
         size_t logb, logk;
-        size_t se, pe, sn, pn;
+        size_t se = 0, pe = 0, sn = 0, pn = 0;
 
         GraphQueryEngine(){}
 
