@@ -23,3 +23,6 @@ int list_performance_profiling(oc::CLP& cmd);
 int privGraph_integration_profiling(oc::CLP& cmd);
 int adj_integration_profiling(oc::CLP& cmd);
 int list_integration_profiling(oc::CLP& cmd);
+
+int cycle_detection_profiling(oc::CLP& cmd);
+int twohop_neighbor_profiling(oc::CLP& cmd);

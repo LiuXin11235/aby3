@@ -8,7 +8,7 @@ real_world_data_folder = MAIN_FOLDER + "/data/realworld/"
 main_record_folder = MAIN_FOLDER + "/record/realworld/"
 
 n_stash_size, n_pack_size, e_stash_size, e_pack_size = 32, 16, 1024, 32
-test_format = ["privGraph", "adjmat", "edgelist"]
+test_format = ["privGraph", "edgelist"]
 
 REPEAT_TIMES = 0
 
@@ -23,13 +23,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
     target = args.target
 
+    if(target == "twitter"):
+        test_format = ["privGraph", "edgelist"]
+        
     for gformat in test_format:
         # different graph format.
         target_record_folder = main_record_folder + f"{gformat}/"
         if(not os.path.exists(target_record_folder)):
             os.makedirs(target_record_folder)
 
-        run_args = f" -privGraph -prefix {target} -rcounter 1 -noram_stash_size {n_stash_size} -eoram_stash_size {e_stash_size} -noram_pack_size {n_pack_size} -eoram_pack_size {e_pack_size} -data_folder {real_world_data_folder} -record_folder {target_record_folder}"
+        run_args = f" -{gformat} -prefix {target} -rcounter 1 -noram_stash_size {n_stash_size} -eoram_stash_size {e_stash_size} -noram_pack_size {n_pack_size} -eoram_pack_size {e_pack_size} -data_folder {real_world_data_folder} -record_folder {target_record_folder}"
 
         print(run_args)
         os.system(f"./Eval/dis_exec.sh \"{run_args}\"")

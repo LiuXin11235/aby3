@@ -32,6 +32,9 @@ using namespace aby3;
     Timer& timer = Timer::getInstance(); \
     timer.clear_records();
 
+#define GRAPH_FILE_MACRO \
+
+
 size_t get_sending_bytes(aby3Info &party_info){
     size_t send_next = party_info.runtime->mComm.mNext.getTotalDataSent();
     size_t send_prev = party_info.runtime->mComm.mPrev.getTotalDataSent();
@@ -852,6 +855,54 @@ int list_integration_profiling(oc::CLP& cmd){
         timer.print_total("milliseconds", stream);
         cmeter.print_total("MB", stream);
     }
+
+    return 0;
+}
+
+int cycle_detection_profiling(oc::CLP& cmd){
+
+    CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    // init the EORAM.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta.txt";
+    std::string graph_data_file = graph_data_folder + file_prefix + "_edge_list.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+
+    SET_OR_DEFAULT(cmd, eoram_stash_size, 1 << 8);
+    SET_OR_DEFAULT(cmd, eoram_pack_size, 1 << 4);
 
     return 0;
 }
