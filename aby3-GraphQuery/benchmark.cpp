@@ -181,24 +181,24 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
-    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
-    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
-    timer.start("NodeOramInit");
+    // cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    // cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
+    // timer.start("NodeOramInit");
 
-    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size); 
+    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size); 
 
-    timer.end("NodeOramInit");
-    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
-    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+    // timer.end("NodeOramInit");
+    // cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    // cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
 
-    if(role == 0) debug_info("Noram init success");
+    // if(role == 0) debug_info("Noram init success");
 
     size_t b = secGraphEngine.graph->b;
     size_t b2 = secGraphEngine.graph->edge_list_size;
     size_t v = secGraphEngine.graph->v;
 
     eoram_stash_size = secGraphEngine.edge_block_oram->S;
-    noram_stash_size = secGraphEngine.node_edges_oram->S;
+    // noram_stash_size = secGraphEngine.node_edges_oram->S;
 
     // // edge block fetch
     // for(int i=0; i<eoram_stash_size; i++){
@@ -249,6 +249,21 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Edge existence query success");
 
+    delete secGraphEngine.edge_block_oram;
+
+    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
+    timer.start("NodeOramInit");
+
+    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size); 
+    noram_stash_size = secGraphEngine.node_edges_oram->S;
+
+    timer.end("NodeOramInit");
+    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Noram init success");
+
     // 2) outting edges count query.
     cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
@@ -278,7 +293,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     plainGraph.per_block_sort();
     secGraphEngine.rebuild(party_info, plainGraph);
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
-    secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
+    // secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
 
     cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));

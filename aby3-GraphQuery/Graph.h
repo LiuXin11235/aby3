@@ -598,6 +598,7 @@ class GraphQueryEngine{
         aby3Info *party_info;
 
         size_t logb, logk;
+        size_t se, pe, sn, pn;
 
         GraphQueryEngine(){}
 
@@ -653,6 +654,8 @@ class GraphQueryEngine{
         void edge_block_oram_initialization(const int stash_size, const int pack_size){
             edge_block_oram = new ABY3SqrtOram(graph->edge_list_size, stash_size, pack_size, party_info->pIdx, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
             edge_block_oram->initiate(graph->edge_block_list);
+            this->se = edge_block_oram->S;
+            this->pe = edge_block_oram->pack;
             return;
         }
 
@@ -663,6 +666,8 @@ class GraphQueryEngine{
             // construct the node edges data.
             graph->get_node_edges_list();
             node_edges_oram->initiate(graph->node_edges_list);
+            this->sn = node_edges_oram->S;
+            this->pn = node_edges_oram->pack;
             return;
         }
 
@@ -768,10 +773,10 @@ class GraphQueryEngine{
             stream << "b : " << graph->b << std::endl;
             stream << "l : " << graph->l << std::endl;
             stream << "k : " << graph->k << std::endl;
-            stream << "se : " << edge_block_oram->S << std::endl;
-            stream << "pe : " << edge_block_oram->pack << std::endl;
-            stream << "sn : " << node_edges_oram->S << std::endl;
-            stream << "pn : " << node_edges_oram->pack << std::endl;
+            stream << "se : " << this->se << std::endl;
+            stream << "pe : " << this->pe << std::endl;
+            stream << "sn : " << this->sn << std::endl;
+            stream << "pn : " << this->pn << std::endl;
         }
 };
 
