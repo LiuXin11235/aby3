@@ -272,6 +272,12 @@ struct Graph2d {
         return;
     }
 
+    virtual std::vector<aby3::sbMatrix> get_node_edges_with_property(){
+        THROW_RUNTIME_ERROR("This function is NOT supported in Graph2d!");
+        std::vector<aby3::sbMatrix> tmp;
+        return tmp;
+    }
+
     void check_graph(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info &party_info){
         plainGraph2d plain_graph(meta_data_file, edge_block_file);
         check_graph(plain_graph, party_info);
@@ -590,11 +596,99 @@ struct GraphAdj {
 
 };
 
+class PropertyGraph2d : public Graph2d {
+
+    std::vector<std::vector<aby3::sbMatrix>> node_edges_properties;
+    std::vector<std::vector<aby3::sbMatrix>> properties;
+
+
+    public:
+        PropertyGraph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info &party_info) : Graph2d(meta_data_file, edge_block_file, party_info){
+            return;
+        }
+
+        void add_property(const std::string& property_file, aby3Info &party_info){
+            std::ifstream property(property_file);
+            if(!property.is_open()){
+                THROW_RUNTIME_ERROR("The property file " + property_file + " does not exist.");
+            }
+
+            std::vector<int> plain_property(edge_list_size * l);
+            
+            for(size_t i=0; i<edge_list_size; i++){
+                for(size_t j=0; j<l; j++){
+                    property >> plain_property[i*l+j];
+                }
+            }
+
+            aby3::i64Matrix property_matrix(edge_list_size * l, 1);
+            for(size_t i=0; i<edge_list_size; i++){
+                for(size_t j=0; j<l; j++){
+                    property_matrix(i*l+j, 0) = plain_property[i*l+j];
+                }
+            }
+            aby3::sbMatrix property_sec(edge_list_size, BITSIZE);
+            large_data_encryption(party_info.pIdx, property_matrix, property_sec, *(party_info.enc), *(party_info.runtime));
+
+            std::vector<aby3::sbMatrix> property_list(edge_list_size);
+            for(size_t i=0; i<edge_list_size; i++){
+                property_list[i].resize(l, BITSIZE);
+                for(size_t j=0; j<l; j++){
+                    property_list[i].mShares[0](0, 0) = property_sec.mShares[0](i, 0);
+                    property_list[i].mShares[1](0, 0) = property_sec.mShares[1](i, 0);
+                }
+            }
+
+            properties.push_back(property_list);
+            return;
+        }
+
+        void get_node_edges_property(){
+
+            for(auto& property_list : properties){
+                std::vector<aby3::sbMatrix> node_edges_property(b);
+                for(size_t i=0; i<b; i++){
+                    node_edges_property[i].resize(b * l, BITSIZE);
+                    for(size_t j=0; j<b; j++){
+                        for(size_t k=0; k<l; k++){
+                            node_edges_property[i].mShares[0](j*l+k, 0) = property_list[i*b+j].mShares[0](k, 0);
+                            node_edges_property[i].mShares[1](j*l+k, 0) = property_list[i*b+j].mShares[1](k, 0);
+                        }
+                    }
+                }
+                node_edges_properties.push_back(node_edges_property);
+            }
+            return;
+        }
+
+        std::vector<aby3::sbMatrix> get_node_edges_with_property(){
+            std::vector<aby3::sbMatrix> node_edges_with_property(b);
+            for(size_t i=0; i<b; i++){
+                node_edges_with_property[i].resize(b * 3 * l, BITSIZE);
+                for(size_t j=0; j<b; j++){
+                    for(size_t k=0; k<l; k++){
+                        // starting node list.
+                        node_edges_with_property[i].mShares[0](j*(l)+k, 0) = edge_block_list[i*b+j].mShares[0](k, 0);
+                        node_edges_with_property[i].mShares[1](j*(l)+k, 0) = edge_block_list[i*b+j].mShares[1](k, 0);
+                        // ending node list.
+                        node_edges_with_property[i].mShares[0](j*(l)+k+ (b*l), 0) = edge_block_list[i*b+j].mShares[0](k+l, 0);
+                        node_edges_with_property[i].mShares[1](j*(l)+k+ (b*l), 0) = edge_block_list[i*b+j].mShares[1](k+l, 0);
+                        // property_list.
+                        node_edges_with_property[i].mShares[0](j*(l)+k+ (2*b*l), 0) = node_edges_properties[0][i].mShares[0](j*l+k, 0);
+                        node_edges_with_property[i].mShares[1](j*(l)+k+ (2*b*l), 0) = node_edges_properties[0][i].mShares[1](j*l+k, 0);
+                    }
+                }
+            }
+            return node_edges_with_property;
+        }
+};
+
 class GraphQueryEngine{
     public:
         Graph2d *graph;
         ABY3SqrtOram *edge_block_oram;
         ABY3SqrtOram *node_edges_oram;
+        ABY3SqrtOram *node_edges_property_oram;
         aby3Info *party_info;
 
         size_t logb, logk;
@@ -651,6 +745,27 @@ class GraphQueryEngine{
             return;
         }
 
+        void set_graph(PropertyGraph2d &property_graph){
+            this->graph = &property_graph;
+
+            if(!checkPowerOfTwo(graph->b) || !checkPowerOfTwo(graph->k)){
+                if(party_info->eval == 0){
+                    debug_info("b = " + std::to_string(graph->b) + " k = " + std::to_string(graph->k) + "\n");
+                }
+                THROW_RUNTIME_ERROR("The block size and the chunk size must be power of 2.");
+            }
+
+
+            logb = log2(graph->b);
+            logk = log2(graph->k);
+
+            if(party_info->pIdx == 0){
+                debug_info("logb = " + std::to_string(logb) + " logk = " + std::to_string(logk) + "\n");
+            }
+
+            return;
+        }
+
         void edge_block_oram_initialization(const int stash_size, const int pack_size){
             edge_block_oram = new ABY3SqrtOram(graph->edge_list_size, stash_size, pack_size, party_info->pIdx, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
             edge_block_oram->initiate(graph->edge_block_list);
@@ -671,6 +786,34 @@ class GraphQueryEngine{
             return;
         }
 
+        void node_edges_property_oram_initialization(const int stash_size, const int pack_size){
+
+            if(party_info->pIdx == 0) {
+                debug_info("before node_edges_property_oram initialization!");
+            }
+
+            node_edges_property_oram = new ABY3SqrtOram(graph->b, stash_size, pack_size, party_info->pIdx, *(party_info->enc), *(party_info->eval), *(party_info->runtime));
+
+            if(party_info->pIdx == 0){
+                debug_info("before get property!");
+            }
+
+            std::vector<aby3::sbMatrix> property_graph_node_edges = graph->get_node_edges_with_property();
+
+            // if(party_info->pIdx == 0){
+            //     debug_info("get property????");
+            //     debug_info("property_graph_node_edges.size() = " + std::to_string(property_graph_node_edges.size()) + "\n");
+            //     debug_info("element size = " + std::to_string(property_graph_node_edges[0].mShares[0].size()) + "\n");
+            // }
+        
+
+            node_edges_property_oram->initiate(property_graph_node_edges);
+            this->sn = node_edges_property_oram->S;
+            this->pn = node_edges_property_oram->pack;
+
+            return;
+        }
+
         GraphQueryEngine(aby3Info &party_info, const std::string& meta_data_file, const std::string& edge_block_file, const size_t edge_oram_stash_size, const size_t edge_oram_pack_size, const size_t node_oram_stash_size, const size_t node_oram_pack_size) : GraphQueryEngine(party_info, meta_data_file, edge_block_file)
         {
             edge_block_oram_initialization(edge_oram_stash_size, edge_oram_pack_size);
@@ -687,7 +830,7 @@ class GraphQueryEngine{
 
         ~GraphQueryEngine(){
             if(graph != nullptr) {
-                delete graph;
+                // delete graph;
                 graph = nullptr;
             }
             if(edge_block_oram != nullptr) {
@@ -765,6 +908,10 @@ class GraphQueryEngine{
 
         aby3::sbMatrix get_node_edges(boolIndex node_idx){
             return node_edges_oram->access(node_idx);
+        }
+
+        aby3::sbMatrix get_node_edges_property(boolIndex node_idx){
+            return node_edges_property_oram->access(node_idx);
         }
 
         void print_configs(std::ostream& stream){
@@ -1086,7 +1233,6 @@ class ListGraphQueryEngine{
 
 };
 
-
 size_t get_sending_bytes(aby3Info &party_info);
 
 size_t get_receiving_bytes(aby3Info &party_info);
@@ -1100,6 +1246,8 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
                          GraphQueryEngine &GQEngine);
 
 aby3::si64Matrix outting_edge_count(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
+
+aby3::si64Matrix outting_edge_range_statistics(boolIndex node_index, boolIndex logical_node_block_index, boolIndex upper_bound, GraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
 

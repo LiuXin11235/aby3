@@ -264,6 +264,47 @@ aby3::si64Matrix outting_edge_count(boolIndex node_index, boolIndex logical_node
     return res;
 }
 
+
+aby3::si64Matrix outting_edge_range_statistics(boolIndex node_index, boolIndex logical_node_block_index, boolIndex upper_bound, GraphQueryEngine &GQEngine){
+
+    // get the node block from the GraphQueryEngine, which size is b * 2l.
+    aby3::sbMatrix node_block = GQEngine.get_node_edges_property(logical_node_block_index);
+
+    // process the node block for the final result.
+    aby3::sbMatrix expanded_node_mat(GQEngine.graph->l * GQEngine.graph->b, BITSIZE);
+    aby3::sbMatrix starting_node_mat(GQEngine.graph->l * GQEngine.graph->b, BITSIZE);
+    aby3::sbMatrix expanded_bound_mat(GQEngine.graph->l * GQEngine.graph->b, BITSIZE);
+    aby3::sbMatrix property_mat(GQEngine.graph->l * GQEngine.graph->b, BITSIZE);
+
+    // TODO: node chunk data structure.
+    for(int i=0; i<2; i++){
+        std::copy(node_block.mShares[i].begin(), node_block.mShares[i].begin() + GQEngine.graph->l * GQEngine.graph->b, expanded_node_mat.mShares[i].begin());
+        std::copy(node_block.mShares[i].begin() + 2*GQEngine.graph->l * GQEngine.graph->b, node_block.mShares[i].end(), property_mat.mShares[i].begin());
+        for(size_t j=0; j<GQEngine.graph->l * GQEngine.graph->b; j++){
+            starting_node_mat.mShares[i](j, 0) = node_index.indexShares[i];
+            expanded_bound_mat.mShares[i](j, 0) = upper_bound.indexShares[i];
+        }
+    }
+
+    // comparing the starting nodes with the target starting node.
+    aby3::sbMatrix eq_res;
+    bool_cipher_eq(GQEngine.party_info->pIdx, expanded_node_mat, starting_node_mat, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    aby3::sbMatrix eq_res_bound;
+    bool_cipher_lt(GQEngine.party_info->pIdx, expanded_bound_mat, property_mat, eq_res_bound, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    bool_cipher_and(GQEngine.party_info->pIdx, eq_res, eq_res_bound, eq_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    // trans2 A shares.
+    aby3::si64Matrix eq_a_res(eq_res.rows(), 1);
+    bool2arith(GQEngine.party_info->pIdx, eq_res, eq_a_res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
+
+    aby3::si64Matrix res(1, 1);
+    arith_aggregation(GQEngine.party_info->pIdx, eq_a_res, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "ADD");
+
+    return res;
+}
+
 aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine){
 
     // get the node block from the GraphQueryEngine, which size is b * 2l.

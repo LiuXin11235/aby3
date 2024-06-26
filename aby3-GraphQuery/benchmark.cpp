@@ -1132,3 +1132,124 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
 
     return 0;
 }
+
+int neighbor_statistics_profiling(oc::CLP& cmd){
+
+    CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    // set the graph.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/statistics_neighbor/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_meta.txt";
+    std::string graph_data_file = graph_data_folder + file_prefix + "_2dpartition.txt";
+    std::string graph_property_file = graph_data_folder + file_prefix + "_2dproperty.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+
+    SET_OR_DEFAULT(cmd, noram_stash_size, 1 << 8);
+    SET_OR_DEFAULT(cmd, noram_pack_size, 1 << 4);
+
+    if(role == 0){
+        debug_info("meta_file = " + meta_file);
+        debug_info("graph_data_file = " + graph_data_file);
+        debug_info("property_graph_file = " + graph_property_file);
+        debug_info("record_file = " + record_file);
+    }
+
+    if (role == 0) debug_info("Profiling the neighbor statis query...");
+
+    // get the property graph.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
+    timer.start("GraphLoad");
+
+    PropertyGraph2d property_graph(meta_file, graph_data_file, party_info);
+    property_graph.add_property(graph_property_file, party_info);
+    property_graph.get_node_edges_property();
+
+
+    // construct the query_engine.
+    GraphQueryEngine secGraphEngine;
+    secGraphEngine.party_info = &party_info;
+    secGraphEngine.set_graph(property_graph);
+
+    timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Graph loaded successfully!");
+
+
+    // oram construction.
+    cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
+    timer.start("NodeOramInit");
+
+    if(role == 0) debug_info("Noram construction...");
+    secGraphEngine.node_edges_property_oram_initialization(noram_stash_size, noram_pack_size);
+
+    timer.end("NodeOramInit");
+    cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
+    cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Noram init success");
+
+    // run the statistic_func.
+    size_t node1 = 0;
+    boolIndex snode = boolIndex(node1, role);
+    boolIndex node1_ind = boolIndex(secGraphEngine.get_block_index(node1), role);
+    size_t upper_bound = 10;
+    boolIndex sec_upper_bound = boolIndex(upper_bound, role);
+
+    cmeter.start("statistic_send", get_sending_bytes(party_info));
+    cmeter.start("statistic_recv", get_receiving_bytes(party_info));
+    timer.start("statistic");
+
+    aby3::si64Matrix statistics = outting_edge_range_statistics(snode, node1_ind, sec_upper_bound, secGraphEngine); 
+
+    timer.end("statistic");
+    cmeter.end("statistic_send", get_sending_bytes(party_info));
+    cmeter.end("statistic_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Statistics success");
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        secGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
+    }
+
+    return 0;
+}

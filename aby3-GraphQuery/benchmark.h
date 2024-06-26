@@ -27,3 +27,4 @@ int list_integration_profiling(oc::CLP& cmd);
 
 int cycle_detection_profiling(oc::CLP& cmd);
 int twohop_neighbor_profiling(oc::CLP& cmd);
+int neighbor_statistics_profiling(oc::CLP& cmd);
