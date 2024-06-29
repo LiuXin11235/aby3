@@ -8,7 +8,8 @@ real_world_data_folder = MAIN_FOLDER + "/data/realworld/"
 main_record_folder = MAIN_FOLDER + "/record/realworld/"
 
 n_stash_size, n_pack_size, e_stash_size, e_pack_size = 32, 16, 1024, 32
-test_format = ["privGraph", "edgelist"]
+# test_format = ["privGraph", "edgelist"]
+test_format = ["edgelist"]
 
 REPEAT_TIMES = 0
 
@@ -23,8 +24,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     target = args.target
 
-    if(target == "twitter"):
-        test_format = ["privGraph", "edgelist"]
+    # if(target == "twitter"):
+    #     test_format = ["privGraph", "edgelist"]
         
     for gformat in test_format:
         # different graph format.

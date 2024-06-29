@@ -8,9 +8,9 @@ for pfile in ./party-*.txt; do
 done
 
 # # synchronize with others
-# scp ./bin/frontend aby31:~/aby3/bin
-# scp ./bin/frontend aby32:~/aby3/bin
-# wait;
+scp ./out/build/linux/frontend/frontend aby31:~/aby3/out/build/linux/frontend/ &
+scp ./out/build/linux/frontend/frontend aby32:~/aby3/out/build/linux/frontend/ &
+wait;
 
 # run the tests
 # current tests: 

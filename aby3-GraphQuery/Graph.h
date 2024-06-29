@@ -10,6 +10,8 @@
 
 static size_t MAX_COMM_SIZE = 1 << 25;
 
+#define PROPERTY_COMPRESS
+
 struct aby3Info{
     int pIdx;
     aby3::Sh3Encryptor *enc;
@@ -161,14 +163,21 @@ struct Graph2d {
         return;
     };
 
-    Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info& party_info) : Graph2d(plainGraph2d(meta_data_file, edge_block_file), party_info){
+    // Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info& party_info) : Graph2d(plainGraph2d(meta_data_file, edge_block_file), party_info){
+    //     return;
+    // }
+    Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info& party_info){
+        plainGraph2d *plain_graph = new plainGraph2d(meta_data_file, edge_block_file);
+        graph_encryption(*plain_graph, party_info);
+        delete plain_graph;
         return;
     }
 
     Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, const std::string& node_chunk_file, aby3Info &party_info) : Graph2d(meta_data_file, edge_block_file, party_info) {
-        plainGraph2d plain_graph(meta_data_file, edge_block_file, node_chunk_file);
-        graph_encryption(plain_graph, party_info);
-
+        // plainGraph2d plain_graph(meta_data_file, edge_block_file, node_chunk_file);
+        plainGraph2d *plain_graph = new plainGraph2d(meta_data_file, edge_block_file, node_chunk_file);
+        graph_encryption(*plain_graph, party_info);
+        delete plain_graph;
         return;
     }
 
@@ -627,6 +636,9 @@ class PropertyGraph2d : public Graph2d {
                     property_matrix(i*l+j, 0) = plain_property[i*l+j];
                 }
             }
+
+            plain_property.resize(0);
+
             aby3::sbMatrix property_sec(edge_list_size, BITSIZE);
             large_data_encryption(party_info.pIdx, property_matrix, property_sec, *(party_info.enc), *(party_info.runtime));
 
@@ -638,6 +650,8 @@ class PropertyGraph2d : public Graph2d {
                     property_list[i].mShares[1](0, 0) = property_sec.mShares[1](i, 0);
                 }
             }
+
+            property_sec.resize(0, 0);
 
             properties.push_back(property_list);
             return;
@@ -658,11 +672,14 @@ class PropertyGraph2d : public Graph2d {
                 }
                 node_edges_properties.push_back(node_edges_property);
             }
+            properties.resize(0);
             return;
         }
 
         std::vector<aby3::sbMatrix> get_node_edges_with_property(){
             std::vector<aby3::sbMatrix> node_edges_with_property(b);
+
+            #ifndef PROPERTY_COMPRESS
             for(size_t i=0; i<b; i++){
                 node_edges_with_property[i].resize(b * 3 * l, BITSIZE);
                 for(size_t j=0; j<b; j++){
@@ -679,8 +696,32 @@ class PropertyGraph2d : public Graph2d {
                     }
                 }
             }
+            #endif
+
+            #ifdef PROPERTY_COMPRESS
+
+            debug_info("Compress the properties.");
+
+            for(size_t i=0; i<b; i++){
+                node_edges_with_property[i].resize(b*2*l, BITSIZE);
+                for(size_t j=0; j<b; j++){
+                    for(size_t k=0; k<l; k++){
+                        node_edges_with_property[i].mShares[0](j*l+k, 0) = (edge_block_list[i*b+j].mShares[0](k, 0) << 30) | (edge_block_list[i*b+j].mShares[0](k+l, 0));
+                        node_edges_with_property[i].mShares[1](j*l+k, 0) = (edge_block_list[i*b+j].mShares[1](k, 0) << 30) | (edge_block_list[i*b+j].mShares[1](k+l, 0));
+
+                        // properties, in the second l.
+                        node_edges_with_property[i].mShares[0](j*l+k + b*l, 0) = node_edges_properties[0][i].mShares[0](j*l+k, 0);
+                        node_edges_with_property[i].mShares[1](j*l+k + b*l, 0) = node_edges_properties[0][i].mShares[1](j*l+k, 0);
+                    }
+                }
+            }
+
+            #endif
+
+            node_edges_properties.resize(0);
             return node_edges_with_property;
         }
+
 };
 
 class GraphQueryEngine{
@@ -798,16 +839,10 @@ class GraphQueryEngine{
                 debug_info("before get property!");
             }
 
-            std::vector<aby3::sbMatrix> property_graph_node_edges = graph->get_node_edges_with_property();
-
-            // if(party_info->pIdx == 0){
-            //     debug_info("get property????");
-            //     debug_info("property_graph_node_edges.size() = " + std::to_string(property_graph_node_edges.size()) + "\n");
-            //     debug_info("element size = " + std::to_string(property_graph_node_edges[0].mShares[0].size()) + "\n");
-            // }
-        
+            std::vector<aby3::sbMatrix> property_graph_node_edges = graph->get_node_edges_with_property();        
 
             node_edges_property_oram->initiate(property_graph_node_edges);
+
             this->sn = node_edges_property_oram->S;
             this->pn = node_edges_property_oram->pack;
 
@@ -830,16 +865,26 @@ class GraphQueryEngine{
 
         ~GraphQueryEngine(){
             if(graph != nullptr) {
+                debug_info("delete graph!");
                 // delete graph;
                 graph = nullptr;
+                // debug_info("success delete graph!");
             }
             if(edge_block_oram != nullptr) {
-                delete edge_block_oram;
+                // delete edge_block_oram;
+                // debug_info("delete edge_block_oram!");
                 edge_block_oram = nullptr;
+                // debug_info("success delete edge_block_oram!");
             }
             if(node_edges_oram != nullptr) {
-                delete node_edges_oram;
+                // delete node_edges_oram;
+                // debug_info("delete node_edges_oram!");
                 node_edges_oram = nullptr;
+            }
+            if(node_edges_property_oram != nullptr) {
+                // delete node_edges_property_oram;
+                // debug_info("delete node_edges_property_oram!");
+                node_edges_property_oram = nullptr;
             }
         }
 

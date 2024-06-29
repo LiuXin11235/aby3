@@ -238,7 +238,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
     timer.start("EdgeExistQuery");
 
-    for(int i=0; i<eoram_stash_size; i++){
+    for(int i=0; i<1; i++){
         boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);   
     }
     timer.end("EdgeExistQuery");
@@ -266,7 +266,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
     timer.start("OuttingEdgesCountQuery");
-    for(int i=0; i<noram_stash_size; i++){
+    for(int i=0; i<1; i++){
         aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     }
     timer.end("OuttingEdgesCountQuery");
@@ -287,23 +287,35 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     // 4) sorted neighbors get.
     // rebuild the graph.
     // GraphQueryEngine secGraphEngine(party_info, meta_file, graph_data_file);
-    plainGraph2d plainGraph(meta_file, graph_data_file);
-    plainGraph.per_block_sort();
-    secGraphEngine.rebuild(party_info, plainGraph);
-    secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
+    // plainGraph2d plainGraph(meta_file, graph_data_file);
+    // plainGraph.per_block_sort();
+    // secGraphEngine.rebuild(party_info, plainGraph);
+    // delete secGraphEngine.node_edges_oram;
+    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
     // secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
+
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        secGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
+    }
+
+    if(role == 0) debug_info("Neighbors get query begin!");
 
     cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
     timer.start("NeighborsGetQuery");
-    for(size_t i=0; i<noram_stash_size; i++){
+    for(size_t i=0; i<1; i++){
         aby3::sbMatrix neighbors = outting_neighbors_sorted(snode, snode_log_idx, secGraphEngine);
+        if(role == 0) debug_info("Neighbors get ... ");
     }
     timer.end("NeighborsGetQuery");
     cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
 
     if(role == 0) debug_info("Neighbors get query success");
+    secGraphEngine.sn = 1;
 
     // print the timer records.
     if(role == 0){
