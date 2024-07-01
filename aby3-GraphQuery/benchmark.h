@@ -28,3 +28,8 @@ int list_integration_profiling(oc::CLP& cmd);
 int cycle_detection_profiling(oc::CLP& cmd);
 int twohop_neighbor_profiling(oc::CLP& cmd);
 int neighbor_statistics_profiling(oc::CLP& cmd);
+
+// advanced applications for edgelist.
+int cycle_detection_profiling_edgelist(oc::CLP& cmd);
+int twohop_neighbor_profiling_edgelist(oc::CLP& cmd);
+int neighbor_statistics_profiling_edgelist(oc::CLP& cmd);

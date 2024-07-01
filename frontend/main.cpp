@@ -30,5 +30,29 @@ int main(int argc, char** argv) {
     list_integration_profiling(cmd);
   }
 
+  if(cmd.isSet("cycle_detect")){
+    cycle_detection_profiling(cmd);
+  }
+
+  if(cmd.isSet("two_hop")){
+    twohop_neighbor_profiling(cmd);
+  }
+
+  if(cmd.isSet("neighbor_stats")){
+    neighbor_statistics_profiling(cmd);
+  }
+
+  if(cmd.isSet("cycle_detect_edgelist")){
+    cycle_detection_profiling_edgelist(cmd);
+  }
+
+  if(cmd.isSet("two_hop_edgelist")){
+    twohop_neighbor_profiling_edgelist(cmd);
+  }
+
+  if(cmd.isSet("neighbor_stats_edgelist")){
+    neighbor_statistics_profiling_edgelist(cmd);
+  }
+
   return 0;
 }

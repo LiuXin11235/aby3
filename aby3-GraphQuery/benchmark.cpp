@@ -1097,10 +1097,9 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
     if(role == 0) debug_info("Noram init success");
 
     // 2-htop neighbor detection.
-    size_t node1 = 0;
+    size_t node1 = 1;
     boolIndex snode = boolIndex(node1, role);
     boolIndex node1_ind = boolIndex(secGraphEngine.get_block_index(node1), role);
-
 
     cmeter.start("twohop_neighbor_send", get_sending_bytes(party_info));
     cmeter.start("twohop_neighbor_recv", get_receiving_bytes(party_info));
@@ -1112,12 +1111,16 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
     enc.revealAll(runtime, direct_neighbors, direct_neighbors_plain).get();
 
     size_t direct_neighbor_number = 0;
+    size_t minimum_neighbors = 4;
     std::vector<size_t> direct_neighbors_list;
     for(size_t i=0; i<direct_neighbors_plain.rows(); i++){
         if(direct_neighbors_plain(i, 0) != 0){
             direct_neighbor_number++;
             direct_neighbors_list.push_back(i);
         }
+    }
+    while(direct_neighbors_list.size() < minimum_neighbors){
+        direct_neighbors_list.push_back(10);
     }
 
     // 2-hop neighbor detection.
@@ -1259,6 +1262,318 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
+    }
+
+    return 0;
+}
+
+int cycle_detection_profiling_edgelist(oc::CLP& cmd){
+
+    CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    // load graph.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta.txt";
+    std::string graph_data_file = graph_data_folder + file_prefix + "_edge_list.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+
+    // graph loading.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
+    timer.start("GraphLoad");
+    plainGraphList plainGraph(meta_file, graph_data_file);
+    ListGraphQueryEngine listGraphEngine(party_info, plainGraph);
+    timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    // cycle detection.
+    size_t node1 = 1, node2 = 2, node3 = 3;
+    boolIndex node1_ind = boolIndex(node1, role);   
+    boolIndex node2_ind = boolIndex(node2, role);
+    boolIndex node3_ind = boolIndex(node3, role);
+
+    std::vector<std::pair<boolIndex, boolIndex>> target_edges(6);
+    target_edges[0] = {node1_ind, node2_ind};
+    target_edges[1] = {node2_ind, node3_ind};
+    target_edges[2] = {node3_ind, node1_ind};
+    target_edges[3] = {node2_ind, node1_ind};
+    target_edges[4] = {node3_ind, node2_ind};
+    target_edges[5] = {node1_ind, node3_ind};
+
+    std::vector<boolShare> edge_flags;
+
+    if(role == 0) debug_info("Cycle detection...");
+
+    cmeter.start("CycleDetection_send", get_sending_bytes(party_info));
+    cmeter.start("CycleDetection_recv", get_receiving_bytes(party_info));
+    timer.start("CycleDetection");
+
+    for(auto& edge_info : target_edges){
+        auto& node1_index = edge_info.first;
+        auto& node2_index = edge_info.second;
+
+        boolShare flag = edge_existance(node1_index, node2_index, listGraphEngine);
+        edge_flags.push_back(flag);
+    }
+
+    timer.end("CycleDetection");
+    cmeter.end("CycleDetection_send", get_sending_bytes(party_info));
+    cmeter.end("CycleDetection_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Cycle detection success");
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        stream << "===== Edge list ====" <<std::endl;
+        listGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
+    }
+
+    return 0;
+}
+
+int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
+
+    CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    // load graph.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta.txt";
+    std::string graph_data_file = graph_data_folder + file_prefix + "_edge_list.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+
+    // graph loading.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
+    timer.start("GraphLoad");
+    plainGraphList plainGraph(meta_file, graph_data_file);
+    ListGraphQueryEngine listGraphEngine(party_info, plainGraph);
+    timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Graph loaded successfully!");
+
+    // two-hop neighbors.
+    size_t node1 = 0;
+    boolIndex snode = boolIndex(node1, role);
+    
+    cmeter.start("twohop_neighbor_send", get_sending_bytes(party_info));
+    cmeter.start("twohop_neighbor_recv", get_receiving_bytes(party_info));
+    timer.start("twohop_neighbor");    
+
+    aby3::sbMatrix direct_neighbors = outting_neighbors_sorted(snode, listGraphEngine);
+
+    if(role == 0) debug_info("get the first direct neighbors! size = " + std::to_string(direct_neighbors.rows()) + " x " + std::to_string(direct_neighbors.i64Size()));
+
+    aby3::i64Matrix direct_neighbors_plain(direct_neighbors.i64Size(), 1);
+    // enc.revealAll(runtime, direct_neighbors, direct_neighbors_plain).get();
+    large_data_decryption(role, direct_neighbors, direct_neighbors_plain, enc, runtime);
+
+
+    if(role == 0) debug_info("revealed the first direct neighbors!");
+
+    size_t neighbor_upper_bound = 10;
+    if(file_prefix == "slashdot"){
+        neighbor_upper_bound = 7;
+    }
+    if(file_prefix == "dblp"){
+        neighbor_upper_bound = 4;
+    }
+    if(file_prefix == "twitter"){
+        neighbor_upper_bound = 5;
+    }
+
+
+    if(role == 0) debug_info("in the second stage!");
+    size_t direct_neighbor_number = 0;
+    std::vector<size_t> direct_neighbors_list;
+    for(size_t i=0; i<direct_neighbors_plain.rows(); i++){
+        if(direct_neighbor_number >= neighbor_upper_bound){
+            break;
+        }
+        if(direct_neighbors_plain(i, 0) != 0){
+            direct_neighbor_number++;
+            direct_neighbors_list.push_back(i);
+        }
+    }
+    while(direct_neighbors_list.size() < neighbor_upper_bound){
+        direct_neighbors_list.push_back(0);
+    }
+
+    // 2-hop neighbor detection.
+    size_t neighbor_count = 1;
+    std::vector<size_t> two_hop_neighbors_list;
+    for(auto& neighbor : direct_neighbors_list){
+        boolIndex neighbor_id_ = boolIndex(neighbor, role);
+        aby3::sbMatrix two_hop_neighbors = outting_neighbors_sorted(neighbor_id_, listGraphEngine); 
+        if(role == 0) debug_info("getting neighbors of " + std::to_string(neighbor_count) + " / " + std::to_string(direct_neighbor_number));
+    }
+
+    timer.end("twohop_neighbor");
+    cmeter.end("twohop_neighbor_send", get_sending_bytes(party_info));
+    cmeter.end("twohop_neighbor_recv", get_receiving_bytes(party_info));
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        stream << "===== Edge list ====" <<std::endl;
+        debug_info("Direct neighbors of node " + std::to_string(direct_neighbor_number), stream);
+        listGraphEngine.print_configs(stream);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total("MB", stream);
+    }
+
+    return 0;
+}
+
+int neighbor_statistics_profiling_edgelist(oc::CLP& cmd){
+
+    CONFIG_INIT
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    // load graph.
+    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string file_prefix = "tmp";
+    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    int record_counter = -1;
+
+    if(cmd.isSet("prefix")){
+        auto keys = cmd.getMany<std::string>("prefix");
+        file_prefix = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("prefix must be set!");
+    }
+
+    if(cmd.isSet("rcounter")){
+        auto keys = cmd.getMany<int>("rcounter");
+        record_counter = keys[0];
+    }
+    else{
+        THROW_RUNTIME_ERROR("rcounter must be set!");
+    }
+
+    if(cmd.isSet("data_folder")){
+        auto keys = cmd.getMany<std::string>("data_folder");
+        graph_data_folder = keys[0];
+        if(role == 0) debug_info("data_folder: " + graph_data_folder);
+    }
+    if(cmd.isSet("record_folder")){
+        auto keys = cmd.getMany<std::string>("record_folder");
+        record_folder = keys[0];
+        if(role == 0) debug_info("record_folder: " + record_folder);
+    }
+
+    std::string meta_file = graph_data_folder + file_prefix + "_edge_list_meta.txt";
+    std::string graph_data_file = graph_data_folder + file_prefix + "_edge_list.txt";
+    std::string record_file = record_folder + file_prefix + "-" + std::to_string(record_counter) + ".txt";
+    std::string graph_property_file = graph_data_folder + file_prefix + "_edge_list_property.txt";
+
+    // graph loading.
+    cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.start("GraphLoad_recv", get_receiving_bytes(party_info));
+    timer.start("GraphLoad");
+    plainGraphList plainGraph(meta_file, graph_data_file);
+    ListGraphQueryEngine listGraphEngine(party_info, plainGraph);
+    listGraphEngine.add_property(party_info, graph_property_file);  
+    timer.end("GraphLoad");
+    cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
+    cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+
+    // statistic analysis.
+    // run the statistic_func.
+    size_t node1 = 0;
+    boolIndex snode = boolIndex(node1, role);
+    size_t upper_bound = 10;
+    boolIndex sec_upper_bound = boolIndex(upper_bound, role);
+
+    cmeter.start("statistic_send", get_sending_bytes(party_info));
+    cmeter.start("statistic_recv", get_receiving_bytes(party_info));
+    timer.start("statistic");
+
+    aby3::si64Matrix statistics = outting_edge_range_statistics(snode, sec_upper_bound, listGraphEngine);
+
+    timer.end("statistic");
+    cmeter.end("statistic_send", get_sending_bytes(party_info));
+    cmeter.end("statistic_recv", get_receiving_bytes(party_info));
+
+    if(role == 0) debug_info("Statistics success");
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_file, std::ios::app);
+        stream << "===== Edge list ====" <<std::endl;
+        listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
         cmeter.print_total("MB", stream);
     }

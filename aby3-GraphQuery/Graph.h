@@ -1077,6 +1077,7 @@ class ListGraphQueryEngine{
         size_t e;
         aby3::sbMatrix starting_node_list;
         aby3::sbMatrix ending_node_list;
+        aby3::sbMatrix edge_property_list;
 
         void graph_encryption(const plainGraphList& plain_graph, aby3Info &party_info){
             v = plain_graph.v;
@@ -1182,6 +1183,25 @@ class ListGraphQueryEngine{
 
             graph_encryption(plain_graph_vec, party_info);
 
+            return;
+        }
+
+        void add_property(aby3Info &party_info, const std::string& edge_property_file){
+            std::vector<int> edge_property(this->e);
+            std::ifstream property(edge_property_file);
+            if(!property.is_open()){
+                THROW_RUNTIME_ERROR("The edge property file " + edge_property_file + " does not exist.");
+            }
+            for(size_t i=0; i<e; i++){
+                property >> edge_property[i];
+            }
+
+            aby3::i64Matrix property_matrix(e, 1);
+            for(size_t i=0; i<e; i++){
+                property_matrix(i, 0) = edge_property[i];
+            }
+            edge_property_list.resize(e, BITSIZE);
+            large_data_encryption(party_info.pIdx, property_matrix, edge_property_list, *(party_info.enc), *(party_info.runtime));
             return;
         }
 
@@ -1293,6 +1313,8 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
 aby3::si64Matrix outting_edge_count(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
 
 aby3::si64Matrix outting_edge_range_statistics(boolIndex node_index, boolIndex logical_node_block_index, boolIndex upper_bound, GraphQueryEngine &GQEngine);
+
+aby3::si64Matrix outting_edge_range_statistics(boolIndex node_index, boolIndex upper_bound, ListGraphQueryEngine &GQEngine);
 
 aby3::sbMatrix outting_neighbors(boolIndex node_index, boolIndex logical_node_block_index, GraphQueryEngine &GQEngine);
 
