@@ -7,24 +7,29 @@ import json
 import os
 from utils import get_k
 
+MPI = True 
+MPI_TASK = 4
+
 MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
 
 # gtype_list = ["random", "star", "powerlaw", "bipartite", "tree"]
 gtype_list = ["random"]
-# gtype_list = ["random", "geometric", "powerlaw", "bipartite"]
+# gtype_list = ["geometric", "powerlaw", "bipartite", "k_regular", "random"]
+
 
 format_configs = {
     "privGraph": {
         "prefix": MAIN_FOLDER + "/data/baseline/",
         "record_folder": MAIN_FOLDER + "/record/privGraph/",
         "record_pattern": "(.*?)_n-(\d+)_k-(\d+)-(\d+)",
+        # "n": [1024, 2048, 4096, 8192, 16384, 32768],
         "n": [1024],
         "e": -1,
-        "k": [32],
-        "n_stash_size": [32],
-        "n_pack_size": [16],
-        "e_stash_size": [1024],
-        "e_pack_size": [32],
+        "k": [32, 32, 32, 32, 32, 32],
+        "n_stash_size": [1024, 1024, 1024, 1024, 1024, 1024],
+        "n_pack_size": [16, 16, 16, 16, 16, 16],
+        "e_stash_size": [1024, 1024, 1024, 1024, 1024, 1024],
+        "e_pack_size": [32, 32, 32, 32, 32, 32],
         "config_keys" : ["gtype", "n", "e", "k", "se", "pe", "sn", "pn"],
         "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery", "GraphLoad_recv", "EdgeOramInit_recv", "NodeOramInit_recv", "EdgeExistQuery_recv", "OuttingEdgesCountQuery_recv", "NeighborsGetQuery_recv", "GraphLoad_send", "EdgeOramInit_send", "NodeOramInit_send", "EdgeExistQuery_send", "OuttingEdgesCountQuery_send", "NeighborsGetQuery_send"],
     },
@@ -32,12 +37,12 @@ format_configs = {
         "prefix": MAIN_FOLDER + "/data/baseline/",
         "record_folder": MAIN_FOLDER + "/record/adjmat/",
         "record_pattern": "(.*?)_n-(\d+)-(\d+)",
-        "n": [1024],
+        "n": [1024, 2048, 4096, 8192, 16384],
         "e": -1,
-        "n_stash_size": [32],
-        "n_pack_size": [16],
-        "e_stash_size": [1024],
-        "e_pack_size": [32],
+        "n_stash_size": [1024, 1024, 1024, 1024, 1024],
+        "n_pack_size": [16, 16, 16, 16, 16],
+        "e_stash_size": [1024, 1024, 1024, 1024, 1024],
+        "e_pack_size": [32, 32, 32, 32, 32],
         "config_keys" : ["gtype", "n", "e", "se", "pe", "sn", "pn"],
         "performance_keys": ["GraphLoad", "EdgeOramInit", "NodeOramInit", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery", "GraphLoad_recv", "EdgeOramInit_recv", "NodeOramInit_recv", "EdgeExistQuery_recv", "OuttingEdgesCountQuery_recv", "NeighborsGetQuery_recv", "GraphLoad_send", "EdgeOramInit_send", "NodeOramInit_send", "EdgeExistQuery_send", "OuttingEdgesCountQuery_send", "NeighborsGetQuery_send"],
     },
@@ -45,12 +50,20 @@ format_configs = {
         "prefix": MAIN_FOLDER + "/data/baseline/",
         "record_folder": MAIN_FOLDER + "/record/edgelist/",
         "record_pattern": "(.*?)_n-(\d+)-(\d+)",
+        # "n": [1024, 2048, 4096, 8192, 16384, 32768],
         "n": [1024],
         "e": -1,
         "config_keys" : ["gtype", "n", "e"],
         "performance_keys": ["GraphLoad", "EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery", "GraphLoad_recv", "EdgeExistQuery_recv", "OuttingEdgesCountQuery_recv", "NeighborsGetQuery_recv", "GraphLoad_send", "EdgeExistQuery_send", "OuttingEdgesCountQuery_send", "NeighborsGetQuery_send"],
     },
 }
+
+def data_synchronize():
+    os.system("ssh aby31 'rm -rf /root/aby3/aby3-GraphQuery/data/baseline/*'")
+    os.system("ssh aby32 'rm -rf /root/aby3/aby3-GraphQuery/data/baseline/*'")
+    os.system("scp -r /root/aby3/aby3-GraphQuery/data/baseline/ aby31:/root/aby3/aby3-GraphQuery/data/")
+    os.system("scp -r /root/aby3/aby3-GraphQuery/data/baseline/ aby32:/root/aby3/aby3-GraphQuery/data/")
+    
 
 REPEAT_TIMES = 1
 
@@ -63,7 +76,10 @@ if __name__ == "__main__":
     target = args.target
     
     # prepare the file. 
-    os.system("cp ./frontend/main.pgp ./frontend/main.cpp; python build.py")
+    if(MPI):
+        os.system("cp ./frontend/main.pgpmpi ./frontend/main.cpp; python build.py --MPI")
+    else:
+        os.system("cp ./frontend/main.pgp ./frontend/main.cpp; python build.py")
     
     # run the privGraph profilings.
     target_config = format_configs[target] 
@@ -95,6 +111,8 @@ if __name__ == "__main__":
                     V, E = int(numbers[0]), int(numbers[1])
                     assert V == n
                     k = get_k(V, E)
+                    
+                    print(f"k = {k}")
                 
                 # corresponsing data files.
                 data_prefix = f"{gtype}_n-{n}_k-{k}"
@@ -107,17 +125,25 @@ if __name__ == "__main__":
                     print(f"File {meta_file} does not exist. Generate the data...")
                     generate_command = f"python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --k {k}"
                     os.system(generate_command)
-                
+                    
+                # data synchronization.
+                data_synchronize()
+                    
                 # run the profiling.
                 for j in range(REPEAT_TIMES):
                     count = j+1
                     run_args = f" -privGraph -prefix {data_prefix} -rcounter {count} -noram_stash_size {n_stash_size} -noram_pack_size {n_pack_size} -eoram_stash_size {e_stash_size} -eoram_pack_size {e_pack_size}"
                     
                     print(f"Run the privGraph profiling with {run_args}")
-                    os.system(f"./Eval/dis_exec.sh \"{run_args}\"")
+                    
+                    if(MPI):
+                        os.system(f"./Eval/mpi_dis_exec.sh \"{run_args}\" {MPI_TASK}")
+                    else:
+                        os.system(f"./Eval/dis_exec.sh \"{run_args}\"")
 
                     # show some debug info. 
                     os.system(f"cat ./debug.txt; rm ./debug.txt")
+                    # os.system(f"cat ./debug.txt")
         
     # run the adjmat profilings.
     if target == "adjmat":
@@ -137,6 +163,7 @@ if __name__ == "__main__":
                     print(f"File {meta_file} does not exist. Generate the data...")
                     generate_command = f"python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --saving_type edgelist"
                     os.system(generate_command)
+                data_synchronize()
                 
                 # run the profiling.
                 for j in range(REPEAT_TIMES):
@@ -165,6 +192,7 @@ if __name__ == "__main__":
                     print(f"File {meta_file} does not exist. Generate the data...")
                     generate_command = f"python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --saving_type edgelist"
                     os.system(generate_command)
+                # data_synchronize()
                 
                 # run the profiling.
                 for j in range(REPEAT_TIMES):
@@ -172,9 +200,13 @@ if __name__ == "__main__":
                     run_args = f" -edgelist true -prefix {data_prefix} -rcounter {count}"
                     
                     print(f"Run the edgelist profiling with {run_args}")
-                    os.system(f"./Eval/dis_exec.sh \"{run_args}\"")
+                    # os.system(f"./Eval/dis_exec.sh \"{run_args}\"")
 
                     # show some debug info. 
+                    if(MPI):
+                        os.system(f"./Eval/mpi_dis_exec.sh \"{run_args}\" {MPI_TASK}")
+                    else:
+                        os.system(f"./Eval/dis_exec.sh \"{run_args}\"")
                     os.system(f"cat ./debug.txt; rm ./debug.txt")
                 
 

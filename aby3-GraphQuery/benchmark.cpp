@@ -3,7 +3,6 @@
 using namespace oc;
 using namespace aby3;
 
-
 #define SET_OR_DEFAULT(cmd, key, default_value) \
     size_t key = default_value; \
     if(cmd.isSet(#key)){ \
@@ -33,6 +32,29 @@ using namespace aby3;
     timer.clear_records();
 
 
+#define MPI_INIT \ 
+    int role = -1; \
+    if (cmd.isSet("role")) { \
+        auto keys = cmd.getMany<int>("role"); \
+        role = keys[0]; \
+    } \
+    if (role == -1) { \
+        throw std::runtime_error(LOCATION); \
+    } \
+    IOService ios; \
+    Sh3Encryptor enc; \
+    Sh3Evaluator eval; \
+    Sh3Runtime runtime; \
+    int rank; \
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
+    int total_tasks; \
+    MPI_Comm_size(MPI_COMM_WORLD, &total_tasks); \
+    multi_processor_setup((u64)role, rank, ios, enc, eval, runtime); \
+    aby3Info party_info(role, enc, eval, runtime); \
+    Timer& timer = Timer::getInstance(); \
+    timer.clear_records();
+
+
 size_t get_sending_bytes(aby3Info &party_info){
     size_t send_next = party_info.runtime->mComm.mNext.getTotalDataSent();
     size_t send_prev = party_info.runtime->mComm.mPrev.getTotalDataSent();
@@ -45,17 +67,61 @@ size_t get_receiving_bytes(aby3Info &party_info){
     return recv_next + recv_prev;
 }
 
+void clear_sending_reveiving_bytes(aby3Info &party_info){
+    party_info.runtime->mComm.mNext.resetStats();
+    party_info.runtime->mComm.mPrev.resetStats();
+    return;
+}
+
+void communication_synchronize(aby3Info &party_info){
+
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+    // synchronize the communications to the 0-party.
+    std::vector<uint64_t> communications_value;
+    std::vector<std::string> key_set;
+    for(const auto& pair : cmeter.communications){
+        std::string key = pair.first;
+        uint64_t comm = pair.second;
+        communications_value.push_back(comm);
+        key_set.push_back(key);
+    }
+
+    std::vector<uint64_t> comm_next(communications_value.size());
+    std::vector<uint64_t> comm_prev(communications_value.size());
+
+    if(party_info.pIdx == 0){
+        auto tmp_next = party_info.runtime->mComm.mNext.asyncRecv(comm_next.data(), comm_next.size());
+        auto tmp_prev = party_info.runtime->mComm.mPrev.asyncRecv(comm_prev.data(), comm_prev.size());
+        tmp_next.get();
+        tmp_prev.get();
+    }
+    if(party_info.pIdx == 1){
+        auto tmp = party_info.runtime->mComm.mPrev.asyncSendFuture<uint64_t>(communications_value.data(), communications_value.size());
+        tmp.get();
+    }
+    if(party_info.pIdx == 2){
+        auto tmp = party_info.runtime->mComm.mNext.asyncSendFuture<uint64_t>(communications_value.data(), communications_value.size());
+        tmp.get();
+    }
+
+    if(party_info.pIdx == 0){
+        for(size_t i=0; i<key_set.size(); i++){
+            std::string key = key_set[i];
+            cmeter.totalCommunications[key] = {communications_value[i], comm_next[i], comm_prev[i]};
+        }
+    }
+
+    return;
+}
+
 int privGraph_performance_profiling(oc::CLP& cmd){
 
-    // get the configs.
-    int role = -1;
-    if (cmd.isSet("role")) {
-        auto keys = cmd.getMany<int>("role");
-        role = keys[0];
-    }
-    if (role == -1) {
-        throw std::runtime_error(LOCATION);
-    }
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
+    CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
 
     // get the graph file parameters.
     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
@@ -134,18 +200,9 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Getting oram configs success");
 
-    // setup communications.
-    IOService ios;
-    Sh3Encryptor enc;
-    Sh3Evaluator eval;
-    Sh3Runtime runtime;
-    basic_setup((u64)role, ios, enc, eval, runtime);
-    aby3Info party_info(role, enc, eval, runtime);
-
     if(role == 0) debug_info("Environment setup success");
 
     // load the graph.
-    Timer& timer = Timer::getInstance();
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     cmeter.start("GraphLoad_send", get_sending_bytes(party_info));
@@ -160,6 +217,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
 
     if(role == 0) debug_info("Graph loaded successfully!");
@@ -176,55 +234,15 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     timer.end("EdgeOramInit");
     cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
-
-    // cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
-    // cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
-    // timer.start("NodeOramInit");
-
-    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size); 
-
-    // timer.end("NodeOramInit");
-    // cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
-    // cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
-
-    // if(role == 0) debug_info("Noram init success");
 
     size_t b = secGraphEngine.graph->b;
     size_t b2 = secGraphEngine.graph->edge_list_size;
     size_t v = secGraphEngine.graph->v;
 
     eoram_stash_size = secGraphEngine.edge_block_oram->S;
-    // noram_stash_size = secGraphEngine.node_edges_oram->S;
-
-    // // edge block fetch
-    // for(int i=0; i<eoram_stash_size; i++){
-    //     boolIndex tar_ind = boolIndex((i % b2), role);
-    //     std::string timer_key = timer.get_key("EdgeBlockFetch");
-    //     timer.start(timer_key);
-    //     secGraphEngine.get_edge_block(tar_ind);
-    //     timer.end(timer_key);
-    // }
-
-    // if(role == 0) debug_info("Edge block fetch success");
-
-    // // node edges block fetch
-    // for(int i=0; i<noram_stash_size; i++){
-    //     boolIndex tar_ind = boolIndex((i % b), role);
-    //     std::string timer_key = timer.get_key("NodeEdgesBlockFetch");
-    //     timer.start(timer_key);
-    //     secGraphEngine.get_node_edges(tar_ind);
-    //     timer.end(timer_key);
-    // }
-
-    // if(role == 0) debug_info("node block fetch success");
-    
-    // // reinit secGraphEngine.
-    // secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
-    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
-
-    // if(role == 0) debug_info("reinit success");
 
     // basic graph query process.
     size_t ps = 0, pe = v-1;
@@ -238,12 +256,13 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
     timer.start("EdgeExistQuery");
 
-    for(int i=0; i<1; i++){
-        boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);   
+    for(int i=0; i<eoram_stash_size; i++){
+        boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);
     }
     timer.end("EdgeExistQuery");
     cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Edge existence query success");
 
@@ -259,6 +278,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Noram init success");
 
@@ -266,63 +286,101 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
     timer.start("OuttingEdgesCountQuery");
-    for(int i=0; i<1; i++){
+    for(int i=0; i<noram_stash_size; i++){
         aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     }
     timer.end("OuttingEdgesCountQuery");
     cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Outting edges count query success");
-
-    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
-
-    // // 3) neighbors get query.
-    // timer.start("NeighborsGetQuery");
-    // for(size_t i=0; i<noram_stash_size; i++){
-    //     aby3::sbMatrix neighbors = outting_neighbors(snode, snode_log_idx, secGraphEngine);
-    // }
-    // timer.end("NeighborsGetQuery");
-
-    // 4) sorted neighbors get.
-    // rebuild the graph.
-    // GraphQueryEngine secGraphEngine(party_info, meta_file, graph_data_file);
-    // plainGraph2d plainGraph(meta_file, graph_data_file);
-    // plainGraph.per_block_sort();
-    // secGraphEngine.rebuild(party_info, plainGraph);
-    // delete secGraphEngine.node_edges_oram;
-    // secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
-    // secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
-
-    if(role == 0){
-        std::ofstream stream(record_file, std::ios::app);
-        secGraphEngine.print_configs(stream);
-        timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
-    }
 
     if(role == 0) debug_info("Neighbors get query begin!");
 
     cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
     timer.start("NeighborsGetQuery");
-    for(size_t i=0; i<1; i++){
+    for(size_t i=0; i<noram_stash_size; i++){
         aby3::sbMatrix neighbors = outting_neighbors_sorted(snode, snode_log_idx, secGraphEngine);
-        if(role == 0) debug_info("Neighbors get ... ");
+        #ifdef MPI_APP
+        int left_tasks = total_tasks;
+        int start = (total_tasks + 1) / 2;
+        while(rank < start && left_tasks > 1){
+            int receive_target = rank + start; 
+            if(receive_target < left_tasks){
+                // aby3::si64Matrix out_edges_recv;
+                // std::vector<int64_t> intVec(out_edges.mShares[0].size());
+                std::vector<int64_t> neighbors_vec(neighbors.mShares[0].size() * 2);
+                MPI_Recv(neighbors_vec.data(), neighbors_vec.size(), MPI_INT64_T, receive_target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                // whether mask out the last element of the neighbors.
+                aby3::sbMatrix neighbors_recv(neighbors.mShares[0].rows(), BITSIZE);
+                std::memcpy(neighbors_recv.mShares[0].data(), neighbors_vec.data(), neighbors_recv.rows() * sizeof(int64_t));
+                std::memcpy(neighbors_recv.mShares[1].data(), neighbors_vec.data() + neighbors.mShares[0].size(), neighbors_recv.rows() * sizeof(int64_t));
+
+                aby3::sbMatrix last_element(neighbors.mShares[0].rows(), BITSIZE);
+                std::fill_n(last_element.mShares[0].data(), last_element.mShares[0].size(), neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0));
+                std::fill_n(last_element.mShares[1].data(), last_element.mShares[1].size(), neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0));
+
+                aby3::sbMatrix mask(neighbors.mShares[0].rows(), 1);
+                bool_cipher_eq(role, last_element, neighbors_recv, mask, enc, eval, runtime);
+
+                aby3::sbMatrix final_mask(1, 1);
+                bool_aggregation(role, mask, final_mask, enc, eval, runtime, "OR");
+                boolShare final_flag((bool) final_mask.mShares[0](0, 0), (bool)final_mask.mShares[1](0, 0));
+                aby3::sbMatrix zero_share(1, BITSIZE);
+                zero_share.mShares[0].setZero();
+                zero_share.mShares[1].setZero();
+                aby3::sbMatrix last_single(1, BITSIZE);
+                last_single.mShares[0](0, 0) = neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0);
+                last_single.mShares[1](0, 0) = neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0);
+
+                bool_cipher_selector(role, final_flag, zero_share, last_single, last_single, enc, eval, runtime);
+                neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0) = last_single.mShares[0](0, 0);
+                neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0) = last_single.mShares[1](0, 0);
+
+                aby3::sbMatrix new_neighbors(neighbors.i64Size() * 2, BITSIZE);
+                std::memcpy(new_neighbors.mShares[0].data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
+                std::memcpy(new_neighbors.mShares[1].data(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
+                std::memcpy(new_neighbors.mShares[0].data() + neighbors.mShares[0].size(), neighbors_recv.mShares[0].data(), neighbors_recv.mShares[0].size() * sizeof(int64_t));
+                std::memcpy(new_neighbors.mShares[1].data() + neighbors.mShares[1].size(), neighbors_recv.mShares[1].data(), neighbors_recv.mShares[1].size() * sizeof(int64_t));
+                neighbors = new_neighbors;
+            }
+            left_tasks = start;
+            start = (left_tasks + 1) / 2;
+        }
+        if(rank >= start){
+            int send_target = rank - start;
+            std::vector<int64_t> intVec(neighbors.mShares[0].size() * 2);
+            std::memcpy(intVec.data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
+            std::memcpy(intVec.data() + neighbors.mShares[0].size(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
+
+            MPI_Send(intVec.data(), intVec.size(), MPI_INT64_T, send_target, 0, MPI_COMM_WORLD);
+        }
+        if(rank == 0){
+            efficient_shuffle(neighbors, role, neighbors, enc, eval, runtime);
+        }
+        #endif
     }
     timer.end("NeighborsGetQuery");
     cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Neighbors get query success");
-    secGraphEngine.sn = 1;
 
-    // print the timer records.
+    communication_synchronize(party_info);
+
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -440,6 +498,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -452,6 +511,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     timer.end("EdgeOramInit");
     cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
@@ -462,6 +522,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     eoram_stash_size = adjGraphEngine.edge_oram->S;
     noram_stash_size = adjGraphEngine.node_oram->S;
@@ -483,6 +544,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     timer.end("EdgeExistQuery");
     cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Edge existence query success");
 
@@ -496,6 +558,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     timer.end("OuttingEdgesCountQuery");
     cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     // 3) neighbors get query.
     adjGraphEngine.node_oram_initialization(noram_stash_size, noram_pack_size);
@@ -508,13 +571,16 @@ int adj_performance_profiling(oc::CLP& cmd){
     timer.end("NeighborsGetQuery");
     cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     // print the timer records.
+    communication_synchronize(party_info);
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         adjGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -523,14 +589,21 @@ int adj_performance_profiling(oc::CLP& cmd){
 int list_performance_profiling(oc::CLP& cmd){
 
     // get the configs.
-    int role = -1;
-    if (cmd.isSet("role")) {
-        auto keys = cmd.getMany<int>("role");
-        role = keys[0];
-    }
-    if (role == -1) {
-        throw std::runtime_error(LOCATION);
-    }
+    // int role = -1;
+    // if (cmd.isSet("role")) {
+    //     auto keys = cmd.getMany<int>("role");
+    //     role = keys[0];
+    // }
+    // if (role == -1) {
+    //     throw std::runtime_error(LOCATION);
+    // }
+
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
+    CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
 
     // get the graph file parameters.
     std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
@@ -571,19 +644,19 @@ int list_performance_profiling(oc::CLP& cmd){
 
     if (role == 0) debug_info("Profiling the Edgelist Query Engine...");
 
-    // setup communications.
-    IOService ios;
-    Sh3Encryptor enc;
-    Sh3Evaluator eval;
-    Sh3Runtime runtime;
-    basic_setup((u64)role, ios, enc, eval, runtime);
-    aby3Info party_info(role, enc, eval, runtime);
+    // // setup communications.
+    // IOService ios;
+    // Sh3Encryptor enc;
+    // Sh3Evaluator eval;
+    // Sh3Runtime runtime;
+    // basic_setup((u64)role, ios, enc, eval, runtime);
+    // aby3Info party_info(role, enc, eval, runtime);
 
     if(role == 0) debug_info("Environment setup success");
 
-    // get the timer.
-    Timer& timer = Timer::getInstance();
-    timer.clear_records();
+    // // get the timer.
+    // Timer& timer = Timer::getInstance();
+    // timer.clear_records();
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // graph loading.
@@ -595,6 +668,7 @@ int list_performance_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -611,6 +685,7 @@ int list_performance_profiling(oc::CLP& cmd){
     timer.end("EdgeExistQuery");
     cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Edge existence query success");
 
@@ -623,6 +698,7 @@ int list_performance_profiling(oc::CLP& cmd){
     timer.end("OuttingEdgesCountQuery");
     cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Outting edges count query success");
 
@@ -644,15 +720,22 @@ int list_performance_profiling(oc::CLP& cmd){
     timer.end("NeighborsGetQuery");
     cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Sorted Neighbors get query success");
 
+    communication_synchronize(party_info);
     // print the timer records.
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
         listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
 
@@ -709,6 +792,7 @@ int privGraph_integration_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -721,6 +805,7 @@ int privGraph_integration_profiling(oc::CLP& cmd){
     timer.end("EdgeOramInit");
     cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
@@ -731,16 +816,19 @@ int privGraph_integration_profiling(oc::CLP& cmd){
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Noram init success");
 
+    communication_synchronize(party_info);
     // print the timer records.
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         debug_info("Printing configs... " + record_file);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
         stream.close();
     }
 
@@ -794,6 +882,7 @@ int adj_integration_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -806,6 +895,7 @@ int adj_integration_profiling(oc::CLP& cmd){
     timer.end("EdgeOramInit");
     cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Eoram init success\nNoram construction...");
 
@@ -816,15 +906,19 @@ int adj_integration_profiling(oc::CLP& cmd){
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Noram init success");
+
+    communication_synchronize(party_info);
 
     // print the timer records.
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         adjGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -870,15 +964,18 @@ int list_integration_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
+    communication_synchronize(party_info);
 
     // print the timer records.
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -952,6 +1049,7 @@ int cycle_detection_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -965,6 +1063,7 @@ int cycle_detection_profiling(oc::CLP& cmd){
     timer.end("EdgeOramInit");
     cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Eoram init success");
 
@@ -1003,15 +1102,19 @@ int cycle_detection_profiling(oc::CLP& cmd){
     timer.end("CycleDetection");
     cmeter.end("CycleDetection_send", get_sending_bytes(party_info));
     cmeter.end("CycleDetection_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Cycle detection success");
+
+    communication_synchronize(party_info);
 
     // print the timer records.
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -1080,6 +1183,7 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -1093,6 +1197,7 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Noram init success");
 
@@ -1134,15 +1239,19 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
     timer.end("twohop_neighbor");
     cmeter.end("twohop_neighbor_send", get_sending_bytes(party_info));
     cmeter.end("twohop_neighbor_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     // print the timer records.
+
+    communication_synchronize(party_info);  
 
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         debug_info("Direct neighbors of node " + std::to_string(direct_neighbor_number), stream);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -1221,6 +1330,7 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -1236,6 +1346,7 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Noram init success");
 
@@ -1255,15 +1366,18 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
     timer.end("statistic");
     cmeter.end("statistic_send", get_sending_bytes(party_info));
     cmeter.end("statistic_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Statistics success");
 
     // print the timer records.
+    communication_synchronize(party_info);
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -1320,6 +1434,7 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     // cycle detection.
     size_t node1 = 1, node2 = 2, node3 = 3;
@@ -1354,8 +1469,11 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
     timer.end("CycleDetection");
     cmeter.end("CycleDetection_send", get_sending_bytes(party_info));
     cmeter.end("CycleDetection_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Cycle detection success");
+
+    communication_synchronize(party_info);
 
     // print the timer records.
     if(role == 0){
@@ -1363,7 +1481,8 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
         stream << "===== Edge list ====" <<std::endl;
         listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -1420,6 +1539,7 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Graph loaded successfully!");
 
@@ -1482,15 +1602,18 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
     timer.end("twohop_neighbor");
     cmeter.end("twohop_neighbor_send", get_sending_bytes(party_info));
     cmeter.end("twohop_neighbor_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     // print the timer records.
+    communication_synchronize(party_info);
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         stream << "===== Edge list ====" <<std::endl;
         debug_info("Direct neighbors of node " + std::to_string(direct_neighbor_number), stream);
         listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;
@@ -1549,6 +1672,7 @@ int neighbor_statistics_profiling_edgelist(oc::CLP& cmd){
     timer.end("GraphLoad");
     cmeter.end("GraphLoad_send", get_sending_bytes(party_info));
     cmeter.end("GraphLoad_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     // statistic analysis.
     // run the statistic_func.
@@ -1566,16 +1690,19 @@ int neighbor_statistics_profiling_edgelist(oc::CLP& cmd){
     timer.end("statistic");
     cmeter.end("statistic_send", get_sending_bytes(party_info));
     cmeter.end("statistic_recv", get_receiving_bytes(party_info));
+    clear_sending_reveiving_bytes(party_info);
 
     if(role == 0) debug_info("Statistics success");
 
     // print the timer records.
+    communication_synchronize(party_info);
     if(role == 0){
         std::ofstream stream(record_file, std::ios::app);
         stream << "===== Edge list ====" <<std::endl;
         listGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
-        cmeter.print_total("MB", stream);
+        // cmeter.print_total("MB", stream);
+        cmeter.print_total_per_party("MB", stream);
     }
 
     return 0;

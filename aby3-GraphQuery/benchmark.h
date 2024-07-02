@@ -17,6 +17,8 @@
 #include "../aby3-RTR/BuildingBlocks.h"
 #include "Graph.h"
 
+void communication_synchronize(aby3Info &party_info);
+
 int privGraph_performance_profiling(oc::CLP& cmd);
 int adj_performance_profiling(oc::CLP& cmd);
 int list_performance_profiling(oc::CLP& cmd);

@@ -1,4 +1,5 @@
 #pragma once
+#include <mpi.h>
 #include <aby3/sh3/Sh3Encryptor.h>
 #include <aby3/sh3/Sh3Evaluator.h>
 #include <aby3/sh3/Sh3FixedPoint.h>
@@ -11,6 +12,7 @@
 static size_t MAX_COMM_SIZE = 1 << 25;
 
 #define PROPERTY_COMPRESS
+// #define MPI
 
 struct aby3Info{
     int pIdx;
@@ -1301,6 +1303,8 @@ class ListGraphQueryEngine{
 size_t get_sending_bytes(aby3Info &party_info);
 
 size_t get_receiving_bytes(aby3Info &party_info);
+
+void clear_sending_reveiving_bytes(aby3Info &party_info);
 
 aby3::sbMatrix get_target_node_mask(boolIndex target_start_node, aby3::sbMatrix& node_block, aby3Info &party_info);
 
