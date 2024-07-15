@@ -254,11 +254,19 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     // 1) edge existence query.
     cmeter.start("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
+
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
+
     timer.start("EdgeExistQuery");
 
-    for(int i=0; i<eoram_stash_size; i++){
+    for(int i=0; i<1; i++){
         boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);
     }
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("EdgeExistQuery");
     cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
@@ -285,10 +293,16 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     // 2) outting edges count query.
     cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("OuttingEdgesCountQuery");
-    for(int i=0; i<noram_stash_size; i++){
+    for(int i=0; i<1; i++){
         aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     }
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("OuttingEdgesCountQuery");
     cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
@@ -300,69 +314,16 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("NeighborsGetQuery");
-    for(size_t i=0; i<noram_stash_size; i++){
+    for(size_t i=0; i<1; i++){
         aby3::sbMatrix neighbors = outting_neighbors_sorted(snode, snode_log_idx, secGraphEngine);
-        #ifdef MPI_APP
-        int left_tasks = total_tasks;
-        int start = (total_tasks + 1) / 2;
-        while(rank < start && left_tasks > 1){
-            int receive_target = rank + start; 
-            if(receive_target < left_tasks){
-                // aby3::si64Matrix out_edges_recv;
-                // std::vector<int64_t> intVec(out_edges.mShares[0].size());
-                std::vector<int64_t> neighbors_vec(neighbors.mShares[0].size() * 2);
-                MPI_Recv(neighbors_vec.data(), neighbors_vec.size(), MPI_INT64_T, receive_target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-                // whether mask out the last element of the neighbors.
-                aby3::sbMatrix neighbors_recv(neighbors.mShares[0].rows(), BITSIZE);
-                std::memcpy(neighbors_recv.mShares[0].data(), neighbors_vec.data(), neighbors_recv.rows() * sizeof(int64_t));
-                std::memcpy(neighbors_recv.mShares[1].data(), neighbors_vec.data() + neighbors.mShares[0].size(), neighbors_recv.rows() * sizeof(int64_t));
-
-                aby3::sbMatrix last_element(neighbors.mShares[0].rows(), BITSIZE);
-                std::fill_n(last_element.mShares[0].data(), last_element.mShares[0].size(), neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0));
-                std::fill_n(last_element.mShares[1].data(), last_element.mShares[1].size(), neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0));
-
-                aby3::sbMatrix mask(neighbors.mShares[0].rows(), 1);
-                bool_cipher_eq(role, last_element, neighbors_recv, mask, enc, eval, runtime);
-
-                aby3::sbMatrix final_mask(1, 1);
-                bool_aggregation(role, mask, final_mask, enc, eval, runtime, "OR");
-                boolShare final_flag((bool) final_mask.mShares[0](0, 0), (bool)final_mask.mShares[1](0, 0));
-                aby3::sbMatrix zero_share(1, BITSIZE);
-                zero_share.mShares[0].setZero();
-                zero_share.mShares[1].setZero();
-                aby3::sbMatrix last_single(1, BITSIZE);
-                last_single.mShares[0](0, 0) = neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0);
-                last_single.mShares[1](0, 0) = neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0);
-
-                bool_cipher_selector(role, final_flag, zero_share, last_single, last_single, enc, eval, runtime);
-                neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0) = last_single.mShares[0](0, 0);
-                neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0) = last_single.mShares[1](0, 0);
-
-                aby3::sbMatrix new_neighbors(neighbors.i64Size() * 2, BITSIZE);
-                std::memcpy(new_neighbors.mShares[0].data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
-                std::memcpy(new_neighbors.mShares[1].data(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
-                std::memcpy(new_neighbors.mShares[0].data() + neighbors.mShares[0].size(), neighbors_recv.mShares[0].data(), neighbors_recv.mShares[0].size() * sizeof(int64_t));
-                std::memcpy(new_neighbors.mShares[1].data() + neighbors.mShares[1].size(), neighbors_recv.mShares[1].data(), neighbors_recv.mShares[1].size() * sizeof(int64_t));
-                neighbors = new_neighbors;
-            }
-            left_tasks = start;
-            start = (left_tasks + 1) / 2;
-        }
-        if(rank >= start){
-            int send_target = rank - start;
-            std::vector<int64_t> intVec(neighbors.mShares[0].size() * 2);
-            std::memcpy(intVec.data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
-            std::memcpy(intVec.data() + neighbors.mShares[0].size(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
-
-            MPI_Send(intVec.data(), intVec.size(), MPI_INT64_T, send_target, 0, MPI_COMM_WORLD);
-        }
-        if(rank == 0){
-            efficient_shuffle(neighbors, role, neighbors, enc, eval, runtime);
-        }
-        #endif
     }
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("NeighborsGetQuery");
     cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
@@ -680,8 +641,14 @@ int list_performance_profiling(oc::CLP& cmd){
 
     cmeter.start("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("EdgeExistQuery");
     boolShare flag = edge_existance(snode, enode, listGraphEngine);
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("EdgeExistQuery");
     cmeter.end("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.end("EdgeExistQuery_recv", get_receiving_bytes(party_info));
@@ -691,10 +658,16 @@ int list_performance_profiling(oc::CLP& cmd){
 
     // 2) outting edges count query.
     cmeter.start("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
-    cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));   
+    cmeter.start("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info)); 
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif  
     timer.start("OuttingEdgesCountQuery");
     // aby3::sbMatrix out_edges = outting_edge_count(snode, listGraphEngine);
     aby3::si64Matrix out_edges = outting_edge_count_arith(snode, listGraphEngine);
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("OuttingEdgesCountQuery");
     cmeter.end("OuttingEdgesCountQuery_send", get_sending_bytes(party_info));
     cmeter.end("OuttingEdgesCountQuery_recv", get_receiving_bytes(party_info));
@@ -715,8 +688,14 @@ int list_performance_profiling(oc::CLP& cmd){
 
     cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("NeighborsGetQuery");
     aby3::sbMatrix neighbors_sorted = outting_neighbors_sorted(snode, listGraphEngine);
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("NeighborsGetQuery");
     cmeter.end("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.end("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
@@ -983,7 +962,13 @@ int list_integration_profiling(oc::CLP& cmd){
 
 int cycle_detection_profiling(oc::CLP& cmd){
 
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
     CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
+
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     if(role == 0) debug_info("in this function!!!");
@@ -1056,10 +1041,15 @@ int cycle_detection_profiling(oc::CLP& cmd){
     // oram construction.
     cmeter.start("EdgeOramInit_send", get_sending_bytes(party_info));
     cmeter.start("EdgeOramInit_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("EdgeOramInit");
 
     secGraphEngine.edge_block_oram_initialization(eoram_stash_size, eoram_pack_size);
-
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("EdgeOramInit");
     cmeter.end("EdgeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("EdgeOramInit_recv", get_receiving_bytes(party_info));
@@ -1088,6 +1078,9 @@ int cycle_detection_profiling(oc::CLP& cmd){
 
     cmeter.start("CycleDetection_send", get_sending_bytes(party_info));
     cmeter.start("CycleDetection_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("CycleDetection");
 
     for(auto& edge_info : target_edges){
@@ -1098,7 +1091,9 @@ int cycle_detection_profiling(oc::CLP& cmd){
         boolShare flag = edge_existance(node1_index, node2_index, edge_index, secGraphEngine);
         edge_flags.push_back(flag);
     }
-
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("CycleDetection");
     cmeter.end("CycleDetection_send", get_sending_bytes(party_info));
     cmeter.end("CycleDetection_recv", get_receiving_bytes(party_info));
@@ -1109,7 +1104,11 @@ int cycle_detection_profiling(oc::CLP& cmd){
     communication_synchronize(party_info);
 
     // print the timer records.
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
@@ -1122,7 +1121,12 @@ int cycle_detection_profiling(oc::CLP& cmd){
 
 int twohop_neighbor_profiling(oc::CLP& cmd){
 
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
     CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // init the NORAM.
@@ -1190,10 +1194,15 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
     // oram construction.
     cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("NodeOramInit");
 
     secGraphEngine.node_edges_oram_initialization(noram_stash_size, noram_pack_size);
-
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
@@ -1201,53 +1210,72 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
 
     if(role == 0) debug_info("Noram init success");
 
-    // 2-htop neighbor detection.
-    size_t node1 = 1;
-    boolIndex snode = boolIndex(node1, role);
-    boolIndex node1_ind = boolIndex(secGraphEngine.get_block_index(node1), role);
+    // // 2-htop neighbor detection.
+    // size_t node1 = 1;
+    // boolIndex snode = boolIndex(node1, role);
+    // boolIndex node1_ind = boolIndex(secGraphEngine.get_block_index(node1), role);
 
-    cmeter.start("twohop_neighbor_send", get_sending_bytes(party_info));
-    cmeter.start("twohop_neighbor_recv", get_receiving_bytes(party_info));
-    timer.start("twohop_neighbor");    
+    // cmeter.start("twohop_neighbor_send", get_sending_bytes(party_info));
+    // cmeter.start("twohop_neighbor_recv", get_receiving_bytes(party_info));
+    // #ifdef MPI_APP
+    // MPI_Barrier(MPI_COMM_WORLD);
+    // #endif
+    // timer.start("twohop_neighbor");    
 
-    aby3::sbMatrix direct_neighbors = outting_neighbors_sorted(snode, node1_ind, secGraphEngine);
+    // aby3::sbMatrix direct_neighbors = outting_neighbors_sorted(snode, node1_ind, secGraphEngine);
 
-    aby3::i64Matrix direct_neighbors_plain(direct_neighbors.rows(), 1);
-    enc.revealAll(runtime, direct_neighbors, direct_neighbors_plain).get();
+    // aby3::i64Matrix direct_neighbors_plain(direct_neighbors.rows(), 1);
+    // enc.revealAll(runtime, direct_neighbors, direct_neighbors_plain).get();
 
-    size_t direct_neighbor_number = 0;
-    size_t minimum_neighbors = 4;
-    std::vector<size_t> direct_neighbors_list;
-    for(size_t i=0; i<direct_neighbors_plain.rows(); i++){
-        if(direct_neighbors_plain(i, 0) != 0){
-            direct_neighbor_number++;
-            direct_neighbors_list.push_back(i);
-        }
-    }
-    while(direct_neighbors_list.size() < minimum_neighbors){
-        direct_neighbors_list.push_back(10);
-    }
+    // size_t neighbor_upper_bound = 10;
+    // if(file_prefix.find("slashdot") == 0){
+    //     neighbor_upper_bound = 7;
+    // }
+    // if(file_prefix.find("dblp") == 0){
+    //     neighbor_upper_bound = 4;
+    // }
+    // if(file_prefix.find("twitter") == 0){
+    //     neighbor_upper_bound = 5;
+    // }
 
-    // 2-hop neighbor detection.
-    std::vector<size_t> two_hop_neighbors_list;
-    for(auto& neighbor : direct_neighbors_list){
-        boolIndex neighbor_id_ = boolIndex(neighbor, role);
-        boolIndex neighbor_ind_ = boolIndex(secGraphEngine.get_edge_block_index(node1, neighbor), role);
-        aby3::sbMatrix two_hop_neighbors = outting_neighbors_sorted(neighbor_id_, neighbor_ind_, secGraphEngine);
-    }
+    // // size_t direct_neighbor_number = 0;
+    // std::vector<size_t> direct_neighbors_list;
+    // // for(size_t i=0; i<direct_neighbors_plain.rows(); i++){
+    // //     if(direct_neighbors_plain(i, 0) != 0){
+    // //         direct_neighbor_number++;
+    // //         direct_neighbors_list.push_back(i);
+    // //     }
+    // // }
+    // while(direct_neighbors_list.size() < neighbor_upper_bound){
+    //     direct_neighbors_list.push_back(10);
+    // }
 
-    timer.end("twohop_neighbor");
-    cmeter.end("twohop_neighbor_send", get_sending_bytes(party_info));
-    cmeter.end("twohop_neighbor_recv", get_receiving_bytes(party_info));
-    clear_sending_reveiving_bytes(party_info);
+    // // 2-hop neighbor detection.
+    // std::vector<size_t> two_hop_neighbors_list;
+    // for(auto& neighbor : direct_neighbors_list){
+    //     boolIndex neighbor_id_ = boolIndex(neighbor, role);
+    //     boolIndex neighbor_ind_ = boolIndex(secGraphEngine.get_edge_block_index(node1, neighbor), role);
+    //     aby3::sbMatrix two_hop_neighbors = outting_neighbors_sorted(neighbor_id_, neighbor_ind_, secGraphEngine);
+    // }
+    // #ifdef MPI_APP
+    // MPI_Barrier(MPI_COMM_WORLD);
+    // #endif
+    // timer.end("twohop_neighbor");
+    // cmeter.end("twohop_neighbor_send", get_sending_bytes(party_info));
+    // cmeter.end("twohop_neighbor_recv", get_receiving_bytes(party_info));
+    // clear_sending_reveiving_bytes(party_info);
 
-    // print the timer records.
+    // // print the timer records.
 
     communication_synchronize(party_info);  
 
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
-        debug_info("Direct neighbors of node " + std::to_string(direct_neighbor_number), stream);
+        // debug_info("Direct neighbors of node " + std::to_string(direct_neighbors_list.size()), stream);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
         // cmeter.print_total("MB", stream);
@@ -1259,7 +1287,12 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
 
 int neighbor_statistics_profiling(oc::CLP& cmd){
 
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
     CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // set the graph.
@@ -1338,11 +1371,16 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
     // oram construction.
     cmeter.start("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.start("NodeOramInit_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("NodeOramInit");
 
     if(role == 0) debug_info("Noram construction...");
     secGraphEngine.node_edges_property_oram_initialization(noram_stash_size, noram_pack_size);
-
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("NodeOramInit");
     cmeter.end("NodeOramInit_send", get_sending_bytes(party_info));
     cmeter.end("NodeOramInit_recv", get_receiving_bytes(party_info));
@@ -1359,10 +1397,15 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
 
     cmeter.start("statistic_send", get_sending_bytes(party_info));
     cmeter.start("statistic_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("statistic");
 
     aby3::si64Matrix statistics = outting_edge_range_statistics(snode, node1_ind, sec_upper_bound, secGraphEngine); 
-
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("statistic");
     cmeter.end("statistic_send", get_sending_bytes(party_info));
     cmeter.end("statistic_recv", get_receiving_bytes(party_info));
@@ -1372,7 +1415,11 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
 
     // print the timer records.
     communication_synchronize(party_info);
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
         secGraphEngine.print_configs(stream);
         timer.print_total("milliseconds", stream);
@@ -1385,7 +1432,12 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
 
 int cycle_detection_profiling_edgelist(oc::CLP& cmd){
 
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
     CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // load graph.
@@ -1456,6 +1508,9 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
 
     cmeter.start("CycleDetection_send", get_sending_bytes(party_info));
     cmeter.start("CycleDetection_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("CycleDetection");
 
     for(auto& edge_info : target_edges){
@@ -1465,7 +1520,9 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
         boolShare flag = edge_existance(node1_index, node2_index, listGraphEngine);
         edge_flags.push_back(flag);
     }
-
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("CycleDetection");
     cmeter.end("CycleDetection_send", get_sending_bytes(party_info));
     cmeter.end("CycleDetection_recv", get_receiving_bytes(party_info));
@@ -1476,7 +1533,11 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
     communication_synchronize(party_info);
 
     // print the timer records.
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
         stream << "===== Edge list ====" <<std::endl;
         listGraphEngine.print_configs(stream);
@@ -1490,7 +1551,12 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
 
 int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
 
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
     CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // load graph.
@@ -1549,6 +1615,9 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
     
     cmeter.start("twohop_neighbor_send", get_sending_bytes(party_info));
     cmeter.start("twohop_neighbor_recv", get_receiving_bytes(party_info));
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.start("twohop_neighbor");    
 
     aby3::sbMatrix direct_neighbors = outting_neighbors_sorted(snode, listGraphEngine);
@@ -1563,13 +1632,13 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
     if(role == 0) debug_info("revealed the first direct neighbors!");
 
     size_t neighbor_upper_bound = 10;
-    if(file_prefix == "slashdot"){
+    if(file_prefix.find("slashdot") == 0){
         neighbor_upper_bound = 7;
     }
-    if(file_prefix == "dblp"){
+    if(file_prefix.find("dblp") == 0){
         neighbor_upper_bound = 4;
     }
-    if(file_prefix == "twitter"){
+    if(file_prefix.find("twitter") == 0){
         neighbor_upper_bound = 5;
     }
 
@@ -1591,7 +1660,7 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
     }
 
     // 2-hop neighbor detection.
-    size_t neighbor_count = 1;
+    size_t neighbor_count = direct_neighbors_list.size();
     std::vector<size_t> two_hop_neighbors_list;
     for(auto& neighbor : direct_neighbors_list){
         boolIndex neighbor_id_ = boolIndex(neighbor, role);
@@ -1599,6 +1668,9 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
         if(role == 0) debug_info("getting neighbors of " + std::to_string(neighbor_count) + " / " + std::to_string(direct_neighbor_number));
     }
 
+    #ifdef MPI_APP
+    MPI_Barrier(MPI_COMM_WORLD);
+    #endif
     timer.end("twohop_neighbor");
     cmeter.end("twohop_neighbor_send", get_sending_bytes(party_info));
     cmeter.end("twohop_neighbor_recv", get_receiving_bytes(party_info));
@@ -1606,7 +1678,11 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
 
     // print the timer records.
     communication_synchronize(party_info);
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
         stream << "===== Edge list ====" <<std::endl;
         debug_info("Direct neighbors of node " + std::to_string(direct_neighbor_number), stream);
@@ -1621,7 +1697,12 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
 
 int neighbor_statistics_profiling_edgelist(oc::CLP& cmd){
 
+    #ifdef MPI_APP
+    MPI_INIT
+    #else
     CONFIG_INIT
+    if(role == 0) debug_info("in this function!!!!");
+    #endif
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // load graph.
@@ -1696,7 +1777,11 @@ int neighbor_statistics_profiling_edgelist(oc::CLP& cmd){
 
     // print the timer records.
     communication_synchronize(party_info);
+    #ifdef MPI_APP
+    if((role == 0) && (rank == 0)){
+    #else
     if(role == 0){
+    #endif
         std::ofstream stream(record_file, std::ios::app);
         stream << "===== Edge list ====" <<std::endl;
         listGraphEngine.print_configs(stream);

@@ -238,7 +238,7 @@ aby3::sbMatrix get_unique_ending_nodes_in_sored_edge_list(boolIndex target_start
     }
 
     // shuffle the masks and target nodes for privacy.
-    #ifndef MPI
+    #ifndef MPI_APP
     efficient_shuffle(filtered_nodes, party_info.pIdx, filtered_nodes, *(party_info.enc), *(party_info.eval), *(party_info.runtime));
     #endif
 
@@ -303,6 +303,7 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
     query_res.from_matrix(res.mShares[0](0, 0), res.mShares[1](0, 0));
 
     #ifdef MPI_APP
+    // debug_info("mpi exge exist????");
     int role = GQEngine.party_info->pIdx;
     boolShare flag = query_res;
     int total_tasks, rank;
@@ -316,6 +317,7 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
             boolShare flag_recv;
             std::vector<char> charVec(2);
             MPI_Recv(charVec.data(), charVec.size(), MPI_CHAR, receive_target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            // if(GQEngine.party_info->pIdx == 0) debug_info("my rank is " + std::to_string(rank) + "receive from " + std::to_string(receive_target));
             flag_recv = boolShare(charVec[0], charVec[1]);
             bool_cipher_or(GQEngine.party_info->pIdx, flag, flag_recv, flag, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
         }
@@ -326,6 +328,7 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node,
         int send_target = rank - start;
         std::vector<char> charVec = {flag.bshares[0], flag.bshares[1]};
         MPI_Send(charVec.data(), charVec.size(), MPI_CHAR, send_target, 0, MPI_COMM_WORLD);
+        if(GQEngine.party_info->pIdx == 0) debug_info("my rank is " + std::to_string(rank) + "send to " + std::to_string(send_target));
     }
     #endif
 
@@ -614,6 +617,8 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, boolIndex logical_
         // return get_unique_ending_nodes_in_sored_edge_list(node_index, starting_nodes, ending_nodes, *(GQEngine.party_info));
         aby3::sbMatrix neighbors = get_unique_ending_nodes_in_sored_edge_list(node_index, starting_nodes, ending_nodes, *(GQEngine.party_info));
 
+        // debug_info("in this function????? neighbors???");
+
         #ifdef MPI_APP
         int role = GQEngine.party_info->pIdx;
         aby3::Sh3Encryptor& enc = *(GQEngine.party_info->enc);
@@ -622,6 +627,7 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, boolIndex logical_
         int total_tasks, rank;
         MPI_Comm_size(MPI_COMM_WORLD, &total_tasks);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        // if(rank == 0) debug_info("in MPI neighbors get!!!");
         int left_tasks = total_tasks;
         int start = (total_tasks + 1) / 2;
         while(rank < start && left_tasks > 1){
@@ -629,19 +635,21 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, boolIndex logical_
             if(receive_target < left_tasks){
                 // aby3::si64Matrix out_edges_recv;
                 // std::vector<int64_t> intVec(out_edges.mShares[0].size());
-                std::vector<int64_t> neighbors_vec(neighbors.mShares[0].size() * 2);
+                uint32_t recv_size;
+                MPI_Recv(&recv_size, 1, MPI_UINT32_T, receive_target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                std::vector<int64_t> neighbors_vec(recv_size * 2);
                 MPI_Recv(neighbors_vec.data(), neighbors_vec.size(), MPI_INT64_T, receive_target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
                 // whether mask out the last element of the neighbors.
-                aby3::sbMatrix neighbors_recv(neighbors.mShares[0].rows(), BITSIZE);
+                aby3::sbMatrix neighbors_recv(recv_size, BITSIZE);
                 std::memcpy(neighbors_recv.mShares[0].data(), neighbors_vec.data(), neighbors_recv.rows() * sizeof(int64_t));
                 std::memcpy(neighbors_recv.mShares[1].data(), neighbors_vec.data() + neighbors.mShares[0].size(), neighbors_recv.rows() * sizeof(int64_t));
 
-                aby3::sbMatrix last_element(neighbors.mShares[0].rows(), BITSIZE);
+                aby3::sbMatrix last_element(recv_size, BITSIZE);
                 std::fill_n(last_element.mShares[0].data(), last_element.mShares[0].size(), neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0));
                 std::fill_n(last_element.mShares[1].data(), last_element.mShares[1].size(), neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0));
 
-                aby3::sbMatrix mask(neighbors.mShares[0].rows(), 1);
+                aby3::sbMatrix mask(recv_size, 1);
                 bool_cipher_eq(role, last_element, neighbors_recv, mask, enc, eval, runtime);
 
                 aby3::sbMatrix final_mask(1, 1);
@@ -658,7 +666,7 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, boolIndex logical_
                 neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0) = last_single.mShares[0](0, 0);
                 neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0) = last_single.mShares[1](0, 0);
 
-                aby3::sbMatrix new_neighbors(neighbors.i64Size() * 2, BITSIZE);
+                aby3::sbMatrix new_neighbors(neighbors.i64Size() + recv_size, BITSIZE);
                 std::memcpy(new_neighbors.mShares[0].data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
                 std::memcpy(new_neighbors.mShares[1].data(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
                 std::memcpy(new_neighbors.mShares[0].data() + neighbors.mShares[0].size(), neighbors_recv.mShares[0].data(), neighbors_recv.mShares[0].size() * sizeof(int64_t));
@@ -666,14 +674,15 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, boolIndex logical_
                 neighbors = new_neighbors;
             }
             left_tasks = start;
-            start = (left_tasks + 1) / 2;
+            start = (start + 1) / 2;
         }
         if(rank >= start){
             int send_target = rank - start;
             std::vector<int64_t> intVec(neighbors.mShares[0].size() * 2);
             std::memcpy(intVec.data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
             std::memcpy(intVec.data() + neighbors.mShares[0].size(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
-
+            uint32_t send_size = neighbors.mShares[0].size();
+            MPI_Send(&send_size, 1, MPI_UINT32_T, send_target, 0, MPI_COMM_WORLD);
             MPI_Send(intVec.data(), intVec.size(), MPI_INT64_T, send_target, 0, MPI_COMM_WORLD);
         }
         if(rank == 0){
@@ -998,21 +1007,23 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, ListGraphQueryEngi
     while(rank < start && left_tasks > 1){
         int receive_target = rank + start; 
         if(receive_target < left_tasks){
+            uint32_t recv_size;
+            MPI_Recv(&recv_size, 1, MPI_UINT32_T, receive_target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             // aby3::si64Matrix out_edges_recv;
             // std::vector<int64_t> intVec(out_edges.mShares[0].size());
-            std::vector<int64_t> neighbors_vec(neighbors.mShares[0].size() * 2);
+            std::vector<int64_t> neighbors_vec(recv_size * 2);
             MPI_Recv(neighbors_vec.data(), neighbors_vec.size(), MPI_INT64_T, receive_target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
             // whether mask out the last element of the neighbors.
-            aby3::sbMatrix neighbors_recv(neighbors.mShares[0].rows(), BITSIZE);
+            aby3::sbMatrix neighbors_recv(recv_size, BITSIZE);
             std::memcpy(neighbors_recv.mShares[0].data(), neighbors_vec.data(), neighbors_recv.rows() * sizeof(int64_t));
             std::memcpy(neighbors_recv.mShares[1].data(), neighbors_vec.data() + neighbors.mShares[0].size(), neighbors_recv.rows() * sizeof(int64_t));
 
-            aby3::sbMatrix last_element(neighbors.mShares[0].rows(), BITSIZE);
+            aby3::sbMatrix last_element(recv_size, BITSIZE);
             std::fill_n(last_element.mShares[0].data(), last_element.mShares[0].size(), neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0));
             std::fill_n(last_element.mShares[1].data(), last_element.mShares[1].size(), neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0));
 
-            aby3::sbMatrix mask(neighbors.mShares[0].rows(), 1);
+            aby3::sbMatrix mask(recv_size, 1);
             bool_cipher_eq(role, last_element, neighbors_recv, mask, enc, eval, runtime);
 
             aby3::sbMatrix final_mask(1, 1);
@@ -1029,7 +1040,7 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, ListGraphQueryEngi
             neighbors.mShares[0](neighbors.mShares[0].rows()-1, 0) = last_single.mShares[0](0, 0);
             neighbors.mShares[1](neighbors.mShares[1].rows()-1, 0) = last_single.mShares[1](0, 0);
 
-            aby3::sbMatrix new_neighbors(neighbors.i64Size() * 2, BITSIZE);
+            aby3::sbMatrix new_neighbors(neighbors.i64Size() + recv_size, BITSIZE);
             std::memcpy(new_neighbors.mShares[0].data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
             std::memcpy(new_neighbors.mShares[1].data(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
             std::memcpy(new_neighbors.mShares[0].data() + neighbors.mShares[0].size(), neighbors_recv.mShares[0].data(), neighbors_recv.mShares[0].size() * sizeof(int64_t));
@@ -1044,7 +1055,8 @@ aby3::sbMatrix outting_neighbors_sorted(boolIndex node_index, ListGraphQueryEngi
         std::vector<int64_t> intVec(neighbors.mShares[0].size() * 2);
         std::memcpy(intVec.data(), neighbors.mShares[0].data(), neighbors.mShares[0].size() * sizeof(int64_t));
         std::memcpy(intVec.data() + neighbors.mShares[0].size(), neighbors.mShares[1].data(), neighbors.mShares[1].size() * sizeof(int64_t));
-
+        uint32_t send_size = neighbors.mShares[0].size();
+        MPI_Send(&send_size, 1, MPI_UINT32_T, send_target, 0, MPI_COMM_WORLD);
         MPI_Send(intVec.data(), intVec.size(), MPI_INT64_T, send_target, 0, MPI_COMM_WORLD);
     }
     if(rank == 0){
