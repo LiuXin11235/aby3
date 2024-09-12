@@ -56,6 +56,7 @@ int shuffle_test(oc::CLP& cmd);
 int large_scale_shuffle_test(oc::CLP& cmd);
 int correlation_test(oc::CLP& cmd);
 int communication_test(oc::CLP& cmd);
+int permutation_network_test(oc::CLP& cmd);
 
 // oram tests
 int pos_map_test(oc::CLP& cmd);

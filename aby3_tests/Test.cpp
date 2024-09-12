@@ -692,6 +692,130 @@ int large_scale_shuffle_test(oc::CLP &cmd){
     return 0;
 }
 
+int permutation_network_test(oc::CLP &cmd){
+    // get the configs.
+    BASIC_TEST_INIT
+
+    if (role == 0) {
+        debug_info("RUN PERMUTATION NETWORK TEST");
+    }
+
+    // prepare the data.
+    int TEST_SIZE = 8;
+    int TEST_UNIT_SIZE = 1;
+
+    std::vector<i64Matrix> input_x(TEST_SIZE);
+    std::vector<i64Matrix> input_y(TEST_SIZE);
+    // std::vector<i64Matrix> input_z(TEST_SIZE);
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        input_x[i].resize(TEST_UNIT_SIZE, 1);
+        input_y[i].resize(TEST_UNIT_SIZE, 1);
+        // input_z[i].resize(TEST_UNIT_SIZE, 1);   
+        for (size_t j = 0; j < TEST_UNIT_SIZE; j++) {
+            input_x[i](j, 0) = i;
+            // input_z[i](j, 0) = i;
+            input_y[i](j, 0) = TEST_SIZE - i;
+        }
+    }
+
+    // encrypt the inputs.
+    std::vector<sbMatrix> bsharedX(TEST_SIZE);
+    std::vector<sbMatrix> bsharedY(TEST_SIZE);
+    std::vector<sbMatrix> bsharedZ(TEST_SIZE);
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        bsharedX[i].resize(TEST_UNIT_SIZE, 64);
+        bsharedY[i].resize(TEST_UNIT_SIZE, 64);
+        bsharedZ[i].resize(TEST_UNIT_SIZE, 64);
+        if (role == 0) {
+            enc.localBinMatrix(runtime, input_x[i], bsharedX[i]).get();
+            enc.localBinMatrix(runtime, input_y[i], bsharedY[i]).get();
+            enc.localBinMatrix(runtime, input_x[i], bsharedZ[i]).get();
+        } else {
+            enc.remoteBinMatrix(runtime, bsharedX[i]).get();
+            enc.remoteBinMatrix(runtime, bsharedY[i]).get();
+            enc.remoteBinMatrix(runtime, bsharedZ[i]).get();
+        }
+    }
+
+    // test random switch.
+    random_switch(bsharedY, bsharedZ, role, enc, eval, runtime);
+    std::vector<i64Matrix> switched_y(TEST_SIZE);
+    std::vector<i64Matrix> switched_z(TEST_SIZE);
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        switched_y[i].resize(TEST_UNIT_SIZE, 1);
+        switched_z[i].resize(TEST_UNIT_SIZE, 1);
+        enc.revealAll(runtime, bsharedY[i], switched_y[i]).get();
+        enc.revealAll(runtime, bsharedZ[i], switched_z[i]).get();
+    }
+    if(role == 0){
+        bool check_flag = true;
+        for (size_t i = 0; i < TEST_SIZE; i++) {
+            for (size_t j = 0; j < TEST_UNIT_SIZE; j++) {
+                if (switched_y[i](j, 0) != input_y[i](j, 0) || switched_z[i](j, 0) != input_x[i](j, 0)) {
+                    check_flag = false;
+                }
+            }
+        }
+        if (check_flag) {
+            debug_info("\033[32m RANDOM SWITCH CHECK SUCCESS ! \033[0m\n");
+        } else {
+            debug_info("\033[31m RANDOM SWITCH CHECK ERROR ! \033[0m\n");
+            debug_info("True result: \n");
+            for (size_t i = 0; i < TEST_SIZE; i++) {
+                debug_output_matrix(input_y[i]);
+            }
+            debug_info("Func result: \n");
+            for (size_t i = 0; i < TEST_SIZE; i++) {
+                debug_output_matrix(switched_y[i]);
+            }
+        }
+    }
+
+    // run the permutation network.
+    permutation_network(bsharedX, role, bsharedX, enc, eval, runtime);
+
+    // check the result.
+    std::vector<i64Matrix> test_res(TEST_SIZE);
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        test_res[i].resize(TEST_UNIT_SIZE, 1);
+        enc.revealAll(runtime, bsharedX[i], test_res[i]).get();
+    }
+
+    // check the final result.
+    if (role == 0) {
+        bool check_flag = true;
+        for (size_t i = 0; i < TEST_SIZE; i++) {
+            for (size_t j = 0; j < TEST_UNIT_SIZE; j++) {
+                if (test_res[i](j, 0) != input_x[i](j, 0)) {
+                    check_flag = false;
+                }
+            }
+        }
+        if (check_flag) {
+            debug_info("\033[32m PERMUTATION NETWORK CHECK SUCCESS ! \033[0m\n");
+        } else {
+            debug_info("\033[31m PERMUTATION NETWORK CHECK ERROR ! \033[0m\n");
+            debug_info("True result: \n");
+            aby3::i64Matrix test_x(TEST_SIZE, 1);
+            for (size_t i = 0; i < TEST_SIZE; i++) {
+                // debug_output_matrix(input_x[i]);
+                test_x(i, 0) = input_x[i](0, 0);
+            }
+            debug_output_matrix(test_x);
+            debug_info("Func result: \n");
+            for (size_t i = 0; i < TEST_SIZE; i++) {
+                // debug_output_matrix(test_res[i]);
+                test_x(i, 0) = test_res[i](0, 0);
+            }
+            debug_output_matrix(test_x);
+        }
+    }
+
+
+    return 0;
+}
+
+
 int correlation_test(oc::CLP &cmd) {
     // get the configs.
     int role = -1;

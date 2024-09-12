@@ -1468,3 +1468,197 @@ int efficient_shuffle_with_random_permutation(
 
     return 0;
 }
+
+int switch_given_bits(aby3::sbMatrix &left, aby3::sbMatrix &right, int pIdx, aby3::sbMatrix &switch_bit, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+    int length = left.i64Size();
+    int bit_size = left.bitCount();
+
+    aby3::sbMatrix left_right(length*2, bit_size);
+    std::memcpy(left_right.mShares[0].data(), left.mShares[0].data(), left.mShares[0].size());
+    std::memcpy(left_right.mShares[1].data(), left.mShares[1].data(), left.mShares[1].size());
+    std::memcpy(left_right.mShares[0].data() + length, right.mShares[0].data(), right.mShares[0].size());
+    std::memcpy(left_right.mShares[1].data() + length, right.mShares[1].data(), right.mShares[1].size());
+
+    aby3::sbMatrix double_switch_bit(length*2, bit_size);
+    aby3::sbMatrix double_inverse_bit(length*2, bit_size);
+    std::memcpy(double_switch_bit.mShares[0].data(), switch_bit.mShares[0].data(), switch_bit.mShares[0].size());
+    std::memcpy(double_switch_bit.mShares[1].data(), switch_bit.mShares[1].data(), switch_bit.mShares[1].size());
+    std::memcpy(double_switch_bit.mShares[0].data() + length, switch_bit.mShares[0].data(), switch_bit.mShares[0].size());
+    std::memcpy(double_switch_bit.mShares[1].data() + length, switch_bit.mShares[1].data(), switch_bit.mShares[1].size());
+    bool_cipher_not(pIdx, double_switch_bit, double_inverse_bit);
+
+    // switch the left and right according to the switch bit.
+    aby3::sbMatrix left_right_switched(length*2, bit_size);
+    bool_cipher_and(pIdx, left_right, double_switch_bit, left_right_switched, enc, eval, runtime);
+    aby3::sbMatrix left_right_inverse(length*2, bit_size);
+    bool_cipher_and(pIdx, left_right, double_inverse_bit, left_right_inverse, enc, eval, runtime);
+
+    // get the switched left and right.
+    bool_cipher_or(pIdx, left_right_switched, left_right_inverse, left_right, enc, eval, runtime);
+
+    // assign to the left and right.
+    std::memcpy(left.mShares[0].data(), left_right.mShares[0].data(), left.mShares[0].size());
+    std::memcpy(left.mShares[1].data(), left_right.mShares[1].data(), left.mShares[1].size());
+    std::memcpy(right.mShares[0].data(), left_right.mShares[0].data() + length, right.mShares[0].size());
+    std::memcpy(right.mShares[1].data(), left_right.mShares[1].data() + length, right.mShares[1].size());
+
+    return 0;
+}
+
+int random_switch(aby3::sbMatrix &left, aby3::sbMatrix &right, int pIdx, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+    int length = left.i64Size();
+    int bit_size = left.bitCount();
+
+    // generate the random switch bit, now we use all-zeros for simplicity.
+    aby3::sbMatrix switch_bit(length, bit_size);
+    for(int i=0; i<length; i++){
+        switch_bit.mShares[0](i, 0) = 0; switch_bit.mShares[1](i, 0) = 0;
+    }
+
+    aby3::sbMatrix left_right(length*2, bit_size);
+    std::memcpy(left_right.mShares[0].data(), left.mShares[0].data(), left.mShares[0].size());
+    std::memcpy(left_right.mShares[1].data(), left.mShares[1].data(), left.mShares[1].size());
+    std::memcpy(left_right.mShares[0].data() + length, right.mShares[0].data(), right.mShares[0].size());
+    std::memcpy(left_right.mShares[1].data() + length, right.mShares[1].data(), right.mShares[1].size());
+
+    aby3::sbMatrix double_switch_bit(length*2, bit_size);
+    aby3::sbMatrix double_inverse_bit(length*2, bit_size);
+    std::memcpy(double_switch_bit.mShares[0].data(), switch_bit.mShares[0].data(), switch_bit.mShares[0].size());
+    std::memcpy(double_switch_bit.mShares[1].data(), switch_bit.mShares[1].data(), switch_bit.mShares[1].size());
+    std::memcpy(double_switch_bit.mShares[0].data() + length, switch_bit.mShares[0].data(), switch_bit.mShares[0].size());
+    std::memcpy(double_switch_bit.mShares[1].data() + length, switch_bit.mShares[1].data(), switch_bit.mShares[1].size());
+    bool_cipher_not(pIdx, double_switch_bit, double_inverse_bit);
+
+    // switch the left and right according to the switch bit.
+    aby3::sbMatrix left_right_switched(length*2, bit_size);
+    bool_cipher_and(pIdx, left_right, double_switch_bit, left_right_switched, enc, eval, runtime);
+    aby3::sbMatrix left_right_inverse(length*2, bit_size);
+    bool_cipher_and(pIdx, left_right, double_inverse_bit, left_right_inverse, enc, eval, runtime);
+
+    // get the switched left and right.
+    bool_cipher_or(pIdx, left_right_switched, left_right_inverse, left_right, enc, eval, runtime);
+
+    // assign to the left and right.
+    std::memcpy(left.mShares[0].data(), left_right.mShares[0].data(), left.mShares[0].size());
+    std::memcpy(left.mShares[1].data(), left_right.mShares[1].data(), left.mShares[1].size());
+    std::memcpy(right.mShares[0].data(), left_right.mShares[0].data() + length, right.mShares[0].size());
+    std::memcpy(right.mShares[1].data(), left_right.mShares[1].data() + length, right.mShares[1].size());
+    
+    return 0;
+}
+
+int random_switch(std::vector<aby3::sbMatrix>& left, std::vector<aby3::sbMatrix>& right, int pIdx, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+
+    int length = left.size();
+    int unit_length = left[0].i64Size();
+    int bit_size = left[0].bitCount();
+
+    // generate the random switch bits, now we use all-zeros for simplicity.
+    aby3::sbMatrix switch_bit(length, bit_size);
+    for(int i=0; i<length; i++){
+        switch_bit.mShares[0](i, 0) = 0; switch_bit.mShares[1](i, 0) = 0;
+    }
+
+    // flatten the left, right and switch bits to sbMatrix for vectorized computation.
+    aby3::sbMatrix expend_switch_bits(length*unit_length, bit_size);
+    aby3::sbMatrix expand_left(length*unit_length, bit_size);
+    aby3::sbMatrix expand_right(length*unit_length, bit_size);
+    for(int i=0; i<length; i++){
+        // switch bits.
+        std::fill(expend_switch_bits.mShares[0].data() + i*unit_length, expend_switch_bits.mShares[0].data() + (i+1)*unit_length, switch_bit.mShares[0](i, 0));
+        std::fill(expend_switch_bits.mShares[1].data() + i*unit_length, expend_switch_bits.mShares[1].data() + (i+1)*unit_length, switch_bit.mShares[1](i, 0));
+
+        // left and right.
+        std::memcpy(expand_left.mShares[0].data() + i*unit_length, left[i].mShares[0].data(), left[i].mShares[0].size());
+        std::memcpy(expand_left.mShares[1].data() + i*unit_length, left[i].mShares[1].data(), left[i].mShares[1].size());
+        std::memcpy(expand_right.mShares[0].data() + i*unit_length, right[i].mShares[0].data(), right[i].mShares[0].size());
+        std::memcpy(expand_right.mShares[1].data() + i*unit_length, right[i].mShares[1].data(), right[i].mShares[1].size());
+    }
+
+    // switch the left and right according to the switch bit.
+    switch_given_bits(expand_left, expand_right, pIdx, expend_switch_bits, enc, eval, runtime);
+
+    // assign the switched left and right back to the original vectors.
+    for(int i=0; i<length; i++){
+        std::memcpy(left[i].mShares[0].data(), expand_left.mShares[0].data() + i*unit_length, left[i].mShares[0].size());
+        std::memcpy(left[i].mShares[1].data(), expand_left.mShares[1].data() + i*unit_length, left[i].mShares[1].size());
+        std::memcpy(right[i].mShares[0].data(), expand_right.mShares[0].data() + i*unit_length, right[i].mShares[0].size());
+        std::memcpy(right[i].mShares[1].data(), expand_right.mShares[1].data() + i*unit_length, right[i].mShares[1].size());
+    }
+    
+
+    return 0;
+}
+
+int permutation_network(std::vector<aby3::sbMatrix> &T, int pIdx, std::vector<aby3::sbMatrix> &Tres, aby3::Sh3Encryptor& enc, aby3::Sh3Evaluator& eval, aby3::Sh3Runtime& runtime){
+    int length = T.size();
+    int half_length = length / 2;
+    int unit_size = T[0].i64Size();
+    int bit_size = T[0].bitCount();
+
+    if(length == 2){
+        random_switch(T[0], T[1], pIdx, enc, eval, runtime);
+        Tres = T;
+        return 0;
+    }
+    else if(length == 1){
+        Tres = T;
+        return 0;
+    }
+    
+    int round = (int)ceil(log2(length));
+
+    // split permute.
+    for(int i=0; i<round; i++){
+        int layer_size = (int)pow(2, i);
+        std::vector<aby3::sbMatrix> leftT;
+        std::vector<aby3::sbMatrix> rightT;
+        for(int j=0; j<length; j++){
+            if(j%2 == 0) leftT.push_back(T[j]);
+            else rightT.push_back(T[j]);
+        }
+        random_switch(leftT, rightT, pIdx, enc, eval, runtime);
+        // merge the left and right.
+        int round_unit_size = length / (layer_size * 2);
+        int unit_count = leftT.size() / round_unit_size;
+        for(int j=0; j<unit_count; j++){
+            for(int k=0; k<round_unit_size; k++){
+                T[j*round_unit_size*2 + k] = leftT[j*round_unit_size + k];
+                T[j*round_unit_size*2 + round_unit_size + k] = rightT[j*round_unit_size + k];
+            }
+        }
+
+    }
+
+    // combine permutate.
+    for(int i=1; i<round; i++){
+        int layer_size = (int)pow(2, round - i);
+        int group_size = length / layer_size;
+        std::vector<aby3::sbMatrix> leftT;
+        std::vector<aby3::sbMatrix> rightT;
+        // debug_info("layer_size: " + std::to_string(layer_size) + ", group_size: " + std::to_string(group_size));
+        for(int j=0; j<layer_size/2; j++){
+            // assign the left and right.
+            for(int k=1; k<group_size; k++){
+                leftT.push_back(T[j*group_size*2 + k]);
+            }
+            for(int k=1; k<group_size; k++){
+                rightT.push_back(T[j*group_size*2 + group_size + k]);
+            }
+            // process the first element.
+            T[j*group_size*2+1] = T[j*group_size*2 + group_size];
+
+        }
+
+        random_switch(leftT, rightT, pIdx, enc, eval, runtime);
+        // merge the left and right.
+        for(int j=0; j<layer_size/2; j++){
+            for(int k=1; k<group_size; k++){
+                T[j*group_size*2 + k*2] = leftT[(j*(group_size-1) + k - 1)];
+                T[j*group_size*2 + k*2+1] = rightT[(j*(group_size-1) + k - 1)];
+            }
+        }
+    }
+    Tres = T;
+    return 0;
+}
