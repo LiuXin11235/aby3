@@ -35,3 +35,7 @@ int neighbor_statistics_profiling(oc::CLP& cmd);
 int cycle_detection_profiling_edgelist(oc::CLP& cmd);
 int twohop_neighbor_profiling_edgelist(oc::CLP& cmd);
 int neighbor_statistics_profiling_edgelist(oc::CLP& cmd);
+
+// microbenchmarks.
+int permutation_network_profiling(oc::CLP& cmd);
+int shuffMem_profiling(oc::CLP& cmd);

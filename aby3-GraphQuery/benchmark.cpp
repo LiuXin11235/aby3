@@ -13,6 +13,16 @@ using namespace aby3;
         debug_info(#key " is not set, using default value: " + std::to_string(key)); \
     }
 
+#define SET_STRING_OR_DEFAULT(cmd, key, default_value) \
+    std::string key = default_value; \
+    if(cmd.isSet(#key)){ \
+        auto keys = cmd.getMany<std::string>(#key); \
+        key = keys[0]; \
+    } \
+    else{ \
+        debug_info(#key " is not set, using default value: " + key); \
+    }
+
 #define CONFIG_INIT \
     int role = -1; \
     if (cmd.isSet("role")) { \
@@ -1788,6 +1798,119 @@ int neighbor_statistics_profiling_edgelist(oc::CLP& cmd){
         timer.print_total("milliseconds", stream);
         // cmeter.print_total("MB", stream);
         cmeter.print_total_per_party("MB", stream);
+    }
+
+    return 0;
+}
+
+int permutation_network_profiling(oc::CLP& cmd){
+
+    CONFIG_INIT
+    if(role == 0) debug_info("permutation network profiling");
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    // std::string record_folder = "/root/aby3/aby3-GraphQuery/record/permutation_network/";
+    // std::string file_prefix = "tmp";
+    SET_OR_DEFAULT(cmd, length, 1 << 10);
+    SET_OR_DEFAULT(cmd, unit_length, 1 << 4);
+    SET_STRING_OR_DEFAULT(cmd, record_folder, "/root/aby3/aby3-GraphQuery/record/permutation_network/");
+    SET_STRING_OR_DEFAULT(cmd, file_prefix, "tmp");
+
+    // data construction.
+    aby3::i64Matrix pdata(length * unit_length, 1);
+    for(size_t i=0; i<length * unit_length; i++){
+        pdata(i, 0) = 0;
+    }
+
+    aby3::sbMatrix sdata(length * unit_length, 64);
+    large_data_encryption(role, pdata, sdata, enc, runtime);
+    
+    std::vector<aby3::sbMatrix> T(length);
+    for(size_t i=0; i<length; i++){
+        aby3::sbMatrix tmp(unit_length, 64);
+        std::memcpy(tmp.mShares[0].data(), sdata.mShares[0].data() + i * unit_length, unit_length);
+        std::memcpy(tmp.mShares[1].data(), sdata.mShares[1].data() + i * unit_length, unit_length);
+        T[i] = tmp;
+    }
+
+    sdata.resize(0, 0);
+
+    // profile the permutation network.
+    cmeter.start("PermutationNetwork_send", get_sending_bytes(party_info));
+    cmeter.start("PermutationNetwork_recv", get_receiving_bytes(party_info));
+    timer.start("PermutationNetwork");
+
+    permutation_network(T, role, T, enc, eval, runtime); 
+
+    timer.end("PermutationNetwork");    
+    cmeter.end("PermutationNetwork_send", get_sending_bytes(party_info));
+    cmeter.end("PermutationNetwork_recv", get_receiving_bytes(party_info));
+
+    communication_synchronize(party_info);
+
+    // print the timer records.
+    if(role == 0){
+        std::ofstream stream(record_folder + file_prefix + ".txt", std::ios::app);
+        timer.print_total("milliseconds", stream);
+        cmeter.print_total_per_party("MB", stream); 
+    }
+    return 0;
+}
+
+int shuffMem_profiling(oc::CLP& cmd){
+
+    CONFIG_INIT
+    if(role == 0) debug_info("shuffMem profiling");
+    CommunicationMeter& cmeter = CommunicationMeter::getInstance();
+
+    SET_OR_DEFAULT(cmd, length, 1 << 10);
+    SET_OR_DEFAULT(cmd, unit_length, 1 << 4);
+    SET_STRING_OR_DEFAULT(cmd, record_folder, "/root/aby3/aby3-GraphQuery/record/shuffMem/");
+    SET_STRING_OR_DEFAULT(cmd, file_prefix, "tmp");
+
+    debug_info("length = " + std::to_string(length) + ", unit_length = " + std::to_string(unit_length));
+
+    // data construction.
+    aby3::i64Matrix pdata(length * unit_length, 1);
+    for(size_t i=0; i<length * unit_length; i++){
+        pdata(i, 0) = 0;
+    }
+
+    aby3::sbMatrix sdata(length * unit_length, 64);
+    large_data_encryption(role, pdata, sdata, enc, runtime);
+    
+    std::vector<aby3::sbMatrix> T(length);
+    for(size_t i=0; i<length; i++){
+        aby3::sbMatrix tmp(unit_length, 64);
+        std::memcpy(tmp.mShares[0].data(), sdata.mShares[0].data() + i * unit_length, unit_length);
+        std::memcpy(tmp.mShares[1].data(), sdata.mShares[1].data() + i * unit_length, unit_length);
+        T[i] = tmp;
+    }
+
+    debug_info("before resize");
+    sdata.resize(0, 0);
+
+    std::vector<aby3::si64> Pi(length);
+
+    // profile the permutation network.
+    cmeter.start("ShuffMem_send", get_sending_bytes(party_info));
+    cmeter.start("ShuffMem_recv", get_receiving_bytes(party_info));
+    timer.start("ShuffMem");
+
+    debug_info("start shuffMem...");
+    efficient_shuffle_with_random_permutation(T, role, T, Pi, enc, eval, runtime); 
+
+    timer.end("ShuffMem");    
+    cmeter.end("ShuffMem_send", get_sending_bytes(party_info));
+    cmeter.end("ShuffMem_recv", get_receiving_bytes(party_info));
+
+    communication_synchronize(party_info);
+
+    if(role == 0){
+        std::ofstream stream(record_folder + file_prefix + ".txt", std::ios::app);
+        timer.print_total("milliseconds", stream);
+        debug_info("print the communication records...");
+        cmeter.print_total_per_party("MB", stream); 
     }
 
     return 0;

@@ -12,7 +12,7 @@ using namespace oc;
 
 // #define LOCAL_TEST
 #define P0_IP "10.5.0.12"
-#define P1_IP "10.5.0.4"
+#define P1_IP "10.5.0.14"
 
 static int BASEPORT=6000;
 
