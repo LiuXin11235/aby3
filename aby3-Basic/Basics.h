@@ -269,6 +269,10 @@ void bool2arith(int pIdx, aby3::sbMatrix &boolInput, aby3::si64Matrix &res,
                 aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
                 aby3::Sh3Runtime &runtime);
 
+void arith2bool(int pIdx, aby3::si64Matrix &arithInput, aby3::sbMatrix &res,
+                aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                aby3::Sh3Runtime &runtime);
+
 void bool_get_first_zero_mask(int pIdx, std::vector<boolShare> &inputA,
                               aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
                               aby3::Sh3Evaluator &eval,
@@ -292,6 +296,20 @@ void bool_shift_and_left(int pIdx, boolIndex &sharedA, size_t shift_len,
                          boolIndex &res_shift, boolIndex &res_left);
 
 
+void arith_cipher_lt(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &sharedB,
+                     aby3::sbMatrix &res, aby3::Sh3Encryptor &enc,
+                     aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+void arith_cipher_max(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &sharedB,
+                      aby3::si64Matrix &res, aby3::Sh3Encryptor &enc,
+                      aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+
+void arith_cipher_max_min_split(int pIdx, aby3::si64Matrix &sharedA, aby3::si64Matrix &sharedB,
+                      aby3::si64Matrix &res_max, aby3::si64Matrix &res_min, aby3::Sh3Encryptor &enc,
+                      aby3::Sh3Evaluator &eval, aby3::Sh3Runtime &runtime);
+
+
 // TODO: support various functions.
 void bool_aggregation(int pIdx, aby3::sbMatrix &sharedA, aby3::sbMatrix &res,
                          aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
@@ -310,6 +328,9 @@ aby3::i64 back2plain(int pIdx, boolIndex &cipher_val, aby3::Sh3Encryptor &enc,
 std::vector<bool> back2plain(int pIdx, std::vector<boolShare> &cipher_val,
                              aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
                              aby3::Sh3Runtime &runtime);
+
+aby3::i64Matrix back2plain(int pIdx, std::vector<aby3::si64>& cipher_val, aby3::Sh3Encryptor &enc, aby3::Sh3Evaluator &eval,
+                           aby3::Sh3Runtime &runtime);
 
 void get_permutation(size_t len, std::vector<size_t> &permutation,
                      oc::block &seed);
@@ -367,5 +388,7 @@ void left_shift_and_fill(int pIdx, aby3::sbMatrix &input, int tag_size, int tag_
 void tag_append(int pIdx, std::vector<aby3::sbMatrix>& inputs);
 
 void tag_remove(int pIdx, size_t tag_len, std::vector<aby3::sbMatrix>& inputs);
+
+
 
 #endif

@@ -84,6 +84,10 @@ int bc_sort_multiple_times(oc::CLP& cmd);
 int quick_sort_test(oc::CLP& cmd);
 int quick_sort_with_duplicate_elements_test(oc::CLP& cmd);
 int odd_even_merge_test(oc::CLP& cmd);
+int splitted_arith_merge_sort_test(oc::CLP& cmd);
+int arith_sort_test(oc::CLP& cmd);
+int arith_merge_sort_test(oc::CLP& cmd);
+int arith_sort_with_values_test(oc::CLP& cmd);
 
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);

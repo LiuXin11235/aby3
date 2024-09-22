@@ -8,7 +8,6 @@
 #include "../aby3-Basic/Sort.h"
 #include "../aby3-RTR/BuildingBlocks.h"
 
-
 using namespace oc;
 using namespace aby3;
 
@@ -261,6 +260,13 @@ int quick_sort_test(oc::CLP &cmd){
         enc.remoteBinMatrix(runtime, enc_data).get();
     }
 
+    aby3::si64Matrix enc_data_si64(data_size, 1);
+    if(role == 0){
+        enc.localIntMatrix(runtime, data_plain, enc_data_si64).get();
+    }else{
+        enc.remoteIntMatrix(runtime, enc_data_si64).get();
+    }
+
     std::vector<aby3::sbMatrix> enc_data_vec(data_size);
     for(size_t i=0; i<data_size; i++){
         aby3::sbMatrix tmp(1, 64);
@@ -286,6 +292,19 @@ int quick_sort_test(oc::CLP &cmd){
         check_result("Quick Sort Test", test, data_res);
     }
 
+    quick_sort_different(enc_data_si64, role, enc, eval, runtime, min_size);
+    aby3::i64Matrix test_si64(data_size, 1);
+    enc.revealAll(runtime, enc_data_si64, test_si64).get();
+    if(role == 0){
+        check_result("Quick Sort Test with si64", test_si64, data_res);
+    }
+
+    quick_sort(enc_data_si64, role, enc, eval, runtime, min_size);
+    enc.revealAll(runtime, enc_data_si64, test_si64).get();
+    if(role == 0){
+        check_result("Quick Sort Test with si64 (including shuffle)", test_si64, data_res);
+    }
+
     return 0;
 }
 
@@ -298,7 +317,7 @@ int quick_sort_with_duplicate_elements_test(oc::CLP& cmd){
     }
 
     // prepare the data.
-    size_t data_size = 1 << 20;
+    size_t data_size = 1 << 10;
     size_t bin_size = 1 << 5;
     aby3::i64Matrix data_plain(data_size, 1);
     aby3::i64Matrix data_res(data_size, 1);
@@ -482,6 +501,225 @@ int odd_even_merge_test(oc::CLP& cmd){
         check_result("High Dimensional Odd Even Multi Merge Sort Test 2", hd_multi_test2, hd_multi_res2_);
     }
 
+
+    return 0;
+}
+
+int arith_sort_test(oc::CLP& cmd){
+
+    BASIC_TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN ARITHMETIC SORT TEST");
+    }
+
+    // prepare the data.
+    size_t data_size = 1 << 15;
+    aby3::i64Matrix data_plain(data_size, 1);
+    aby3::i64Matrix data_res(data_size, 1);
+
+    for(size_t i=0; i<data_size; i++){
+        data_plain(i, 0) = data_size - i;
+        data_res(i, 0) = i + 1;
+    }
+
+    // enc the data.
+    aby3::si64Matrix enc_data(data_size, 1);
+    if(role == 0){
+        enc.localIntMatrix(runtime, data_plain, enc_data).get();
+    }else{
+        enc.remoteIntMatrix(runtime, enc_data).get();
+    }
+
+    // sort the data.
+    size_t min_size = (1 << 5);
+    quick_sort(enc_data, role, enc, eval, runtime, min_size);
+
+    aby3::i64Matrix test(data_size, 1);
+    enc.revealAll(runtime, enc_data, test).get();
+
+    if(role == 0){
+        check_result("Arithmetic Sort Test", test, data_res);
+    }
+
+    return 0;
+}
+
+int arith_merge_sort_test(oc::CLP& cmd){
+
+    BASIC_TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN ARITHMETIC MERGE SORT TEST");
+    }
+
+    // prepare the data.
+    // prepare the data.
+    size_t arr1_len = 50, arr2_len = 98, arr3_len = 50, arr4_len = 98;
+
+    aby3::i64Matrix arr1(arr1_len, 1);
+    aby3::i64Matrix arr2(arr2_len, 1);
+    aby3::i64Matrix arr3(arr3_len, 1);
+    aby3::i64Matrix arr4(arr4_len, 1);
+
+    std::vector<int> ref_res(arr1_len + arr2_len);
+    aby3::i64Matrix res_res_(arr1_len + arr2_len, 1);
+
+    std::vector<int> multi_ref_res(arr1_len + arr2_len + arr3_len + arr4_len);
+    aby3::i64Matrix multi_res_res_(arr1_len + arr2_len + arr3_len + arr4_len, 1);
+
+    for(size_t i=0; i<arr1_len; i++){
+        arr1(i, 0) = i + 10;
+        ref_res[i] = i + 10;
+        multi_ref_res[i] = i + 10;
+    }
+    for(size_t i=0; i<arr2_len; i++){
+        arr2(i, 0) = i + 20;
+        ref_res[i + arr1_len] = i + 20;
+        multi_ref_res[i + arr1_len] = i + 20;
+    }
+    for(size_t i=0; i<arr3_len; i++){
+        arr3(i, 0) = i + 30;
+        multi_ref_res[i + arr1_len + arr2_len] = i + 30;
+    }
+    for(size_t i=0; i<arr4_len; i++){
+        arr4(i, 0) = i + 40;
+        multi_ref_res[i + arr1_len + arr2_len + arr3_len] = i + 40;
+    }
+
+    std::sort(ref_res.begin(), ref_res.end());
+    for(size_t i=0; i<arr1_len + arr2_len; i++) res_res_(i, 0) = ref_res[i];
+
+    std::sort(multi_ref_res.begin(), multi_ref_res.end());
+    for(size_t i=0; i<arr1_len + arr2_len + arr3_len + arr4_len; i++) multi_res_res_(i, 0) = multi_ref_res[i];
+
+    // enc the data.
+    aby3::si64Matrix enc_arr1(arr1_len, 1);
+    aby3::si64Matrix enc_arr2(arr2_len, 1);
+    aby3::si64Matrix enc_arr3(arr3_len, 1);
+    aby3::si64Matrix enc_arr4(arr4_len, 1);
+
+    if(role == 0){
+        enc.localIntMatrix(runtime, arr1, enc_arr1).get();
+        enc.localIntMatrix(runtime, arr2, enc_arr2).get();
+        enc.localIntMatrix(runtime, arr3, enc_arr3).get();
+        enc.localIntMatrix(runtime, arr4, enc_arr4).get();
+    }else{
+        enc.remoteIntMatrix(runtime, enc_arr1).get();
+        enc.remoteIntMatrix(runtime, enc_arr2).get();
+        enc.remoteIntMatrix(runtime, enc_arr3).get();
+        enc.remoteIntMatrix(runtime, enc_arr4).get();
+    }
+
+    aby3::si64Matrix sort_test;
+    odd_even_merge(enc_arr1, enc_arr2, sort_test, role, enc, eval, runtime);
+
+    aby3::i64Matrix test(arr1_len + arr2_len, 1);
+    enc.revealAll(runtime, sort_test, test).get();
+
+    if(role == 0){
+        check_result("Arithmetic Merge Sort Test", test, res_res_);
+    }
+
+    aby3::si64Matrix multi_sort_test;
+    std::vector<aby3::si64Matrix> enc_data_vec = {enc_arr1, enc_arr2, enc_arr3, enc_arr4};
+    odd_even_multi_merge(enc_data_vec, multi_sort_test, role, enc, eval, runtime);
+
+    aby3::i64Matrix multi_test(arr1_len + arr2_len + arr3_len + arr4_len, 1);
+    enc.revealAll(runtime, multi_sort_test, multi_test).get();
+
+    if(role == 0){
+        check_result("Arithmetic Multi Merge Sort Test", multi_test, multi_res_res_);
+    }
+
+
+    return 0;
+}
+
+int arith_sort_with_values_test(oc::CLP& cmd){
+    BASIC_TEST_INIT
+
+    if(role == 0){
+        debug_info("RUN ARITHMETIC SORT TEST");
+    }
+
+    // prepare the data.
+    size_t data_size = 1 << 5;
+    size_t unit_size = 4;
+    aby3::i64Matrix data_plain(data_size, 1);
+    aby3::i64Matrix data_res(data_size, 1);
+    aby3::i64Matrix data_values(data_size * unit_size, 1);
+    aby3::i64Matrix data_values_res(data_size * unit_size, 1);
+
+    for(size_t i=0; i<data_size; i++){
+        data_plain(i, 0) = data_size - i;
+        data_res(i, 0) = i + 1;
+        for(size_t j=0; j<unit_size; j++){
+            data_values(i * unit_size + j, 0) = data_size - i;
+            data_values_res(i * unit_size + j, 0) = i+1;
+        }
+    }
+
+    // enc the data.
+    aby3::si64Matrix enc_data(data_size, 1);
+    aby3::si64Matrix enc_data_value(data_size * unit_size, 1);
+    if(role == 0){
+        enc.localIntMatrix(runtime, data_plain, enc_data).get();
+        enc.localIntMatrix(runtime, data_values, enc_data_value).get();
+    }else{
+        enc.remoteIntMatrix(runtime, enc_data).get();
+        enc.remoteIntMatrix(runtime, enc_data_value).get();
+    }
+
+    // arrange the value into vector of values.
+    std::vector<si64Matrix> enc_data_values(data_size);
+    for(size_t i=0; i<data_size; i++){
+        si64Matrix tmp(unit_size, 1);
+        std::memcpy(tmp.mShares[0].data(), enc_data_value.mShares[0].data() + i * unit_size, unit_size * sizeof(enc_data_value.mShares[0].data()[0]));
+        std::memcpy(tmp.mShares[1].data(), enc_data_value.mShares[1].data() + i * unit_size, unit_size * sizeof(enc_data_value.mShares[1].data()[0]));
+        enc_data_values[i] = tmp;
+    }
+
+    // {
+    //     for(size_t i=0; i<data_size; i++){
+    //         aby3::i64Matrix tmp(unit_size, 1);
+    //         enc.revealAll(runtime, enc_data_values[i], tmp).get();
+    //         {
+    //             debug_info("i = " + std::to_string(i));
+    //             debug_output_matrix(tmp);
+    //         }
+    //     }
+    // }
+
+    // sort the data.
+    size_t min_size = (1 << 2);
+    quick_sort_with_other_elements(enc_data, enc_data_values, role, enc, eval, runtime, min_size);
+
+    for(size_t i=0; i<data_size; i++){
+        std::memcpy(enc_data_value.mShares[0].data() + i * unit_size, enc_data_values[i].mShares[0].data(), unit_size * sizeof(enc_data_values[i].mShares[0].data()[0]));
+        std::memcpy(enc_data_value.mShares[1].data() + i * unit_size, enc_data_values[i].mShares[1].data(), unit_size * sizeof(enc_data_values[i].mShares[1].data()[0]));
+    }
+
+    // {
+    //     for(size_t i=0; i<data_size; i++){
+    //         aby3::i64Matrix tmp(unit_size, 1);
+    //         enc.revealAll(runtime, enc_data_values[i], tmp).get();
+    //         {
+    //             debug_info("i = " + std::to_string(i));
+    //             debug_output_matrix(tmp);
+    //         }
+    //     }
+    // }
+
+    aby3::i64Matrix test_value(data_size * unit_size, 1);
+    enc.revealAll(runtime, enc_data_value, test_value).get();
+    aby3::i64Matrix test(data_size, 1);
+    enc.revealAll(runtime, enc_data, test).get();
+
+    if(role == 0){
+        check_result("Arithmetic Sort with Values Test: sort key", test, data_res);
+        check_result("Arithmetic Sort with Values Test: sort value", test_value, data_values_res);
+    }
 
     return 0;
 }
