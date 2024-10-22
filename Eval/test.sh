@@ -1,6 +1,10 @@
 # compile the main.
 cp ./frontend/main.test ./frontend/main.cpp
-python build.py
+current_path=$(pwd)
+debugFile="${current_path}/debug.txt"
+graphFolder="${current_path}/aby3-GraphQuery/data/"
+echo "Current path: ${debugFile}"
+python build.py --DEBUG_FILE ${debugFile} --GRAPH_FOLDER ${graphFolder}
 
 # clean debugging files party-*.txt if exist.
 for pfile in ./party-*.txt; do
@@ -8,9 +12,9 @@ for pfile in ./party-*.txt; do
 done
 
 # # synchronize with others
-scp ./out/build/linux/frontend/frontend aby31:~/aby3/out/build/linux/frontend/ &
-scp ./out/build/linux/frontend/frontend aby32:~/aby3/out/build/linux/frontend/ &
-wait;
+# scp ./out/build/linux/frontend/frontend aby31:~/aby3/out/build/linux/frontend/ &
+# scp ./out/build/linux/frontend/frontend aby32:~/aby3/out/build/linux/frontend/ &
+# wait;
 
 # run the tests
 # current tests: 
@@ -29,12 +33,9 @@ wait;
 # test_args=" -GraphQuery"
 # test_args=" -Bool -Comm -Graph -GraphQuery"
 # test_args=" -Comm -Bool -Graph -GraphQuery"
-test_args=" -Shuffle"
+test_args=" -Shuffle -ORAM -Graph -GraphQuery"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
-
-# scp aby31:~/aby3/debug.txt ./debug-p1.txt
-# scp aby32:~/aby3/debug.txt ./debug-p2.txt
 
 cat ./debug.txt
 rm ./debug.txt

@@ -782,10 +782,6 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node, ListGra
         std::memcpy(graph_node_end_.mShares[0].data(), GQEngine.ending_node_list.mShares[0].data() + i * MAX_UNIT_SIZE, unit_len * sizeof(GQEngine.ending_node_list.mShares[0](0, 0)));
         std::memcpy(graph_node_end_.mShares[1].data(), GQEngine.ending_node_list.mShares[1].data() + i * MAX_UNIT_SIZE, unit_len * sizeof(GQEngine.ending_node_list.mShares[1](0, 0)));
 
-        if(GQEngine.party_info->pIdx == 0){
-            debug_info("before eq, round " + std::to_string(i));
-        }
-
         aby3::sbMatrix eq_res_starts, eq_res_ends;
         bool_cipher_eq(GQEngine.party_info->pIdx, start_node_, graph_node_start_, eq_res_starts, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
         bool_cipher_eq(GQEngine.party_info->pIdx, end_node_, graph_node_end_, eq_res_ends, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
@@ -795,11 +791,6 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node, ListGra
 
         std::memcpy(full_comp_res.mShares[0].data() + i * MAX_UNIT_SIZE, full_comp_res_.mShares[0].data(), unit_len * sizeof(full_comp_res_.mShares[0](0, 0)));
         std::memcpy(full_comp_res.mShares[1].data() + i * MAX_UNIT_SIZE, full_comp_res_.mShares[1].data(), unit_len * sizeof(full_comp_res_.mShares[1](0, 0)));
-    }
-
-    if(GQEngine.party_info->pIdx == 0){
-        debug_info("before aggregation");
-        
     }
     // aby3::sbMatrix eq_res_starts, eq_res_ends;
     // bool_cipher_eq(GQEngine.party_info->pIdx, GQEngine.starting_node_list, expand_starting_node, eq_res_starts, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
@@ -814,9 +805,6 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node, ListGra
     res.mShares[1](0, 0) = true_share.bshares[1];
 
     for(size_t i=0; i<round; i++){
-        if(GQEngine.party_info->pIdx == 0){
-            debug_info("before aggregation, round " + std::to_string(i));
-        }
         aby3::sbMatrix res_(1, 1);
         size_t unit_len = (i == round - 1) ? last_len : MAX_UNIT_SIZE;
         aby3::sbMatrix data_(unit_len, 1);
@@ -825,9 +813,6 @@ boolShare edge_existance(boolIndex starting_node, boolIndex ending_node, ListGra
 
         bool_aggregation(GQEngine.party_info->pIdx, data_, res_, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime), "OR");
 
-        if(GQEngine.party_info->pIdx == 0){
-            debug_info("after aggregation, before final - round " + std::to_string(i));
-        }
         bool_cipher_or(GQEngine.party_info->pIdx, res, res_, res, *(GQEngine.party_info->enc), *(GQEngine.party_info->eval), *(GQEngine.party_info->runtime));
     }
 

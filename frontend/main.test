@@ -38,7 +38,6 @@ int main(int argc, char** argv) {
 
 	if(cmd.isSet("Shuffle")){
 		shuffle_test(cmd);
-		// large_scale_shuffle_test(cmd);
 		permutation_network_test(cmd);
 	}
 

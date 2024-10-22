@@ -65,6 +65,10 @@ def Build(mainArgs, cmakeArgs,install, prefix, par):
         config = "--config {0}".format(buildType)
     else:
         buildDir = "out/build/linux"
+    
+    if "--DEBUG_FILE" in mainArgs:
+        debug_file = mainArgs[mainArgs.index("--DEBUG_FILE")+1]
+        cmakeArgs.append(f"-DDEBUG_FILE=\"{debug_file}\"")
 
     cmakeArgs.append("-DCMAKE_BUILD_TYPE={0}".format(buildType))
     

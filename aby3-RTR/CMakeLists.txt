@@ -41,3 +41,8 @@ if(NOT TARGET mpi)
 endif()
 
 target_link_libraries(aby3-RTR aby3 jsoncpp mpi)
+
+set(DEBUG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/debug.txt" CACHE STRING "Path to the debug file")
+target_compile_definitions(aby3-RTR PUBLIC "DEBUG_FILE=\"${DEBUG_FILE}\"")
+message(STATUS "In aby3-RTR, DEBUG_FILE=${DEBUG_FILE}")
+file(GLOB_RECURSE SRCS *.cpp)

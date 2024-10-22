@@ -8,8 +8,6 @@ int large_data_sending(int pIdx, aby3::i64Matrix &sharedA,
     size_t round = (size_t)ceil(len / (double)MAX_SENDING_SIZE);
     size_t last_len = len - (round - 1) * MAX_SENDING_SIZE;
 
-    // std::ofstream party_fs(PARTY_FILE + std::to_string(pIdx) + ".txt", std::ios::app);
-
     if (toNext){
         for(size_t i=0; i<round; i++){
             size_t sending_len = (i == round - 1) ? last_len : MAX_SENDING_SIZE;
@@ -24,11 +22,8 @@ int large_data_sending(int pIdx, aby3::i64Matrix &sharedA,
             aby3::i64Matrix sending_data = sharedA.block(i * MAX_SENDING_SIZE, 0, sending_len, 1);
             auto sendFu = runtime.mComm.mPrev.asyncSendFuture(sending_data.data(), sending_data.size());
             sendFu.get();
-            // debug_info("success send round-" + std::to_string(i), party_fs);
         }
     }
-
-    // party_fs.close();
 
     return 0;
 }

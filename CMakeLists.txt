@@ -67,6 +67,11 @@ if(NOT ENABLE_CIRCUITS)
 	message(FATAL_ERROR "libOTe/cryptoTools needs to have ENABLE_CIRCUITS defined.")
 endif()
 
+# graph_data folder
+set(GRAPH_FOLDER "${CMAKE_SOURCE_DIR}/aby3-GraphQuery/data/" CACHE STRING "Path to the debug file")
+message(STATUS "In top-level CMakeLists.txt, GRAPH_FOLDER=${GRAPH_FOLDER}")
+
+
 #############################################
 #        Build aby3, com-psi, tests         #
 #############################################

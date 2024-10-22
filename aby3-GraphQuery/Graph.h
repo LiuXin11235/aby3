@@ -170,6 +170,8 @@ struct Graph2d {
     // }
     Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, aby3Info& party_info){
         plainGraph2d *plain_graph = new plainGraph2d(meta_data_file, edge_block_file);
+        // TODO - sort the plain graph.
+        plain_graph->per_block_sort();
         graph_encryption(*plain_graph, party_info);
         delete plain_graph;
         return;
@@ -178,6 +180,7 @@ struct Graph2d {
     Graph2d(const std::string& meta_data_file, const std::string& edge_block_file, const std::string& node_chunk_file, aby3Info &party_info) : Graph2d(meta_data_file, edge_block_file, party_info) {
         // plainGraph2d plain_graph(meta_data_file, edge_block_file, node_chunk_file);
         plainGraph2d *plain_graph = new plainGraph2d(meta_data_file, edge_block_file, node_chunk_file);
+        plain_graph->per_block_sort();
         graph_encryption(*plain_graph, party_info);
         delete plain_graph;
         return;
@@ -272,12 +275,12 @@ struct Graph2d {
                 debug_info("\033[31m Error: the secure graph is not the same as the plaintext graph. \033[0m\n");
 
                 // print the secure graph.
-                for(size_t i=0; i<edge_list_size; i++){
-                    for(size_t j=0; j<l; j++){
-                        debug_info("edge_block_list[" + std::to_string(i) + "][" + std::to_string(j) + "]: " + std::to_string(start_nodes(i*l+j, 0)) + " " + std::to_string(end_nodes(i*l+j, 0)));
-                        debug_info("plain_graph[" + std::to_string(i) + "][" + std::to_string(j) + "]: " + std::to_string(plain_graph.edge_block_list[i][j][0]) + " " + std::to_string(plain_graph.edge_block_list[i][j][1]));
-                    }
-                }
+                // for(size_t i=0; i<edge_list_size; i++){
+                //     for(size_t j=0; j<l; j++){
+                //         debug_info("edge_block_list[" + std::to_string(i) + "][" + std::to_string(j) + "]: " + std::to_string(start_nodes(i*l+j, 0)) + " " + std::to_string(end_nodes(i*l+j, 0)));
+                //         debug_info("plain_graph[" + std::to_string(i) + "][" + std::to_string(j) + "]: " + std::to_string(plain_graph.edge_block_list[i][j][0]) + " " + std::to_string(plain_graph.edge_block_list[i][j][1]));
+                //     }
+                // }
             }
         }
         return;
@@ -867,7 +870,7 @@ class GraphQueryEngine{
 
         ~GraphQueryEngine(){
             if(graph != nullptr) {
-                debug_info("delete graph!");
+                // debug_info("delete graph!");
                 // delete graph;
                 graph = nullptr;
                 // debug_info("success delete graph!");
@@ -1262,10 +1265,10 @@ class ListGraphQueryEngine{
                     debug_info("\033[31m Error: the secure graph is not the same as the plaintext graph. \033[0m\n");
 
                     // print the secure graph.
-                    for(size_t i=0; i<e; i++){
-                        debug_info("edge_list[" + std::to_string(i) + "]: " + std::to_string(start_nodes(i, 0)) + " " + std::to_string(end_nodes(i, 0)));
-                        debug_info("plain_graph[" + std::to_string(i) + "]: " + std::to_string(plain_graph.starting_node_list[i]) + " " + std::to_string(plain_graph.ending_node_list[i]));
-                    }
+                    // for(size_t i=0; i<e; i++){
+                    //     debug_info("edge_list[" + std::to_string(i) + "]: " + std::to_string(start_nodes(i, 0)) + " " + std::to_string(end_nodes(i, 0)));
+                    //     debug_info("plain_graph[" + std::to_string(i) + "]: " + std::to_string(plain_graph.starting_node_list[i]) + " " + std::to_string(plain_graph.ending_node_list[i]));
+                    // }
                 }
             }
 

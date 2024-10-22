@@ -36,6 +36,7 @@ struct plainGraph2d{
                 edge_block >> edge_block_list[i][j][0] >> edge_block_list[i][j][1];
             }
         }
+        per_block_sort();
         return;
     }
 
@@ -133,6 +134,27 @@ struct plainGraph2d{
         }
         return neighbors;
     }
+
+    bool edge_existence(int starting_node, int ending_node){
+        std::vector<int> node_chunk = get_node_chunk(starting_node, false);
+        for(size_t i=0; i<b*l; i++){
+            if(node_chunk[i] == starting_node && node_chunk[b*l + i] == ending_node){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    int outting_neighbors_count(int starting_node){
+        int count = 0;
+        std::vector<int> node_chunk = get_node_chunk(starting_node, false);
+        for(size_t i=0; i<b*l; i++){
+            if(node_chunk[i] == starting_node){
+                count++;
+            }
+        }
+        return count;
+    }
 };
 
 struct plainGraphAdj{
@@ -223,6 +245,8 @@ struct plainGraphList{
         for (size_t i = 0; i < e; i++) {
             edge_list >> starting_node_list[i] >> ending_node_list[i];
         }
+
+        list_sort();
         
         return;
     }

@@ -2,7 +2,8 @@ from igraph import Graph
 import os
 from utils import *
 
-MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
+ABY3_FOLDER = os.getcwd()
+MAIN_FOLDER = ABY3_FOLDER + "aby3-GraphQuery"
 real_world_data_folder = MAIN_FOLDER + "/data/realworld/"
 slash_dot_file = real_world_data_folder + "soc-Slashdot0902.txt"
 dblp_file = real_world_data_folder + "com-dblp.all.cmty.txt"
@@ -14,9 +15,10 @@ configurations = {
     "twitter": {"k": -1}
 }
 
-party1 = "aby31"
-party2 = "aby32"
-party_list = [party1, party2]
+# used for multi-servers.
+# party1 = "aby31"
+# party2 = "aby32"
+# party_list = [party1, party2]
 
 def edge_list2igraph(edge_list_file):
     """Convert the edge list file into the igraph object.
@@ -162,9 +164,8 @@ def twitter_data_organization(twitter_edge_list, k):
 
 
 if __name__ == "__main__":
-    # target_dataset = ["slashdot", "dblp"]
-    target_dataset = ["twitter"]
-    # target_dataset = ["dblp"]
+    target_dataset = ["slashdot", "dblp", "twitter"]
+
     for dataset in target_dataset:
         print("Start dataset %s"%(dataset))
         # k = configurations[dataset]["k"]

@@ -8,6 +8,10 @@
 #ifndef _DEBUG_H_
 #define _DEBUG_H_
 
+#ifndef DEBUG_FILE
+#define DEBUG_FILE "/debug.txt"
+#endif
+
 inline std::string PARTY_FILE = "/root/aby3/party-";
 
 #define MAIN_PARTY_DEBUG(pIdx, debug_info) \ 
@@ -18,7 +22,8 @@ if(pIdx == 0) { \
 #define THROW_RUNTIME_ERROR(msg) \
     throw std::runtime_error("Error in file " + std::string(__FILE__) + " at line " + std::to_string(__LINE__) + ": " + msg)
 
-static std::string debugFile = "/root/aby3/debug.txt";
+// static std::string debugFile = "/root/aby3/debug.txt";
+static std::string debugFile = DEBUG_FILE;
 static std::string debugFolder= "/root/aby3/DEBUG/";
 
 inline void printBits(int64_t num, std::ostream& stream){

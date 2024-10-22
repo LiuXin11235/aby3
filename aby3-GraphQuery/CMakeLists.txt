@@ -10,3 +10,7 @@ option(MPI_APP "Enable MPI support" OFF)
 if(MPI_APP)
     target_compile_definitions(aby3-GraphQuery PRIVATE "MPI_APP=ON")
 endif()
+
+# global graph folder
+target_compile_definitions(aby3-GraphQuery PUBLIC "GRAPH_FOLDER=\"${GRAPH_FOLDER}\"")
+message(STATUS "In aby3-GraphQuery, GRAPH_FOLDER=${GRAPH_FOLDER}")

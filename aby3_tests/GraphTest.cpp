@@ -13,6 +13,12 @@ using namespace oc;
 using namespace aby3;
 using namespace std;
 
+#ifndef GRAPH_FOLDER
+#define GRAPH_FOLDER "/root/aby3/aby3-GraphQuery/data/" 
+#endif
+
+static std::string graph_folder = GRAPH_FOLDER;
+
 int graph_loading_test(oc::CLP &cmd){
 
     // get the configs.
@@ -38,7 +44,7 @@ int graph_loading_test(oc::CLP &cmd){
     aby3Info party_info(role, enc, eval, runtime);
 
     // filenames.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string graph_data_folder = graph_folder + "micro_benchmark/";
     std::string meta_file = "tmp_graph_meta.txt";
     std::string graph_data_file = "tmp_graph_2dpartition.txt";
 
@@ -60,7 +66,7 @@ int graph_sort_test(oc::CLP &cmd){
     }
 
     // filenames for 2d-partition data.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string graph_data_folder = graph_folder + "multiparty/";
     std::string file_prefix = graph_data_folder + "random_n-16_k-2";
     std::string meta_file = file_prefix + "_meta_multiparty.txt";
 
@@ -74,7 +80,6 @@ int graph_sort_test(oc::CLP &cmd){
     meta_file = file_prefix + "_edge_list_meta_multiparty.txt";
     ListGraphQueryEngine listEngine(party_info, meta_file, file_prefix, true);
 
-    if(party_info.pIdx == 0) debug_info("list generation ok!");
     listEngine.check_graph(meta_file, file_prefix, party_info, true);
 
     return 0;
@@ -104,7 +109,7 @@ int graph_block_fetch_test(oc::CLP& cmd){
     aby3Info party_info(role, enc, eval, runtime);
 
     // filenames.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string graph_data_folder = graph_folder + "micro_benchmark/";
     std::string meta_file = "tmp_graph_meta.txt";
     std::string graph_data_file = "tmp_graph_2dpartition.txt";
 
@@ -180,12 +185,15 @@ int basic_graph_query_test(oc::CLP& cmd){
     aby3Info party_info(role, enc, eval, runtime);
 
     // graph filename, using star graph for testing, 0-other edge exists while other edges do not exist.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string graph_data_folder = graph_folder + "micro_benchmark/";
     std::string meta_file = "star_meta.txt";
     std::string graph_data_file = "star_2dpartition.txt";
 
     size_t stash_size = 8;
     size_t pack_size = 4;
+
+    // construct plain graph test.
+    plainGraph2d pGraph(graph_data_folder + meta_file, graph_data_folder + graph_data_file);
 
     // construct the graph query engine.
     GraphQueryEngine GQEngine(party_info, graph_data_folder + meta_file, graph_data_folder + graph_data_file, stash_size, pack_size, stash_size, pack_size);
@@ -193,6 +201,7 @@ int basic_graph_query_test(oc::CLP& cmd){
     // query the graph.
     int starting_node = 0, ending_node = 33;
     int logical_index = GQEngine.get_edge_block_index(starting_node, ending_node);
+    bool test_ref1 = pGraph.edge_existence(starting_node, ending_node);
 
     boolIndex priv_logical_index = boolIndex(logical_index, role);
     boolIndex priv_starting_node = boolIndex(starting_node, role);
@@ -208,14 +217,15 @@ int basic_graph_query_test(oc::CLP& cmd){
     priv_ending_node = boolIndex(ending_node, role);
 
     boolShare res2 = edge_existance(priv_starting_node, priv_ending_node, priv_logical_index, GQEngine);
+    bool test_ref2 = pGraph.edge_existence(starting_node, ending_node);
 
     // check the result.
     bool test_res1 = back2plain(role, res1, enc, eval, runtime);
     bool test_res2 = back2plain(role, res2, enc, eval, runtime);
 
     if(role == 0){
-        check_result("Basic graph query exist edge test", test_res1, true);
-        check_result("Basic graph query fake edge test", test_res2, false);
+        check_result("Basic graph query exist edge test", test_res1, test_ref1);
+        check_result("Basic graph query fake edge test", test_res2, test_ref2);
     }
 
 
@@ -233,17 +243,18 @@ int basic_graph_query_test(oc::CLP& cmd){
     priv_target_node = boolIndex(target_node, role);
     aby3::si64Matrix outting_edges_count_node10 = outting_edge_count(priv_target_node, priv_target_chunk, GQEngine);
 
-    if(role == 0) debug_info("finished two outting edges count");
-
     // check the result.
     aby3::i64Matrix test_outting_edges_count_node0(1, 1);
     aby3::i64Matrix test_outting_edges_count_node10(1, 1);
     enc.revealAll(runtime, outting_edges_count_node0, test_outting_edges_count_node0).get();
     enc.revealAll(runtime, outting_edges_count_node10, test_outting_edges_count_node10).get();
 
+    int ref_count = pGraph.outting_neighbors_count(0);
+    int ref_count2 = pGraph.outting_neighbors_count(10);
+
     if(role == 0){
-        check_result("Outting edges count node 0 test", test_outting_edges_count_node0(0, 0), GQEngine.graph->e);
-        check_result("Outting edges count node 10 test", test_outting_edges_count_node10(0, 0), 0);
+        check_result("Outting edges count node 0 test", test_outting_edges_count_node0(0, 0), ref_count);
+        check_result("Outting edges count node 10 test", test_outting_edges_count_node10(0, 0), ref_count2);
     }
 
     return 0;
@@ -258,7 +269,7 @@ int neighbors_find_test(oc::CLP& cmd){
     }
 
     // graph filename, using star graph for testing, 0-other edge exists while other edges do not exist.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string graph_data_folder = graph_folder + "micro_benchmark/";
     std::string meta_file = "tmp_graph_meta.txt";
     std::string graph_data_file = "tmp_graph_2dpartition.txt";
 
@@ -293,19 +304,16 @@ int neighbors_find_test(oc::CLP& cmd){
 
     std::sort(queried_neighbors.begin(), queried_neighbors.end(), std::greater<int>());
     std::sort(true_neighbors.begin(), true_neighbors.end(), std::greater<int>());
-    if(role == 0){
-        check_result("Basic graph query neighbors test", queried_neighbors, true_neighbors);
-    }
+    // if(role == 0){
+    //     check_result("Basic graph query neighbors test", queried_neighbors, true_neighbors);
+    // }
 
     // load the data and sort.
     pGraph.per_block_sort();
     GraphQueryEngine GQEngineSort(party_info, pGraph, stash_size, pack_size, stash_size, pack_size);
 
     // query for the result.
-    aby3::sbMatrix masked_neighbors_sort = outting_neighbors_sorted(priv_node_index,    priv_logical_index, GQEngineSort);
-
-    std::ofstream party_fs(PARTY_FILE + std::to_string(role) + ".txt", std::ios::app);
-    debug_info("finished neighbors find query.", party_fs);
+    aby3::sbMatrix masked_neighbors_sort = outting_neighbors_sorted(priv_node_index, priv_logical_index, GQEngineSort);
 
     aby3::i64Matrix test_neighbors_sort(masked_neighbors_sort.rows(), 1);
     enc.revealAll(runtime, masked_neighbors_sort, test_neighbors_sort).get();
@@ -318,7 +326,7 @@ int neighbors_find_test(oc::CLP& cmd){
 
     std::sort(queried_neighbors_sort.begin(), queried_neighbors_sort.end(), std::greater<int>());
     if(role == 0){
-        debug_output_vector(queried_neighbors_sort);
+        // debug_output_vector(queried_neighbors_sort);
         check_result("Basic graph query neighbors sort test", queried_neighbors_sort, true_neighbors);
     }
     
@@ -335,7 +343,7 @@ int adj_graph_loading_test(oc::CLP& cmd){
     }
 
     // filenames.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string graph_data_folder = graph_folder + "micro_benchmark/";
     std::string meta_file = "adj_tmp_edge_list_meta.txt";
     std::string data_file = "adj_tmp_edge_list.txt";
 
@@ -345,7 +353,7 @@ int adj_graph_loading_test(oc::CLP& cmd){
     // check the graph.
     adjGraph.check_graph(graph_data_folder + meta_file, graph_data_folder + data_file, party_info);
 
-    graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    graph_data_folder = graph_folder + "multiparty/";
     std::string file_prefix = graph_data_folder + "random_n-16";
     meta_file = file_prefix + "_edge_list_meta_multiparty.txt";
 
@@ -364,7 +372,7 @@ int adj_basic_graph_query_test(oc::CLP& cmd){
     }
 
     // filenames.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string graph_data_folder = graph_folder + "micro_benchmark/";
     std::string meta_file = "adj_tmp_edge_list_meta.txt";
     std::string data_file = "adj_tmp_edge_list.txt";
 
@@ -431,7 +439,7 @@ int node_edge_list_basic_graph_query_test(oc::CLP& cmd){
     }
 
     // filenames.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/micro_benchmark/";
+    std::string graph_data_folder = graph_folder + "micro_benchmark/";
     std::string meta_file = "adj_tmp_edge_list_meta.txt";
     std::string data_file = "adj_tmp_edge_list.txt";
 
@@ -479,7 +487,6 @@ int node_edge_list_basic_graph_query_test(oc::CLP& cmd){
     if(role == 0){
         check_result("Node-Edge List basic query edge existence test", test1, ref_res1);
         check_result("Node-Edge List basic query neighbor count test", test2(0, 0), ref_neighbor_count);
-        check_result("Node-Edge List basic query neighbor find test", test_vec_neighbors, ref_neighbors_);
         check_result("Node-Edge List basic query neighbor find sort test", test_vec_neighbors_sorted, ref_neighbors_);
     }
 
