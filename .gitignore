@@ -24,6 +24,8 @@ out/
 *.sty
 *.gz
 *.dtx
+*.ipynb
+./privGraph/*.ipynb
 
 x64/*
 .vs/*

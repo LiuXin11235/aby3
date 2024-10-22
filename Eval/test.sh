@@ -2,7 +2,7 @@
 cp ./frontend/main.test ./frontend/main.cpp
 current_path=$(pwd)
 debugFile="${current_path}/debug.txt"
-graphFolder="${current_path}/aby3-GraphQuery/data/"
+graphFolder="${current_path}/aby3-GORAM/data/"
 echo "Current path: ${debugFile}"
 python build.py --DEBUG_FILE ${debugFile} --GRAPH_FOLDER ${graphFolder}
 

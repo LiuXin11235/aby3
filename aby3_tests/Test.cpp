@@ -4,10 +4,10 @@
 #include <random>
 #include <thread>
 
-#include "../aby3-Basic/Basics.h"
-#include "../aby3-Basic/Shuffle.h"
-#include "../aby3-Basic/SqrtOram.h"
-#include "../aby3-Basic/timer.h"
+#include "../aby3-GORAM-Core/Basics.h"
+#include "../aby3-GORAM-Core/Shuffle.h"
+#include "../aby3-GORAM-Core/SqrtOram.h"
+#include "../aby3-GORAM-Core/timer.h"
 #include "../aby3-RTR/BuildingBlocks.h"
 
 using namespace oc;

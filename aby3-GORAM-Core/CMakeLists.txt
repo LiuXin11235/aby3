@@ -1,6 +1,6 @@
 file(GLOB_RECURSE SRCS *.cpp)
 
-add_library(aby3-Basic ${SRCS})
+add_library(aby3-GORAM-Core ${SRCS})
 include_directories("/usr/include/jsoncpp")  
 include_directories("/usr/include/mpich")
 
@@ -14,7 +14,7 @@ if(NOT TARGET jsoncpp)
     if(NOT EXISTS ${JSON_INCLUDE_DIR})
         message(FATAL_ERROR "failed to find json")
     endif()
-    message(STATUS "In aby3-Basic, JSON_INCLUDE_DIR=${JSON_INCLUDE_DIR}")
+    message(STATUS "In aby3-GORAM-Core, JSON_INCLUDE_DIR=${JSON_INCLUDE_DIR}")
     add_library(json INTERFACE IMPORTED)
     target_include_directories(json INTERFACE 
                     $<BUILD_INTERFACE:${JSON_INCLUDE_DIR}>
@@ -30,20 +30,20 @@ if(NOT TARGET mpi)
     if(NOT EXISTS ${MPI_INCLUDE_DIR})
         message(FATAL_ERROR "failed to find mpi.h")
     endif()
-    message(STATUS "In aby3-Basic, MPI_INCLUDE_DIR=${MPI_INCLUDE_DIR}\n\n")
+    message(STATUS "In aby3-GORAM-Core, MPI_INCLUDE_DIR=${MPI_INCLUDE_DIR}\n\n")
     add_library(mpi INTERFACE IMPORTED)
     target_include_directories(mpi INTERFACE 
                     $<BUILD_INTERFACE:${MPI_INCLUDE_DIR}>
                     $<INSTALL_INTERFACE:>)
 endif()
 
-target_link_libraries(aby3-Basic aby3 jsoncpp mpi)
+target_link_libraries(aby3-GORAM-Core aby3 jsoncpp mpi)
 
 
 # file(GLOB_RECURSE SRCS *.cpp)
  
 
-# add_library(aby3-Basic ${SRCS})
+# add_library(aby3-GORAM-Core ${SRCS})
 
 
-# target_link_libraries(aby3-Basic aby3)
+# target_link_libraries(aby3-GORAM-Core aby3)

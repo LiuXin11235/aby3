@@ -12,8 +12,8 @@
 #include <cryptoTools/Network/IOService.h>
 
 #include "../aby3-RTR/debug.h"
-#include "../aby3-Basic/Basics.h"
-#include "../aby3-Basic/timer.h"
+#include "../aby3-GORAM-Core/Basics.h"
+#include "../aby3-GORAM-Core/timer.h"
 #include "../aby3-RTR/BuildingBlocks.h"
 #include "Graph.h"
 

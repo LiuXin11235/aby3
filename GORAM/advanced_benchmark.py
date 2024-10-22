@@ -9,7 +9,7 @@ from utils import get_k
 MPI = True 
 MPI_TASK = 4
 
-MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
+MAIN_FOLDER = "/root/aby3/aby3-GORAM"
 record_folder = MAIN_FOLDER + "/record/adv_application/"
 data_folder = ""
 data_prefix = ""

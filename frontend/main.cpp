@@ -1,75 +1,66 @@
-
 #include <cryptoTools/Common/CLP.h>
 #include <tests_cryptoTools/UnitTests.h>
 #include <map>
 #include <mpi.h>
-#include "aby3_tests/Test.h"
-#include "aby3_tests/aby3_tests.h"
-#include "eric.h"
+#include "aby3-GORAM/benchmark.h"
 
 using namespace oc;
 using namespace aby3;
 
 int main(int argc, char** argv) {
   oc::CLP cmd(argc, argv);
-  // reinit the environment and then finalize the environment.
 
-  // set the role for this process.
-	if (cmd.isSet("Bool")){
-		bool_basic_test(cmd);
-		bool_basic_test2(cmd);
-		get_first_zero_test(cmd);
-		bool_aggregation_test(cmd);
-		share_conversion_test(cmd);
-	}
+  if(cmd.isSet("privGraph")){
+    privGraph_performance_profiling(cmd);
+  }
+  if(cmd.isSet("adjmat")){
+    adj_performance_profiling(cmd);
+  }
+  if(cmd.isSet("edgelist")){
+    list_performance_profiling(cmd);
+  }
 
-	if (cmd.isSet("Arith")){
-		arith_basic_test(cmd);
-	}
+  if(cmd.isSet("multi_privGraph")){
+    privGraph_integration_profiling(cmd);
+  }
+  if(cmd.isSet("multi_adjmat")){
+    adj_integration_profiling(cmd);
+  }
+  if(cmd.isSet("multi_edgelist")){
+    list_integration_profiling(cmd);
+  }
 
-	if (cmd.isSet("Init")){
-		initialization_test(cmd);
-		correlation_test(cmd);
-	}
+  if(cmd.isSet("cycle_detect")){
+    cycle_detection_profiling(cmd);
+  }
 
-	if(cmd.isSet("Comm")){
-		communication_test(cmd);
-	}
+  if(cmd.isSet("two_hop")){
+    twohop_neighbor_profiling(cmd);
+  }
 
-	if(cmd.isSet("Shuffle")){
-		shuffle_test(cmd);
-		permutation_network_test(cmd);
-	}
+  if(cmd.isSet("neighbor_stats")){
+    neighbor_statistics_profiling(cmd);
+  }
 
-	if(cmd.isSet("ORAM")){
-		pos_map_test(cmd);
-		sqrt_oram_test(cmd);
-	}
+  if(cmd.isSet("cycle_detect_edgelist")){
+    cycle_detection_profiling_edgelist(cmd);
+  }
 
-	if(cmd.isSet("Graph")){
-		graph_loading_test(cmd);
-		adj_graph_loading_test(cmd);
-		graph_sort_test(cmd);
-	}
+  if(cmd.isSet("two_hop_edgelist")){
+    twohop_neighbor_profiling_edgelist(cmd);
+  }
 
-	if(cmd.isSet("GraphQuery")){
-		graph_block_fetch_test(cmd);
-		basic_graph_query_test(cmd);
-		neighbors_find_test(cmd);
-		adj_basic_graph_query_test(cmd);
-		node_edge_list_basic_graph_query_test(cmd);	
-	}
+  if(cmd.isSet("neighbor_stats_edgelist")){
+    neighbor_statistics_profiling_edgelist(cmd);
+  }
 
-	if(cmd.isSet("Sort")){
-		bc_sort_test(cmd);
-		bc_sort_corner_test(cmd);
-		bc_sort_multiple_times(cmd);
-		quick_sort_test(cmd);
-		// quick_sort_with_duplicate_elements_test(cmd); // too slow
-		odd_even_merge_test(cmd);
-		arith_merge_sort_test(cmd);
-		arith_sort_test(cmd);
-		arith_sort_with_values_test(cmd);
-	}
+  if(cmd.isSet("shuffMem")){
+    shuffMem_profiling(cmd);
+  }
+
+  if(cmd.isSet("permutation_net")){
+    permutation_network_profiling(cmd);
+  }
+
   return 0;
 }

@@ -4,7 +4,7 @@
 #include <random>
 #include <thread>
 
-#include "../aby3-Basic/Basics.h"
+#include "../aby3-GORAM-Core/Basics.h"
 #include "../aby3-RTR/BuildingBlocks.h"
 #include "../aby3-RTR/debug.h"
 

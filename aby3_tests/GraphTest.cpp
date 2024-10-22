@@ -4,17 +4,17 @@
 #include <random>
 #include <thread>
 
-#include "../aby3-Basic/Basics.h"
-#include "../aby3-Basic/timer.h"
+#include "../aby3-GORAM-Core/Basics.h"
+#include "../aby3-GORAM-Core/timer.h"
 #include "../aby3-RTR/BuildingBlocks.h"
-#include "../aby3-GraphQuery/Graph.h"
+#include "../aby3-GORAM/Graph.h"
 
 using namespace oc;
 using namespace aby3;
 using namespace std;
 
 #ifndef GRAPH_FOLDER
-#define GRAPH_FOLDER "/root/aby3/aby3-GraphQuery/data/" 
+#define GRAPH_FOLDER "/root/aby3/aby3-GORAM/data/" 
 #endif
 
 static std::string graph_folder = GRAPH_FOLDER;

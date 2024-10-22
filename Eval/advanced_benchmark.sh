@@ -1,5 +1,5 @@
 # data preprocessing for real-world data.
-# python ./aby3-GraphQuery/privGraphQuery/preprocessing.py
+# python ./aby3-GORAM/privGraphQuery/preprocessing.py
 
 # # run cycle_detection
 #python ./privGraph/advanced_benchmark.py --target cycle_detect

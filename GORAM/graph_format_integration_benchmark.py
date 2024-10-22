@@ -5,11 +5,10 @@ import os
 import argparse
 from utils import get_k 
 
-MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
+ABY3_FOLDER = os.getcwd()
+MAIN_FOLDER = ABY3_FOLDER + "/aby3-GORAM"
 
-# gtype_list = ["random", "geometric", "powerlaw", "bipartite"]
-gtype_list = ["geometric"]
-# data_provider_list = [2, 4, 8]
+gtype_list = ["random", "geometric", "powerlaw", "bipartite", "k_regular"]
 data_provider_list = [2]
 
 format_configs = {
@@ -59,8 +58,12 @@ if __name__ == "__main__":
     parser.add_argument('--target', type=str, default="privGraph", help="target graph format")
     args = parser.parse_args()
     target = args.target
+    
+    debug_file = f"{ABY3_FOLDER}/debug.txt"
+    graph_filder = f"{MAIN_FOLDER}/data/"
+    aby3_args = f" --DEBUG_FILE {debug_file} --GRAPH_FOLDER {graph_filder}"
 
-    os.system("cp ./frontend/main.pgp ./frontend/main.cpp; python build.py")
+    os.system(f"cp ./frontend/main.pgp ./frontend/main.cpp; python build.py {aby3_args}")
 
     target_config = format_configs[target] 
 
@@ -92,7 +95,7 @@ if __name__ == "__main__":
 
                     if not data_exist: # first generate the edge list data.
                         print(f"File {edge_list_meta_file} does not exist for {data_providers} parties. Generate the data...")
-                        generate_command = f"python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix {target_config['prefix']}{gtype}_n-{n} --type {gtype} --n {n} --e {e} --p {data_providers} --saving_type edgelist"
+                        generate_command = f"python ./aby3-GORAM/privGraphQuery/micro_benchmark_generation.py --file_prefix {target_config['prefix']}{gtype}_n-{n} --type {gtype} --n {n} --e {e} --p {data_providers} --saving_type edgelist"
                         os.system(generate_command)
                     
                     # get the total edge numbers e.
@@ -114,7 +117,7 @@ if __name__ == "__main__":
 
                     if not os.path.exists(meta_file):
                         print(f"File {meta_file} does not exist. Generate the data...")
-                        generate_command = f"python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --k {k} --p {data_providers} --saving_type 2dpartition"
+                        generate_command = f"python ./aby3-GORAM/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --k {k} --p {data_providers} --saving_type 2dpartition"
                         os.system(generate_command)
                     
                     # run the profiling.
@@ -146,7 +149,7 @@ if __name__ == "__main__":
                     # if data do not exist, generate the data.
                     if not os.path.exists(meta_file):
                         print(f"File {meta_file} does not exist. Generate the data...")
-                        generate_command = f"python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --p {data_providers} --saving_type edgelist"
+                        generate_command = f"python ./aby3-GORAM/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --p {data_providers} --saving_type edgelist"
                         os.system(generate_command)
                     
                     # run the profiling.
@@ -175,7 +178,7 @@ if __name__ == "__main__":
                     # if data do not exist, generate the data.
                     if not os.path.exists(meta_file):
                         print(f"File {meta_file} does not exist. Generate the data...")
-                        generate_command = f"python ./aby3-GraphQuery/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --p {data_providers} --saving_type edgelist"
+                        generate_command = f"python ./aby3-GORAM/privGraphQuery/micro_benchmark_generation.py --file_prefix {file_prefix} --type {gtype} --n {n} --e {e} --p {data_providers} --saving_type edgelist"
                         os.system(generate_command)
                     
                     # run the profiling.

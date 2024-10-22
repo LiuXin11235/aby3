@@ -3,6 +3,15 @@
 using namespace oc;
 using namespace aby3;
 
+#ifndef GRAPH_FOLDER
+#define GRAPH_FOLDER "/root/aby3/aby3-GORAM/data/" 
+#endif
+
+static std::string graph_folder = GRAPH_FOLDER;
+static size_t pos = graph_folder.find_last_of('/', graph_folder.length() - 2);
+static std::string base_folder = graph_folder.substr(0, pos + 1);
+
+
 #define SET_OR_DEFAULT(cmd, key, default_value) \
     size_t key = default_value; \
     if(cmd.isSet(#key)){ \
@@ -134,9 +143,9 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     #endif
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
+    std::string graph_data_folder = graph_folder + "baseline/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/privGraph/";
+    std::string record_folder = base_folder + "record/privGraph/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -271,7 +280,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
 
     timer.start("EdgeExistQuery");
 
-    for(int i=0; i<1; i++){
+    for(int i=0; i<1; i++){ // set to 1 for quick profiling of communications; for performance profiling, set to eoram_stash_size.
         boolShare flag = edge_existance(snode, enode, edge_log_idx, secGraphEngine);
     }
     #ifdef MPI_APP
@@ -307,7 +316,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     MPI_Barrier(MPI_COMM_WORLD);
     #endif
     timer.start("OuttingEdgesCountQuery");
-    for(int i=0; i<1; i++){
+    for(int i=0; i<1; i++){ // set to 1 for quick profiling of communications; for performance profiling, set to noram_stash_size.
         aby3::si64Matrix out_edges = outting_edge_count(snode, snode_log_idx, secGraphEngine);
     }
     #ifdef MPI_APP
@@ -328,7 +337,7 @@ int privGraph_performance_profiling(oc::CLP& cmd){
     MPI_Barrier(MPI_COMM_WORLD);
     #endif
     timer.start("NeighborsGetQuery");
-    for(size_t i=0; i<1; i++){
+    for(size_t i=0; i<1; i++){ // set to 1 for quick profiling of communications; for performance profiling, set to noram_stash_size.
         aby3::sbMatrix neighbors = outting_neighbors_sorted(snode, snode_log_idx, secGraphEngine);
     }
     #ifdef MPI_APP
@@ -370,9 +379,9 @@ int adj_performance_profiling(oc::CLP& cmd){
     }
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
+    std::string graph_data_folder = graph_folder + "baseline/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/adjmat/";
+    std::string record_folder = base_folder + "record/adjmat/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -509,7 +518,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     cmeter.start("EdgeExistQuery_send", get_sending_bytes(party_info));
     cmeter.start("EdgeExistQuery_recv", get_receiving_bytes(party_info));
     timer.start("EdgeExistQuery");
-    for(int i=0; i<eoram_stash_size; i++){
+    for(int i=0; i<1; i++){ // set to 1 for quick profiling of communications; for performance profiling, set to eoram_stash_size.
         boolShare flag = edge_existance(snode, enode, adjGraphEngine);
     }
     timer.end("EdgeExistQuery");
@@ -536,7 +545,7 @@ int adj_performance_profiling(oc::CLP& cmd){
     cmeter.start("NeighborsGetQuery_send", get_sending_bytes(party_info));
     cmeter.start("NeighborsGetQuery_recv", get_receiving_bytes(party_info));
     timer.start("NeighborsGetQuery");
-    for(size_t i=0; i<noram_stash_size; i++){
+    for(size_t i=0; i<1; i++){ // set to 1 for quick profiling of communications; for performance profiling, set to noram_stash_size.
         aby3::sbMatrix neighbors = outting_neighbors(snode, adjGraphEngine);
     }
     timer.end("NeighborsGetQuery");
@@ -577,9 +586,9 @@ int list_performance_profiling(oc::CLP& cmd){
     #endif
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/baseline/";
+    std::string graph_data_folder = graph_folder + "baseline/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/edgelist/";
+    std::string record_folder = base_folder + "record/edgelist/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -738,9 +747,9 @@ int privGraph_integration_profiling(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string graph_data_folder = graph_folder + "multiparty/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record_offline/privGraph/";
+    std::string record_folder = base_folder + "record_offline/privGraph/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -831,9 +840,9 @@ int adj_integration_profiling(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string graph_data_folder = graph_folder + "multiparty/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record_offline/adjmat/";
+    std::string record_folder = base_folder + "record_offline/adjmat/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -920,9 +929,9 @@ int list_integration_profiling(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // get the graph file parameters.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/multiparty/";
+    std::string graph_data_folder = graph_folder + "multiparty/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record_offline/edgelist/";
+    std::string record_folder = base_folder + "record_offline/edgelist/";
 
     int record_counter = -1;
     
@@ -984,9 +993,9 @@ int cycle_detection_profiling(oc::CLP& cmd){
     if(role == 0) debug_info("in this function!!!");
 
     // init the EORAM.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string graph_data_folder = graph_folder + "adv_application/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    std::string record_folder = base_folder + "/record/cycle_detection/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -1140,9 +1149,9 @@ int twohop_neighbor_profiling(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // init the NORAM.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string graph_data_folder = graph_folder +"adv_application/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/two_hop_neighbor/";
+    std::string record_folder = base_folder + "record/two_hop_neighbor/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -1306,9 +1315,9 @@ int neighbor_statistics_profiling(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // set the graph.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string graph_data_folder = graph_folder + "adv_application/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/statistics_neighbor/";
+    std::string record_folder = base_folder + "record/statistics_neighbor/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -1451,9 +1460,9 @@ int cycle_detection_profiling_edgelist(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // load graph.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string graph_data_folder = graph_folder + "adv_application/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    std::string record_folder = base_folder + "record/cycle_detection/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -1570,9 +1579,9 @@ int twohop_neighbor_profiling_edgelist(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // load graph.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string graph_data_folder = graph_folder + "adv_application/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    std::string record_folder = base_folder + "record/cycle_detection/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -1716,9 +1725,9 @@ int neighbor_statistics_profiling_edgelist(oc::CLP& cmd){
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
     // load graph.
-    std::string graph_data_folder = "/root/aby3/aby3-GraphQuery/data/adv_application/";
+    std::string graph_data_folder = graph_folder + "adv_application/";
     std::string file_prefix = "tmp";
-    std::string record_folder = "/root/aby3/aby3-GraphQuery/record/cycle_detection/";
+    std::string record_folder = base_folder + "record/cycle_detection/";
     int record_counter = -1;
 
     if(cmd.isSet("prefix")){
@@ -1809,11 +1818,11 @@ int permutation_network_profiling(oc::CLP& cmd){
     if(role == 0) debug_info("permutation network profiling");
     CommunicationMeter& cmeter = CommunicationMeter::getInstance();
 
-    // std::string record_folder = "/root/aby3/aby3-GraphQuery/record/permutation_network/";
+    // std::string record_folder = "/root/aby3/aby3-GORAM/record/permutation_network/";
     // std::string file_prefix = "tmp";
     SET_OR_DEFAULT(cmd, length, 1 << 10);
     SET_OR_DEFAULT(cmd, unit_length, 1 << 4);
-    SET_STRING_OR_DEFAULT(cmd, record_folder, "/root/aby3/aby3-GraphQuery/record/permutation_network/");
+    SET_STRING_OR_DEFAULT(cmd, record_folder, base_folder + "record/permutation_network/");
     SET_STRING_OR_DEFAULT(cmd, file_prefix, "tmp");
 
     // data construction.
@@ -1865,7 +1874,7 @@ int shuffMem_profiling(oc::CLP& cmd){
 
     SET_OR_DEFAULT(cmd, length, 1 << 10);
     SET_OR_DEFAULT(cmd, unit_length, 1 << 4);
-    SET_STRING_OR_DEFAULT(cmd, record_folder, "/root/aby3/aby3-GraphQuery/record/shuffMem/");
+    SET_STRING_OR_DEFAULT(cmd, record_folder, base_folder + "record/shuffMem/");
     SET_STRING_OR_DEFAULT(cmd, file_prefix, "tmp");
 
     debug_info("length = " + std::to_string(length) + ", unit_length = " + std::to_string(unit_length));

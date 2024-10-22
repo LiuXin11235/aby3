@@ -6,14 +6,15 @@ import os
 MPI = False 
 MPI_TASK = 4
 
-MAIN_FOLDER = "/root/aby3/aby3-GraphQuery"
-real_world_data_folder = MAIN_FOLDER + "/data/realworld/"  
-main_record_folder = MAIN_FOLDER + "/record/realworld/"
+ABY3_FOLDER = os.getcwd()
+MAIN_FOLDER = ABY3_FOLDER + "/aby3-GORAM"
+
+real_world_data_folder = MAIN_FOLDER + "/data/real_world/"  
+main_record_folder = MAIN_FOLDER + "/record/real_world/"
 mpi_data_folder = MAIN_FOLDER + "/data/realworld_mpi/"
 
 n_stash_size, n_pack_size, e_stash_size, e_pack_size = 32, 16, 1024, 32
 test_format = ["privGraph", "edgelist"]
-# test_format = ["edgelist"]
 
 def data_synchronize(data_folder):
     os.system(f"ssh aby31 'rm -rf {data_folder}*'")
@@ -45,15 +46,15 @@ if __name__ == "__main__":
     MPI = args.MPI
     if(MPI):
         target = target + f"_{MPI_TASK}"
+    
+    debug_file = f"{ABY3_FOLDER}/debug.txt"
+    aby3_args = f" --DEBUG_FILE {debug_file}"
         
     if(MPI):
-        os.system("cp ./frontend/main.pgpmpi ./frontend/main.cpp; python build.py --MPI")
-        # data_synchronize(real_world_data_folder)
+        os.system(f"cp ./frontend/main.pgpmpi ./frontend/main.cpp; python build.py --MPI {aby3_args}")
     else:
-        os.system("cp ./frontend/main.pgp ./frontend/main.cpp; python build.py")
-    
-    print("after data synchronization!")
-    # exit(0)
+        os.system(f"cp ./frontend/main.pgp ./frontend/main.cpp; python build.py {aby3_args}")
+
     
     for gformat in test_format:
         # different graph format.
@@ -67,7 +68,6 @@ if __name__ == "__main__":
         if(MPI):
             os.system(f"./Eval/mpi_dis_exec.sh \"{run_args}\" {MPI_TASK}")
         else:
-            print(">>>>>>>>> in this branch!!!!!!")
             os.system(f"./Eval/dis_exec.sh \"{run_args}\"")
             
         os.system(f"cat ./debug.txt; rm ./debug.txt")

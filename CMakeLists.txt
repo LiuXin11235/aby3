@@ -68,7 +68,7 @@ if(NOT ENABLE_CIRCUITS)
 endif()
 
 # graph_data folder
-set(GRAPH_FOLDER "${CMAKE_SOURCE_DIR}/aby3-GraphQuery/data/" CACHE STRING "Path to the debug file")
+set(GRAPH_FOLDER "${CMAKE_SOURCE_DIR}/aby3-GORAM/data/" CACHE STRING "Path to the debug file")
 message(STATUS "In top-level CMakeLists.txt, GRAPH_FOLDER=${GRAPH_FOLDER}")
 
 
@@ -82,9 +82,9 @@ add_subdirectory(aby3-ML)
 include_directories("/usr/include/jsoncpp")  
 include_directories("/usr/include/mpich")
 add_subdirectory(aby3-RTR)
-add_subdirectory(aby3-Basic)
+add_subdirectory(aby3-GORAM-Core)
 add_subdirectory(aby3-DB_tests)
-add_subdirectory(aby3-GraphQuery)
+add_subdirectory(aby3-GORAM)
 
 add_subdirectory(aby3_tests)
 

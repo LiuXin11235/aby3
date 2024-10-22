@@ -6,8 +6,8 @@
 #include <aby3/sh3/Sh3Runtime.h>
 #include <aby3/sh3/Sh3Types.h>
 #include "pGraph.h"
-#include "aby3-Basic/SqrtOram.h"
-#include "aby3-Basic/Sort.h"
+#include "aby3-GORAM-Core/SqrtOram.h"
+#include "aby3-GORAM-Core/Sort.h"
 
 static size_t MAX_COMM_SIZE = 1 << 25;
 

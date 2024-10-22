@@ -1,10 +1,11 @@
 from igraph import Graph
 import os
+import argparse
 from utils import *
 
 ABY3_FOLDER = os.getcwd()
-MAIN_FOLDER = ABY3_FOLDER + "aby3-GraphQuery"
-real_world_data_folder = MAIN_FOLDER + "/data/realworld/"
+MAIN_FOLDER = ABY3_FOLDER + "/aby3-GORAM"
+real_world_data_folder = MAIN_FOLDER + "/data/real_world/"
 slash_dot_file = real_world_data_folder + "soc-Slashdot0902.txt"
 dblp_file = real_world_data_folder + "com-dblp.all.cmty.txt"
 twitter_file = real_world_data_folder + "twitter-2010.txt"
@@ -165,51 +166,57 @@ def twitter_data_organization(twitter_edge_list, k):
 
 if __name__ == "__main__":
     target_dataset = ["slashdot", "dblp", "twitter"]
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--target', type=str, default="privGraph", help="target graph format")
+    
+    args = parser.parse_args()
+    dataset = args.target
 
-    for dataset in target_dataset:
-        print("Start dataset %s"%(dataset))
+    # for dataset in target_dataset:
+    #     print("Start dataset %s"%(dataset))
         # k = configurations[dataset]["k"]
-        k = -1
-        edge_list_file = generate_edge_list(dataset)
+    k = -1
+    edge_list_file = generate_edge_list(dataset)
+    
+    if(dataset == "twitter"):
+        print("Start graph loading.")
+        twitter_edge_list = get_edge_list(edge_list_file)
+
+        print("Generating 2d-partitioning...")
+        partition_list, meta_dict, utilization_dict = twitter_data_organization(twitter_edge_list, k)
         
-        if(dataset == "twitter"):
-            print("Start graph loading.")
-            twitter_edge_list = get_edge_list(edge_list_file)
+        # save edgelist.
+        print("Saving edge list.")
+        with open(real_world_data_folder + dataset + "_edge_list.txt", "w") as f:
+            for e in twitter_edge_list:
+                f.write(str(e[0]) + " " + str(e[1]) + "\n")
+        elist_meta_data_file = real_world_data_folder + dataset + "_edge_list_meta.txt"
+        with open(elist_meta_data_file, "w") as f:
+            f.write(str(meta_dict["v"]) + " " + str(meta_dict["e"]) + "\n")
+        
+        # save partition.
+        print("Saving partition.")
+        partition_file = real_world_data_folder + dataset + "_2dpartition.txt"
+        meta_file = real_world_data_folder + dataset + "_meta.txt"
+        utilization_file = real_world_data_folder + dataset + "_utilization.txt"
+        with open(partition_file, "w") as f:
+            for i in partition_list:
+                f.write(str(i[0]) + " " + str(i[1]) + "\n")
+        with open(meta_file, "w") as f:
+            for k, v in meta_dict.items():
+                f.write(str(v) + " ")
+        with open(utilization_file, "w") as f:
+            f.write(json.dumps(utilization_dict))
 
-            print("Generating 2d-partitioning...")
-            partition_list, meta_dict, utilization_dict = twitter_data_organization(twitter_edge_list, k)
-            
-            # save edgelist.
-            print("Saving edge list.")
-            with open(real_world_data_folder + dataset + "_edge_list.txt", "w") as f:
-                for e in twitter_edge_list:
-                    f.write(str(e[0]) + " " + str(e[1]) + "\n")
-            elist_meta_data_file = real_world_data_folder + dataset + "_edge_list_meta.txt"
-            with open(elist_meta_data_file, "w") as f:
-                f.write(str(meta_dict["v"]) + " " + str(meta_dict["e"]) + "\n")
-            
-            # save partition.
-            print("Saving partition.")
-            partition_file = real_world_data_folder + dataset + "_2dpartition.txt"
-            meta_file = real_world_data_folder + dataset + "_meta.txt"
-            utilization_file = real_world_data_folder + dataset + "_utilization.txt"
-            with open(partition_file, "w") as f:
-                for i in partition_list:
-                    f.write(str(i[0]) + " " + str(i[1]) + "\n")
-            with open(meta_file, "w") as f:
-                for k, v in meta_dict.items():
-                    f.write(str(v) + " ")
-            with open(utilization_file, "w") as f:
-                f.write(json.dumps(utilization_dict))
+    else:        
+        graph = edge_list2igraph(edge_list_file)
+        print("Finish graph loading.")
+        print("Start 2d-partationing...")
 
-        else:        
-            graph = edge_list2igraph(edge_list_file)
-            print("Finish graph loading.")
-            print("Start 2d-partationing...")
-
-            graph_save(graph, real_world_data_folder + dataset, "2dpartition", k, True)
-            graph_save(graph, real_world_data_folder + dataset, "edgelist", -1, False)
-            print("Finish dataset %s"%(dataset))
+        graph_save(graph, real_world_data_folder + dataset, "2dpartition", k, True)
+        graph_save(graph, real_world_data_folder + dataset, "edgelist", -1, False)
+        print("Finish dataset %s"%(dataset))
 
     # data synchronize
     # for party in party_list:

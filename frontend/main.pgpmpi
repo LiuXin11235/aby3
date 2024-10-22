@@ -2,7 +2,7 @@
 #include <tests_cryptoTools/UnitTests.h>
 #include <map>
 #include <mpi.h>
-#include "aby3-GraphQuery/benchmark.h"
+#include "aby3-GORAM/benchmark.h"
 
 using namespace oc;
 using namespace aby3;

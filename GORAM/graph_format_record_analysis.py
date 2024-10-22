@@ -4,17 +4,18 @@ import numpy as np
 import json
 import os
 import re
-# from graph_format_benchmark import format_configs, gtype_list
 import graph_format_benchmark as bb
 import graph_format_integration_benchmark as ib
 
+ABY3_FOLDER = os.getcwd()
+
 basic_querys = ["EdgeExistQuery", "OuttingEdgesCountQuery", "NeighborsGetQuery"]
 basic_query_communications = ["EdgeExistQuery_recv", "OuttingEdgesCountQuery_recv", "NeighborsGetQuery_recv", "EdgeExistQuery_send", "OuttingEdgesCountQuery_send", "NeighborsGetQuery_send"]
-result_online_folder = "./privGraph/results/"
-result_offline_folder = "./privGraph/results_offline/"
+result_online_folder = ABY3_FOLDER + "/GORAM/results/"
+result_offline_folder = ABY3_FOLDER + "/GORAM/results_offline/"
 
 if(not os.path.exists(result_online_folder)):
-    os.makedirs(result_offline_folder)
+    os.makedirs(result_online_folder)
 
 if(not os.path.exists(result_offline_folder)):
     os.makedirs(result_offline_folder)
@@ -77,16 +78,17 @@ def logging2dict(log_file, result_dict):
                 key = parts[3][:-1]
                 value = float(parts[4])
                 result_dict[key] = value
+            elif "Total Communications of" in line:
+                parts = line.strip().split(" ")
+                key = parts[3]
+                value = float(parts[5])
+                result_dict[key] = value
             elif " : " in line:
+                if("Communications" in line):
+                    continue
                 parts = line.strip().split(" : ")
                 key = parts[0]
                 value = int(parts[1])
-                result_dict[key] = value
-            elif "Communicaitions" in line:
-                parts = line.strip().split(" ")
-                key = parts[3][:-1]
-                # print("key = ", key)
-                value = float(parts[4])
                 result_dict[key] = value
 
     return result_dict
@@ -153,6 +155,12 @@ def record_dict_construct(graph_format, target="online"):
                     n = int(match.group(2))
                     count = int(match.group(3))
                     result_dict = get_baseline_record(target_folder, gtype, n, count)
+                
+                for key in record_dict:
+                    if key in result_dict:
+                        record_dict[key].append(result_dict[key])
+                    else:
+                        print(f"key {key} not found in {result_dict}")
 
     elif(target == "offline"):
         for filename in os.listdir(target_folder):
@@ -172,17 +180,16 @@ def record_dict_construct(graph_format, target="online"):
                     count = int(match.group(4))
                     result_dict = get_baseline_record_offline(target_folder, gtype, n, party, count)
         
-    for key in record_dict:
-        if key in result_dict:
-            record_dict[key].append(result_dict[key])
-        else:
-            print(f"key {key} not found in {result_dict}")
+            for key in record_dict:
+                if key in result_dict:
+                    record_dict[key].append(result_dict[key])
+                else:
+                    print(f"key {key} not found in {result_dict}")
         
     record_df = pd.DataFrame(record_dict)
     grouped = record_df.groupby(target_config["config_keys"])
     record_df = grouped.agg({key: [np.mean, np.std] for key in target_config["performance_keys"]})
     record_df.columns = ['_'.join(col).strip() for col in record_df.columns.values]  
-    # record_df.to_excel(result_folder + f"{graph_format}_record.xlsx")
 
     return record_df
         
@@ -191,7 +198,6 @@ if __name__ == "__main__":
         
         parser = argparse.ArgumentParser()
         parser.add_argument('--target', type=str, default="privGraph", help="target graph format")
-        # parser.add_argument('--online', type=bool, default=True, help="online or offline")
         parser.add_argument('--stage', type=str, default="online", help="online analysis")
         args = parser.parse_args()
 

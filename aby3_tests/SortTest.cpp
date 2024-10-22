@@ -4,8 +4,8 @@
 #include <random>
 #include <thread>
 
-#include "../aby3-Basic/Basics.h"
-#include "../aby3-Basic/Sort.h"
+#include "../aby3-GORAM-Core/Basics.h"
+#include "../aby3-GORAM-Core/Sort.h"
 #include "../aby3-RTR/BuildingBlocks.h"
 
 using namespace oc;
