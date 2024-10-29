@@ -78,7 +78,6 @@ namespace aby3
 	}
 
 
-
 	int logistic_main_3pc_sh(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext)
 	{
 

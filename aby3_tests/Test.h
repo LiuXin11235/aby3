@@ -89,6 +89,9 @@ int arith_sort_test(oc::CLP& cmd);
 int arith_merge_sort_test(oc::CLP& cmd);
 int arith_sort_with_values_test(oc::CLP& cmd);
 
+// test lr.
+int lr_test(oc::CLP& cmd);
+
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);
 
