@@ -39,8 +39,10 @@ int lr_test(oc::CLP& cmd){
     }
 
     // prepare the data.
-    int N = 1000, D = 100, B = 128, IT = 1000;
-    int testN = 1000;
+    // int N = 1000, D = 100, B = 128, IT = 1000;
+    // int testN = 1000;
+    int N = 100, D = 10, B = 128, IT = 100;
+    int testN = 100;
 
     RegressionParam params;
     params.mBatchSize = B;

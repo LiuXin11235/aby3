@@ -26,6 +26,40 @@ using namespace oc;
 namespace aby3
 {
 
+	bool readCSV(const std::string& filename, eMatrix<double>& matrix) {
+			std::ifstream file(filename);
+			if (!file.is_open()) {
+					std::cerr << "Could not open the file: " << filename << std::endl;
+					return false;
+			}
+
+			std::string line;
+			std::vector<std::vector<double>> data;
+			while (std::getline(file, line)) {
+					std::stringstream lineStream(line);
+					std::string cell;
+					std::vector<double> row;
+					while (std::getline(lineStream, cell, ',')) {
+							row.push_back(std::stod(cell));
+					}
+					data.push_back(row);
+			}
+
+			if (data.empty()) {
+					std::cerr << "No data found in the file: " << filename << std::endl;
+					return false;
+			}
+
+			matrix.resize(data.size(), data[0].size());
+			for (size_t i = 0; i < data.size(); ++i) {
+					for (size_t j = 0; j < data[i].size(); ++j) {
+							matrix(i, j) = data[i][j];
+					}
+			}
+
+			return true;
+	}
+
 	int logistic_plain_main(CLP& cmd)
 	{
 		auto N = cmd.getOr<int>("N", 10000);
@@ -93,8 +127,21 @@ namespace aby3
 
 		eMatrix<double> val_train_data(N, dim), val_train_label(N, 1), val_W2(dim, 1);
 		eMatrix<double> val_test_data(testN, dim), val_test_label(testN, 1);
-		gen.sample(val_train_data, val_train_label);
-		gen.sample(val_test_data, val_test_label);
+		// gen.sample(val_train_data, val_train_label);
+		// gen.sample(val_test_data, val_test_label);
+
+    std::string prefix = "lr_train_toy/";
+    if (!readCSV(prefix + "train_data.csv", val_train_data) ||
+        !readCSV(prefix + "train_label.csv", val_train_label) ||
+        !readCSV(prefix + "test_data.csv", val_test_data) ||
+        !readCSV(prefix + "test_label.csv", val_test_label)) {
+        std::cerr << "Error reading data from files." << std::endl;
+        return -1;
+    }		
+    N = val_train_data.rows();
+    dim = val_train_data.cols();
+    testN = val_test_data.rows();
+				
 		val_W2.setZero();
 
 		RegressionParam params;
@@ -264,3 +311,4 @@ namespace aby3
 	}
 
 }
+
