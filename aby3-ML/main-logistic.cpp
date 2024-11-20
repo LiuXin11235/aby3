@@ -193,7 +193,7 @@ namespace aby3
 		auto start = std::chrono::system_clock::now();
 
 		if (cmd.isSet("noOnline") == false)
-			SGD_Logistic(params, p, train_data, train_label, W2);
+			SGD_Logistic(params, p, train_data, train_label, W2, &test_data, &test_label);
 		//val_W2 = p.reveal(W2);
 
 		//auto end = std::chrono::system_clock::now();
