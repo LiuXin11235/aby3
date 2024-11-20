@@ -190,7 +190,8 @@ std::array<double,2> test_logisticModel(
 	Engine& engine,
 	Matrix& W,
 	Matrix& x,
-	Matrix& y)
+	Matrix& y,
+	double thre = 0.5)
 {
 	auto xw = engine.mul(x, W);
 	auto fxw = engine.logisticFunc(xw);
@@ -204,8 +205,8 @@ std::array<double,2> test_logisticModel(
 	u64 count = 0;
 	for (u64 i = 0; i < (u64)fxw.size(); ++i)
 	{
-		bool c0 = pp(i) > 0.5;
-		bool c1 = yy(i) > 0.5;
+		bool c0 = pp(i) > thre;
+		bool c1 = yy(i) > thre;
 
 		count += (c0 == c1);
 	}
