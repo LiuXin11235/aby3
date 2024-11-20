@@ -186,7 +186,7 @@ void SGD_Linear(
 
 
 template<typename Engine, typename Matrix>
-std::array<double,2> test_logisticModel(
+std::array<double,4> test_logisticModel(
 	Engine& engine,
 	Matrix& W,
 	Matrix& x,
@@ -203,15 +203,21 @@ std::array<double,2> test_logisticModel(
 	auto pp = engine.reveal(fxw);
 	auto yy = engine.reveal(y);
 	u64 count = 0;
+	u64 count_posi_pred = 0;
+	u64 count_posi_true = 0;
+	u64 count_posi_correct = 0;
 	for (u64 i = 0; i < (u64)fxw.size(); ++i)
 	{
 		bool c0 = pp(i) > thre;
 		bool c1 = yy(i) > thre;
 
 		count += (c0 == c1);
+		count_posi_pred += (c0 == 1);
+		count_posi_true += (c1 == 1);
+		count_posi_correct += (c0 == 1)&&(c0 == c1);
 	}
 
-	return { engine.reveal(l2(0)) / (double)y.rows(), count / (double)y.rows() };
+	return { engine.reveal(l2(0)) / (double)y.rows(), count / (double)y.rows(),count_posi_correct / count_posi_pred, count_posi_correct/count_posi_true };
 }
 
 
@@ -290,7 +296,10 @@ void SGD_Logistic(
 			auto score = test_logisticModel(engine, w, *X_test, *Y_test);
 			auto l2 = score[0];
 			auto percent = score[1];
-			lout << i << " @ " << ((i + 1) * 1000.0 / dur) << " iters/s  " << Color::Green<< l2 << " " << percent<< std::endl << Color::Default;
+			auto precision = score[2];
+			auto recall = score[3];
+			lout << i << " @ " << ((i + 1) * 1000.0 / dur) << " iters/s  " << Color::Green<< " L2 Loss: " << l2 << " Precision: " << precision << " Recall: " << recall << " Accuracy (01): " << percent<< std::endl << Color::Default;
+			// lout << "Precision: " << precision << " Recall: " << recall << std::endl;
 		}
 	}
 }
