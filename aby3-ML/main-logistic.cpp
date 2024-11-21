@@ -112,7 +112,7 @@ namespace aby3
 	}
 
 
-	int logistic_main_3pc_sh(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext, double thre = 0.5)
+	int logistic_main_3pc_sh(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext, double thre = 0.5, std::string prefix = "lr_train_toy/")
 	{
 
 		PRNG prng(toBlock(1));
@@ -130,7 +130,7 @@ namespace aby3
 		// gen.sample(val_train_data, val_train_label);
 		// gen.sample(val_test_data, val_test_label);
 
-    std::string prefix = "lr_train_toy/";
+    // std::string prefix = "lr_train_toy/";
     if (!readCSV(prefix + "train_data.csv", val_train_data) ||
         !readCSV(prefix + "train_label.csv", val_train_label) ||
         !readCSV(prefix + "test_data.csv", val_test_data) ||
