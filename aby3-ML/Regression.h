@@ -191,7 +191,8 @@ std::array<double,4> test_logisticModel(
 	Matrix& W,
 	Matrix& x,
 	Matrix& y,
-	double thre = 0.5)
+	double thre = 0.5,
+	bool output_pred = false)
 {
 	auto xw = engine.mul(x, W);
 	auto fxw = engine.logisticFunc(xw);
@@ -217,6 +218,18 @@ std::array<double,4> test_logisticModel(
 		count_posi_correct += (c0 == 1)&&(c0 == c1);
 	}
 
+	if (output_pred){
+		std::ofstream outFile("prediction_output.csv");
+		if (outFile.is_open()) {
+			outFile << "pred_label, pred_prob" << std::endl;
+			for (u64 i = 0; i < (u64)pp.size(); ++i) {
+				outFile << (pp(i) > thre) << "," << pp(i) << std::endl;
+			}
+			outFile.close();
+		}else{
+			std::cerr << "Unable to open file for writing" << std::endl;
+		}
+	}
 	return { engine.reveal(l2(0)) / (double)y.rows(), count / (double)y.rows(),count_posi_correct / count_posi_pred, count_posi_correct/count_posi_true };
 }
 
@@ -301,6 +314,15 @@ void SGD_Logistic(
 			auto recall = score[3];
 			lout << i << " @ " << ((i + 1) * 1000.0 / dur) << " iters/s  " << Color::Green<< " L2 Loss: " << l2 << " Precision: " << precision << " Recall: " << recall << " Accuracy (01): " << percent<< std::endl << Color::Default;
 			// lout << "Precision: " << precision << " Recall: " << recall << std::endl;
+		}
+		if (X_test)
+		{
+			auto score = test_logisticModel(engine, w, *X_test, *Y_test, thre, true);
+                        auto l2 = score[0];
+                        auto percent = score[1];
+                        auto precision = score[2];
+                        auto recall = score[3];
+                        lout << "Final test " << Color::Green<< " L2 Loss: " << l2 << " Precision: " << precision << " Recall: " << recall << " Accuracy (01): " << percent<< std::endl << Color::Default;
 		}
 	}
 }
