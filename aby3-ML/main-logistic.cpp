@@ -112,7 +112,7 @@ namespace aby3
 	}
 
 
-	int logistic_main_3pc_sh(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext)
+	int logistic_main_3pc_sh(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext, double thre = 0.5)
 	{
 
 		PRNG prng(toBlock(1));
@@ -193,7 +193,7 @@ namespace aby3
 		auto start = std::chrono::system_clock::now();
 
 		if (cmd.isSet("noOnline") == false)
-			SGD_Logistic(params, p, train_data, train_label, W2, &test_data, &test_label);
+			SGD_Logistic(params, p, train_data, train_label, W2, &test_data, &test_label, thre);
 		//val_W2 = p.reveal(W2);
 
 		//auto end = std::chrono::system_clock::now();

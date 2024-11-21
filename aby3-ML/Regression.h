@@ -232,7 +232,8 @@ void SGD_Logistic(
 
 	// optional
 	Matrix* X_test = nullptr,
-	Matrix* Y_test = nullptr)
+	Matrix* Y_test = nullptr,
+	double thre = 0.5)
 {
 	if (X.rows() != Y.rows() || Y.cols() != 1)
 		throw std::runtime_error(LOCATION);
@@ -293,7 +294,7 @@ void SGD_Logistic(
 
 			auto now = std::chrono::system_clock::now();
 			auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-			auto score = test_logisticModel(engine, w, *X_test, *Y_test);
+			auto score = test_logisticModel(engine, w, *X_test, *Y_test, thre);
 			auto l2 = score[0];
 			auto percent = score[1];
 			auto precision = score[2];
