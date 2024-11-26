@@ -28,6 +28,7 @@ namespace aby3
 
 	bool readCSV(const std::string& filename, eMatrix<double>& matrix) {
 			std::ifstream file(filename);
+			std::cout << "Read " << filename << std::endl;
 			if (!file.is_open()) {
 					std::cerr << "Could not open the file: " << filename << std::endl;
 					return false;
@@ -112,7 +113,7 @@ namespace aby3
 	}
 
 
-	int logistic_main_3pc_sh(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext, double thre = 0.5, std::string prefix = "lr_train_toy/")
+	int logistic_main_3pc_sh(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext, double thre = 0.5, std::string prefix = "lr_train/")
 	{
 
 		PRNG prng(toBlock(1));
