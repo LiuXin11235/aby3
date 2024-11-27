@@ -200,7 +200,7 @@ std::array<double,4> test_logisticModel(
 	Matrix errorT = error.transpose();
 	Matrix l2 = engine.mul(errorT, error);
 
-
+	auto re_xw = engine.reveal(xw);
 	auto pp = engine.reveal(fxw);
 	auto yy = engine.reveal(y);
 	u64 count = 0;
@@ -221,9 +221,9 @@ std::array<double,4> test_logisticModel(
 	if (output_pred){
 		std::ofstream outFile("prediction_output.csv");
 		if (outFile.is_open()) {
-			outFile << "pred_label, pred_prob" << std::endl;
+			outFile << "pred_label, pred_prob, pred_logit, true_label" << std::endl;
 			for (u64 i = 0; i < (u64)pp.size(); ++i) {
-				outFile << (pp(i) > thre) << "," << pp(i) << std::endl;
+				outFile << (pp(i) > thre) << "," << pp(i) << "," << re_xw(i) << "," << yy(i) << std::endl;
 			}
 			outFile.close();
 		}else{
