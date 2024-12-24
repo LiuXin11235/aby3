@@ -221,7 +221,7 @@ std::array<double,4> test_logisticModel(
 	if (output_pred){
 		std::ofstream outFile("prediction_output.csv");
 		if (outFile.is_open()) {
-			outFile << "pred_label, pred_prob, pred_logit, true_label" << std::endl;
+			outFile << "pred_label,pred_prob,pred_logit,true_label" << std::endl;
 			for (u64 i = 0; i < (u64)pp.size(); ++i) {
 				outFile << (pp(i) > thre) << "," << pp(i) << "," << re_xw(i) << "," << yy(i) << std::endl;
 			}
