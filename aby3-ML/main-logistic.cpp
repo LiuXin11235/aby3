@@ -61,7 +61,7 @@ namespace aby3
 			return true;
 	}
 	
-	void printRevealedValues(const eMatrix<double>& W2, const LogisticModelGen& gen, bool print, u64 dim, aby3::Party& p) {
+	void printRevealedValues(const eMatrix<double>& W2, const LogisticModelGen& gen, bool print, u64 dim, aby3ML& p) {
 			auto w2Val = p.reveal(W2);
 
 			if (print) {
@@ -202,7 +202,7 @@ namespace aby3
 		p.mPrev.resetStats();
 
 		printRevealedValues(W2, gen, print, dim, p);
-		
+
 		auto start = std::chrono::system_clock::now();
 
 		if (cmd.isSet("noOnline") == false)
