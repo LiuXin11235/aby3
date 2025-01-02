@@ -234,7 +234,7 @@ namespace aby3
 		}
 
 
-		auto w2Val = p.reveal(W2);
+		// auto w2Val = p.reveal(W2);
 
 		if (print)
 		{
