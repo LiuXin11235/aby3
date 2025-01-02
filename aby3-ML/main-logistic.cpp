@@ -147,7 +147,10 @@ namespace aby3
     testN = val_test_data.rows();
 
 		eMatrix<double> val_W2(dim, 1);
-		val_W2.setZero();
+		// val_W2.setZero();
+		for(u64 i=0; i<(u64)dim; ++i) {
+			val_W2(i, 0) = prng.get<int>() % (1<<20);
+		}
 
 		eMatrix<double> model(dim, 1);
 		for (u64 i = 0; i < (u64)std::min(dim, 10); ++i)
@@ -234,7 +237,7 @@ namespace aby3
 		}
 
 
-		// auto w2Val = p.reveal(W2);
+		w2Val = p.reveal(W2);
 
 		if (print)
 		{
