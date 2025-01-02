@@ -149,7 +149,7 @@ namespace aby3
 		eMatrix<double> val_W2(dim, 1);
 		// val_W2.setZero();
 		for(u64 i=0; i<(u64)dim; ++i) {
-			val_W2(i, 0) = prng.get<int>() % (1<<20);
+			val_W2(i, 0) = prng.get<int>() % (10);
 		}
 
 		eMatrix<double> model(dim, 1);

@@ -41,7 +41,7 @@ int lr_test(oc::CLP& cmd){
     // prepare the data.
     // int N = 1000, D = 100, B = 128, IT = 1000;
     // int testN = 1000;
-    int B = 128, IT = 10;
+    int B = 128, IT = 100; // batch size and number of iterations!!
     int N = 100, testN = 100, D = 100;
 
     RegressionParam params;
