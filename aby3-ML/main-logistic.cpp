@@ -119,14 +119,7 @@ namespace aby3
 		PRNG prng(toBlock(1));
 		LogisticModelGen gen;
 
-		eMatrix<double> model(dim, 1);
-		for (u64 i = 0; i < (u64)std::min(dim, 10); ++i)
-		{
-			model(i, 0) = prng.get<int>() % 10;
-		}
-		gen.setModel(model);
-
-		eMatrix<double> val_train_data(N, dim), val_train_label(N, 1), val_W2(dim, 1);
+		eMatrix<double> val_train_data(N, dim), val_train_label(N, 1);
 		eMatrix<double> val_test_data(testN, dim), val_test_label(testN, 1);
 		// gen.sample(val_train_data, val_train_label);
 		// gen.sample(val_test_data, val_test_label);
@@ -142,8 +135,16 @@ namespace aby3
     N = val_train_data.rows();
     dim = val_train_data.cols();
     testN = val_test_data.rows();
-				
+
+		eMatrix<double> val_W2(dim, 1);
 		val_W2.setZero();
+
+		eMatrix<double> model(dim, 1);
+		for (u64 i = 0; i < (u64)std::min(dim, 10); ++i)
+		{
+			model(i, 0) = prng.get<int>() % 10;
+		}
+		gen.setModel(model);
 
 		RegressionParam params;
 		params.mBatchSize = B;
