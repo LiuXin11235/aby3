@@ -61,15 +61,15 @@ namespace aby3
 			return true;
 	}
 	
-	void printRevealedValues(const eMatrix<double>& W2, const LogisticModelGen& gen, bool print, u64 dim, aby3ML& p) {
-			auto w2Val = p.reveal(W2);
+	// void printRevealedValues(const eMatrix<double>& W2, const LogisticModelGen& gen, bool print, u64 dim, aby3ML& p) {
+	// 		auto w2Val = p.reveal(W2);
 
-			if (print) {
-					for (u64 i = 0; i < dim; ++i) {
-							std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
-					}
-			}
-	}
+	// 		if (print) {
+	// 				for (u64 i = 0; i < dim; ++i) {
+	// 						std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
+	// 				}
+	// 		}
+	// }
 
 	int logistic_plain_main(CLP& cmd)
 	{
@@ -201,7 +201,13 @@ namespace aby3
 		p.mNext.resetStats();
 		p.mPrev.resetStats();
 
-		printRevealedValues(W2, gen, print, dim, p);
+		// printRevealedValues(W2, gen, print, dim, p);
+		auto w2Val = p.reveal(W2);
+		if (print) {
+				for (u64 i = 0; i < dim; ++i) {
+						std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
+				}
+		}
 
 		auto start = std::chrono::system_clock::now();
 
