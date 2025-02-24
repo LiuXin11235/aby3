@@ -1,8 +1,8 @@
 # merge the data
-cat lr_train/train_data_party*.csv > lr_train/train_data.csv
-cat lr_train/train_label_party*.csv > lr_train/train_label.csv
-cat lr_train/test_data_party*.csv > lr_train/test_data.csv
-cat lr_train/test_label_party*.csv > lr_train/test_label.csv
+# cat lr_train/train_data_party*.csv > lr_train/train_data.csv
+# cat lr_train/train_label_party*.csv > lr_train/train_label.csv
+# cat lr_train/test_data_party*.csv > lr_train/test_data.csv
+# cat lr_train/test_label_party*.csv > lr_train/test_label.csv
 
 # compile the main.
 cp ./frontend/main.test ./frontend/main.cpp
@@ -49,3 +49,5 @@ wait;
 
 cat ./debug.txt
 rm ./debug.txt
+
+python eval_lr_pre_rec.py --party_n 3
