@@ -50,4 +50,4 @@ wait;
 cat ./debug.txt
 rm ./debug.txt
 
-python eval_lr_pre_rec.py --party_n 3
+# python eval_lr_pre_rec.py --party_n 3

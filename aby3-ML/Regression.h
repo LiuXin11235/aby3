@@ -312,7 +312,8 @@ void SGD_Logistic(
 			auto percent = score[1];
 			auto precision = score[2];
 			auto recall = score[3];
-			lout << i << " @ " << ((i + 1) * 1000.0 / dur) << " iters/s  " << " L2 Loss: " << l2 << " Precision: " << precision << " Recall: " << recall << " Accuracy (01): " << percent<< std::endl;
+			// lout << i << " @ " << ((i + 1) * 1000.0 / dur) << " iters/s  " << " L2 Loss: " << l2 << " Precision: " << precision << " Recall: " << recall << " Accuracy (01): " << percent<< std::endl;
+			lout << i << " @ " << ((i + 1) * 1000.0 / dur) << " iters/s  " << " L2 Loss: " << l2 << std::endl;
 			// lout << "Precision: " << precision << " Recall: " << recall << std::endl;
 		}
 	}
@@ -323,7 +324,8 @@ void SGD_Logistic(
                 auto percent = score[1];
                 auto precision = score[2];
                 auto recall = score[3];
-                lout << "Final test " << Color::Green<< " L2 Loss: " << l2 << " Precision: " << precision << " Recall: " << recall << " Accuracy (01): " << percent<< std::endl << Color::Default;
+                // lout << "Final test " << Color::Green<< " L2 Loss: " << l2 << " Precision: " << precision << " Recall: " << recall << " Accuracy (01): " << percent<< std::endl << Color::Default;
+				lout << "Final test " << Color::Green<< " L2 Loss: " << l2 <<  std::endl << Color::Default;
                 lout << "See the test results in prediction_output.csv. " << std::endl;
         }
 }

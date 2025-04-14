@@ -239,14 +239,14 @@ namespace aby3
 
 		w2Val = p.reveal(W2);
 
-		if (print)
-		{
+		// if (print)
+		// {
 
-			for (u64 i = 0; i < (u64)dim; ++i)
-			{
-				std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
-			}
-		}
+		// 	for (u64 i = 0; i < (u64)dim; ++i)
+		// 	{
+		// 		std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
+		// 	}
+		// }
 
 
 		return 0;
