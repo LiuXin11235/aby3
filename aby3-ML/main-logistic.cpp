@@ -61,15 +61,79 @@ namespace aby3
 			return true;
 	}
 	
-	// void printRevealedValues(const eMatrix<double>& W2, const LogisticModelGen& gen, bool print, u64 dim, aby3ML& p) {
-	// 		auto w2Val = p.reveal(W2);
+	// Function to save sf64Matrix<D16> to a binary file
+	void saveMatrix(const aby3::sf64Matrix<D16>& matrix, const std::string& baseFilename, int pIdx) {
+		std::stringstream ss;
+		ss << baseFilename << "_party_" << pIdx << ".bin";
+		std::string filename = ss.str();
+		std::ofstream file(filename, std::ios::binary);
+		
+		if (!file.is_open()) {
+			std::cerr << "Failed to open file for writing: " << filename << std::endl;
+			return;
+		}
+		
+		// Get matrix dimensions
+		u64 rows = matrix.rows();
+		u64 cols = matrix.cols();
+		
+		// Write dimensions
+		file.write(reinterpret_cast<const char*>(&rows), sizeof(rows));
+		file.write(reinterpret_cast<const char*>(&cols), sizeof(cols));
+		
+		// Write matrix data element by element
+		// Use a non-const reference to access the data
+		aby3::sf64Matrix<D16>& nonConstMatrix = const_cast<aby3::sf64Matrix<D16>&>(matrix);
+		for (u64 i = 0; i < rows; ++i) {
+			for (u64 j = 0; j < cols; ++j) {
+				auto value = nonConstMatrix(i, j);
+				file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+			}
+		}
+		
+		file.close();
+		std::cout << "Matrix saved to " << filename << std::endl;
+	}
 
-	// 		if (print) {
-	// 				for (u64 i = 0; i < dim; ++i) {
-	// 						std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
-	// 				}
-	// 		}
-	// }
+	// Function to load sf64Matrix<D16> from a binary file
+	aby3::sf64Matrix<D16> loadMatrix(const std::string& baseFilename, int pIdx) {
+		// Construct filename with party index
+		std::stringstream ss;
+		ss << baseFilename << "_party_" << pIdx << ".bin";
+		std::string filename = ss.str();
+
+		// Open file for reading
+		std::ifstream file(filename, std::ios::binary);
+		if (!file.is_open()) {
+			std::cerr << "Failed to open file: " << filename << std::endl;
+			return aby3::sf64Matrix<D16>();
+		}
+
+		// Read matrix dimensions
+		u64 rows, cols;
+		file.read(reinterpret_cast<char*>(&rows), sizeof(rows));
+		file.read(reinterpret_cast<char*>(&cols), sizeof(cols));
+
+		// Create matrix with read dimensions
+		aby3::sf64Matrix<D16> matrix(rows, cols);
+
+		// Read matrix data - each element is stored as two i64 values (shares)
+		for (u64 i = 0; i < rows; ++i) {
+			for (u64 j = 0; j < cols; ++j) {
+				i64 share0, share1;
+				file.read(reinterpret_cast<char*>(&share0), sizeof(share0));
+				file.read(reinterpret_cast<char*>(&share1), sizeof(share1));
+				
+				// Set the shares directly in the underlying matrices
+				matrix[0](i, j) = share0;
+				matrix[1](i, j) = share1;
+			}
+		}
+
+		file.close();
+		std::cout << "Successfully loaded matrix from " << filename << std::endl;
+		return matrix;
+	}
 
 	int logistic_plain_main(CLP& cmd)
 	{
@@ -171,7 +235,7 @@ namespace aby3
 
 		//p.mPrint = cmd.isSet("print");
 
-		sf64Matrix<D> train_data, train_label, W2, test_data, test_label;
+		sf64Matrix<D16> train_data, train_label, W2, test_data, test_label;
 
 		if (pIdx == 0)
 		{
@@ -236,7 +300,8 @@ namespace aby3
 				<< " offline: " << (double(IT) / preSeconds) << "  iters/s  " << (preBytes * 8 / 1024 / 2024) / preSeconds << " Mbps" << std::endl;
 		}
 
-
+		saveMatrix(W2, prefix + "W2_matrix", pIdx);
+		
 		w2Val = p.reveal(W2);
 
 		// if (print)
@@ -248,9 +313,149 @@ namespace aby3
 		// 	}
 		// }
 
+	// std::ofstream outFile("lr_weights.csv");
+	// if (outFile.is_open()) {
+	// 	// outFile << "weight" << std::endl;
+	// 	for (u64 i = 0; i < (u64)dim; ++i) {
+	// 		outFile << w2Val(i, 0) << std::endl;
+	// 	}
+	// 	outFile.close();
+	// }else{
+	// 	std::cerr << "Unable to open file for writing" << std::endl;
+	// }
 
 		return 0;
 	}
+
+int logistic_main_3pc_sh_test(int N, int dim, int B, int IT, int testN, int pIdx, bool print, CLP& cmd, Session& chlPrev, Session& chlNext, double thre = 0.5, std::string prefix = "lr_train/")
+	{
+
+		PRNG prng(toBlock(1));
+		LogisticModelGen gen;
+
+		eMatrix<double> val_train_data(N, dim), val_train_label(N, 1);
+		eMatrix<double> val_test_data(testN, dim), val_test_label(testN, 1);
+		// gen.sample(val_train_data, val_train_label);
+		// gen.sample(val_test_data, val_test_label);
+
+    // std::string prefix = "lr_train_toy/";
+    if (!readCSV(prefix + "train_data.csv", val_train_data) ||
+        !readCSV(prefix + "train_label.csv", val_train_label) ||
+        !readCSV(prefix + "test_data.csv", val_test_data) ||
+        !readCSV(prefix + "test_label.csv", val_test_label)) {
+        std::cerr << "Error reading data from files." << std::endl;
+        return -1;
+    }		
+    N = val_train_data.rows();
+    dim = val_train_data.cols();
+    testN = val_test_data.rows();
+
+		eMatrix<double> val_W2(dim, 1);
+		// val_W2.setZero();
+
+    // if (!readCSV("lr_weights.csv", val_W2)) {
+    //     std::cerr << "Error reading data from files." << std::endl;
+    //     return -1;
+    // }	
+
+		eMatrix<double> model(dim, 1);
+		for (u64 i = 0; i < (u64)std::min(dim, 10); ++i)
+		{
+			model(i, 0) = prng.get<int>() % 10;
+		}
+		gen.setModel(model);
+
+		RegressionParam params;
+		params.mBatchSize = B;
+		params.mIterations = 0; // No training iterations here.
+		params.mLearningRate = 1.0 / (1 << 3);
+
+		const Decimal D = D16;
+		aby3ML p;
+
+		p.init(pIdx, chlPrev, chlNext, toBlock(pIdx));
+
+		//p.mPrint = cmd.isSet("print");
+
+		sf64Matrix<D16> train_data, train_label, W2, test_data, test_label;
+
+		if (pIdx == 0)
+		{
+			train_data = p.localInput<D>(val_train_data);
+			train_label = p.localInput<D>(val_train_label);
+			W2 = p.localInput<D>(val_W2);
+			test_data = p.localInput<D>(val_test_data);
+			test_label = p.localInput<D>(val_test_label);
+		}
+		else
+		{
+			train_data = p.remoteInput<D>(0);
+			train_label = p.remoteInput<D>(0);
+			W2 = p.remoteInput<D>(0);
+			test_data = p.remoteInput<D>(0);
+			test_label = p.remoteInput<D>(0);
+		}
+
+
+		p.mPreproNext.resetStats();
+		p.mPreproPrev.resetStats();
+
+		auto preStart = std::chrono::system_clock::now();
+
+		p.preprocess((B + dim) * IT, D);
+
+		double preBytes = p.mPreproNext.getTotalDataSent() + p.mPreproPrev.getTotalDataSent();
+
+
+		p.mNext.resetStats();
+		p.mPrev.resetStats();
+
+		// // printRevealedValues(W2, gen, print, dim, p);
+		// auto w2Val = p.reveal(W2);
+		// if (print) {
+		// 		for (u64 i = 0; i < dim; ++i) {
+		// 				std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
+		// 		}
+		// }
+
+		auto start = std::chrono::system_clock::now();
+		W2 = loadMatrix(prefix + "W2_matrix", pIdx);
+		if (cmd.isSet("noOnline") == false)
+			SGD_Logistic(params, p, train_data, train_label, W2, &test_data, &test_label, thre); // No training but only testing here.
+		//val_W2 = p.reveal(W2);
+
+		//auto end = std::chrono::system_clock::now();
+
+
+		//engine.sync();
+		auto now = std::chrono::system_clock::now();
+		auto preSeconds = std::chrono::duration_cast<std::chrono::milliseconds>(start - preStart).count() / 1000.0;
+		auto seconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() / 1000.0;
+
+		double bytes = p.mNext.getTotalDataSent() + p.mPrev.getTotalDataSent();
+
+		if (print)
+		{
+			ostreamLock ooo(std::cout);
+			ooo << "N: " << N << " D:" << dim << " B:" << B << " IT:" << IT << " => "
+				<< (double(IT) / seconds) << "  iters/s  " << (bytes * 8 / 1024 / 2024) / seconds << " Mbps"
+				<< " offline: " << (double(IT) / preSeconds) << "  iters/s  " << (preBytes * 8 / 1024 / 2024) / preSeconds << " Mbps" << std::endl;
+		}
+
+		
+		// w2Val = p.reveal(W2);
+
+		// if (print)
+		// {
+
+		// 	for (u64 i = 0; i < (u64)dim; ++i)
+		// 	{
+		// 		std::cout << i << " " << gen.mModel(i, 0) << " " << w2Val(i, 0) << std::endl;
+		// 	}
+		// }
+
+		return 0;
+	}	
 
 
 	int logistic_main_3pc_sh(oc::CLP & cmd)

@@ -77,7 +77,8 @@ int lr_test(oc::CLP& cmd){
     // chlPrev.recv(prevAct);
 
 
-    aby3::logistic_main_3pc_sh(N, D, B, IT, testN, role, true, cmd, epPrev, epNext);
+    // aby3::logistic_main_3pc_sh(N, D, B, IT, testN, role, true, cmd, epPrev, epNext);
+    aby3::logistic_main_3pc_sh_test(N, D, B, IT, testN, role, true, cmd, epPrev, epNext);
     // logistic_main_3pc_sh(cmd);
 
     return 0;
