@@ -35,9 +35,10 @@ done
 # test_args=" -GraphQuery"
 # test_args=" -Bool -Comm -Graph -GraphQuery"
 # test_args=" -Comm -Bool -Graph -GraphQuery"
-# test_args=" -Shuffle -ORAM -Graph -GraphQuery -Sort"
+# test_args=" -Shuffle -ORAM -Graph -GraphQuery -Sort -EmbShare"
 # test_args=" -LR -Shuffle -Sort"
 test_args=" -LR"
+# test_args=" -EmbShare"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

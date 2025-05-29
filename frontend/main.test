@@ -1,4 +1,3 @@
-
 #include <cryptoTools/Common/CLP.h>
 #include <tests_cryptoTools/UnitTests.h>
 #include <map>
@@ -75,5 +74,10 @@ int main(int argc, char** argv) {
 	if(cmd.isSet("LR")){
 		lr_test(cmd);
 	}
+	// if(cmd.isSet("EmbShare")){
+	// 	emb_share_test(cmd);
+	// 	auto [enc_data_vec, enc_data_values_vec] = random_enc_data_construction_test_v2(cmd);
+	//	// You can use enc_data_vec and enc_data_values_vec here
+	// }
   return 0;
 }

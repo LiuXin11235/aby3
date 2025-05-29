@@ -92,6 +92,11 @@ int arith_sort_with_values_test(oc::CLP& cmd);
 // test lr.
 int lr_test(oc::CLP& cmd);
 
+// test emb share.
+// int emb_share_test(oc::CLP& cmd);
+
+// std::pair<std::vector<aby3::si64Matrix>, std::vector<std::vector<aby3::si64Matrix>>> random_enc_data_construction_test_v2(oc::CLP& cmd);
+
 bool check_result(const std::string& func_name, aby3::i64Matrix& test,
                   aby3::i64Matrix& res);
 
