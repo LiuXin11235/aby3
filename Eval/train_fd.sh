@@ -37,7 +37,7 @@ done
 # test_args=" -Comm -Bool -Graph -GraphQuery"
 # test_args=" -Shuffle -ORAM -Graph -GraphQuery -Sort"
 # test_args=" -LR -Shuffle -Sort"
-test_args=" -LR_test"
+test_args=" -LR_train"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
 

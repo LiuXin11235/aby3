@@ -74,6 +74,12 @@ int main(int argc, char** argv) {
 	if(cmd.isSet("LR")){
 		lr_test(cmd);
 	}
+        if(cmd.isSet("LR_test")){
+                lr_test(cmd);
+        }
+        if(cmd.isSet("LR_train")){
+                lr_test(cmd);
+        }	
 	// if(cmd.isSet("EmbShare")){
 	// 	emb_share_test(cmd);
 	// 	auto [enc_data_vec, enc_data_values_vec] = random_enc_data_construction_test_v2(cmd);
