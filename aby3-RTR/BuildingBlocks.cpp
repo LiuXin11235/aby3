@@ -11,8 +11,8 @@ using namespace std;
 using namespace oc;
 
 // #define LOCAL_TEST
-#define P0_IP "127.0.0.1"
-#define P1_IP "127.0.0.1"
+#define P0_IP "10.233.105.209" //"127.0.0.1"
+#define P1_IP "10.233.105.219" //"127.0.0.1"
 
 static int BASEPORT=6000;
 

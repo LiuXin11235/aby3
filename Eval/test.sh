@@ -11,7 +11,7 @@ for pfile in ./party-*.txt; do
     rm ${pfile};
 done
 
-./Eval/graph_test.sh
+# ./Eval/graph_test.sh
 
 # # synchronize with others
 # scp ./out/build/linux/frontend/frontend aby31:~/aby3/out/build/linux/frontend/ &
@@ -36,8 +36,8 @@ done
 # test_args=" -Bool -Comm -Graph -GraphQuery"
 # test_args=" -Comm -Bool -Graph -GraphQuery"
 # test_args=" -Shuffle -ORAM -Graph -GraphQuery -Sort -EmbShare"
-# test_args=" -LR -Shuffle -Sort"
-test_args=" -LR"
+test_args=" -Shuffle -Sort"
+# test_args=" -LR"
 # test_args=" -EmbShare"
 ./Eval/dis_exec.sh "${test_args}"
 wait;
