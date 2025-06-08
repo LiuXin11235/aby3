@@ -19,6 +19,13 @@ using namespace oc;
 using namespace aby3;
 using namespace Eigen;
 
+#define P0_IP "10.233.105.209" //"127.0.0.1"
+#define P1_IP "10.233.105.219" //"127.0.0.1"
+
+#define PORT10 1412
+#define PORT20 1210
+#define PORT21 1211
+
 int lr_test(oc::CLP& cmd){
 
     int role = -1;
@@ -57,13 +64,37 @@ int lr_test(oc::CLP& cmd){
     auto modeNext = role < next ? SessionMode::Server : SessionMode::Client;
     auto modePrev = role < prev ? SessionMode::Server : SessionMode::Client;
 
+    // // The single-machine version: original
+    // auto portNext = 1212 + std::min(role, next);
+    // auto portPrev = 1212 + std::min(role, prev);
+    // Session epNext(ios, "127.0.0.1", portNext, modeNext, cNameNext);
+    // Session epPrev(ios, "127.0.0.1", portPrev, modePrev, cNamePrev);    
+    
+    // Initialize sessions based on role in distributed version
+    std::string IPNext;
+    std::string IPPrev;    
+    std::string portNext;
+    std::string portPrev;
+    if (role == 0) {
+        IPNext = std::string(P0_IP);
+        IPPrev = std::string(P0_IP);
+        portNext = std::to_string(PORT10); // 0 as server to receive , 1 as client to send
+        portPrev = std::to_string(PORT20); // 0 as server, 2 as client
+    } else if (role == 1) {
+        IPNext = std::string(P1_IP);
+        IPPrev = std::string(P0_IP);
+        portNext = std::to_string(PORT21); // 1 as server, 2 as client
+        portPrev = std::to_string(PORT10); // 0 as server, 1 as client
+    } else {
+        IPNext = std::string(P0_IP);
+        IPPrev = std::string(P1_IP);
+        portNext = std::to_string(PORT20); // 0 as server, 2 as client
+        portPrev = std::to_string(PORT21); // 1 as server, 2 as client
+    }
+    Session epNext(ios, IPNext + ":" + portNext, modeNext, cNameNext);
+    Session epPrev(ios, IPPrev + ":" + portPrev, modePrev, cNamePrev);
 
-    auto portNext = 1212 + std::min(role, next);
-    auto portPrev = 1212 + std::min(role, prev);
-
-    Session epNext(ios, "127.0.0.1", portNext, modeNext, cNameNext);
-    Session epPrev(ios, "127.0.0.1", portPrev, modePrev, cNamePrev);
-
+    // Initialize channels
     auto chlNext = epNext.addChannel();
     auto chlPrev = epPrev.addChannel();
 

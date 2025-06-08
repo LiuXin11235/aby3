@@ -5,6 +5,12 @@ debugFile="${current_path}/debug.txt"
 graphFolder="${current_path}/aby3-GORAM/data/"
 echo "Current path: ${debugFile}"
 python build.py --DEBUG_FILE ${debugFile} --GRAPH_FOLDER ${graphFolder}
+cat lr_train_party/train_data* > lr_train/train_data.csv
+cat lr_train_party/train_label* > lr_train/train_label.csv
+cat lr_train_party/val_data* > lr_train/val_data.csv
+cat lr_train_party/val_label* > lr_train/val_label.csv
+cat lr_train_party/test_data* > lr_train/test_data.csv
+cat lr_train_party/test_label* > lr_train/test_label.csv
 
 # clean debugging files party-*.txt if exist.
 for pfile in ./party-*.txt; do
@@ -13,10 +19,10 @@ done
 
 # ./Eval/graph_test.sh
 
-# # synchronize with others
-# scp ./out/build/linux/frontend/frontend aby31:~/aby3/out/build/linux/frontend/ &
-# scp ./out/build/linux/frontend/frontend aby32:~/aby3/out/build/linux/frontend/ &
-# wait;
+# synchronize with others
+scp ./out/build/linux/frontend/frontend aby31:~/aby3/out/build/linux/frontend/ &
+scp ./out/build/linux/frontend/frontend aby32:~/aby3/out/build/linux/frontend/ &
+wait;
 
 # run the tests
 # current tests: 
